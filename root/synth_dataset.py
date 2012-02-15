@@ -7,6 +7,26 @@ Created on Feb 14, 2012
 import csv
 
 def sentences():
-    return csv.reader(open('files/synthDataset.csv'))
-    #for row in file:
+    file_ = csv.reader(open('../files/synthDataset.csv'))
+    
+    oldPwdId = -1;
+    sents = [] #store all the sentences found
+    words = [] #temp to store words of a password
+    
+    header = True #to skip the headers
+    
+    for row in file_:
+        if (header) : 
+            header = False
+            continue
+        pwdId =  row[0]
+        
+        if (oldPwdId!=-1 and pwdId!=oldPwdId):
+            sents.append(words)
+            words = []
+        
+        words.append(row[3])
+        oldPwdId = pwdId
+    return sents
+            
         
