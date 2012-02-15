@@ -12,11 +12,10 @@ from synth_dataset import sentences
 
 phrases = sentences()
 
-#train_sents = treebank.tagged_sents()
 train_sents = brown.tagged_sents()
+#train_sents = brown.tagged_sents()
 
-backoff = DefaultTagger('NN')
-
+backoff = DefaultTagger('KK')
 
 tagger  = backoff_tagger(train_sents, [UnigramTagger, BigramTagger, TrigramTagger], 
                            backoff=backoff)
