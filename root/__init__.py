@@ -5,6 +5,7 @@ from nltk.tag import UnigramTagger
 from nltk.corpus import brown
 import csv
 from synth_dataset import sentences
+from taggers import WordNetTagger
 
 #phrases = [['holiday'],['I', 'love', 'erin'],['better', 'off'],['i', 'love', 'many'],
 #           ['punk','rocker'], ['baby', 'love'], ['sex','me'], ['fuck', 'off'],
@@ -13,12 +14,14 @@ from synth_dataset import sentences
 phrases = sentences()
 
 train_sents = brown.tagged_sents()
-#train_sents = brown.tagged_sents()
+#train_sents = treebank.tagged_sents()
 
-backoff = DefaultTagger('KK')
+default_tagger = DefaultTagger('KK')
+
+wn_tagger = WordNetTagger(default_tagger)
 
 tagger  = backoff_tagger(train_sents, [UnigramTagger, BigramTagger, TrigramTagger], 
-                           backoff=backoff)
+                           backoff=wn_tagger)
 
 for p in phrases :
     print(tagger.tag(p))
