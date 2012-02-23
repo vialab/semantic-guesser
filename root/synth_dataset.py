@@ -27,6 +27,8 @@ def sentences():
         
         words.append(row[3])
         oldPwdId = pwdId
+    
+    sents.append(words)
     return sents
             
         

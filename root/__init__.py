@@ -1,28 +1,33 @@
 from tag_util import backoff_tagger
 from nltk.tag.sequential import DefaultTagger, BigramTagger, TrigramTagger
 from nltk.corpus import treebank
-from nltk.tag import UnigramTagger
 from nltk.corpus import brown
+from nltk.tag import UnigramTagger
 import csv
 from synth_dataset import sentences
 from taggers import WordNetTagger
-
-#phrases = [['holiday'],['I', 'love', 'erin'],['better', 'off'],['i', 'love', 'many'],
-#           ['punk','rocker'], ['baby', 'love'], ['sex','me'], ['fuck', 'off'],
-#           ['kill', 'yourself'], ['fuck', 'hoes']]
+from taggers import NamesTagger
+from time import time
 
 phrases = sentences()
 
-train_sents = brown.tagged_sents()
-#train_sents = treebank.tagged_sents()
+train_sents = brown.tagged_sents();
 
 default_tagger = DefaultTagger('KK')
-
 wn_tagger = WordNetTagger(default_tagger)
+names_tagger = NamesTagger(wn_tagger)
 
+print "creating backoff chain..."
 tagger  = backoff_tagger(train_sents, [UnigramTagger, BigramTagger, TrigramTagger], 
-                           backoff=wn_tagger)
+                           backoff=names_tagger)
+
+print "tagging process initialized..."
+start = time()
+
+resultWriter = csv.writer(open('../results/brown-wordnet-names.csv','wb'), dialect='excel')
 
 for p in phrases :
-    print(tagger.tag(p))
+    for pair in tagger.tag(p) :
+        resultWriter.writerow([pair[0], pair[1]])
 
+print "tagging process took " + str(time()-start) + " seconds."
