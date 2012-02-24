@@ -7,6 +7,7 @@ import csv
 from synth_dataset import sentences
 from taggers import WordNetTagger
 from taggers import NamesTagger
+from taggers import COCATagger
 from time import time
 
 phrases = sentences()
@@ -14,7 +15,8 @@ phrases = sentences()
 train_sents = brown.tagged_sents();
 
 default_tagger = DefaultTagger('KK')
-wn_tagger = WordNetTagger(default_tagger)
+coca_tagger = COCATagger(default_tagger)
+wn_tagger = WordNetTagger(coca_tagger)
 names_tagger = NamesTagger(wn_tagger)
 
 print "creating backoff chain..."
@@ -24,7 +26,7 @@ tagger  = backoff_tagger(train_sents, [UnigramTagger, BigramTagger, TrigramTagge
 print "tagging process initialized..."
 start = time()
 
-resultWriter = csv.writer(open('../results/brown-wordnet-names.csv','wb'), dialect='excel')
+resultWriter = csv.writer(open('../results/brown-wordnet-names-coca.csv','wb'))
 
 for p in phrases :
     for pair in tagger.tag(p) :
