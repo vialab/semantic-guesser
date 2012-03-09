@@ -2,6 +2,7 @@ from nltk.tag import NgramTagger, SequentialBackoffTagger
 from nltk.corpus import wordnet, names
 from nltk.probability import FreqDist
 import csv
+from root.tagset_conversion import TagsetConverter
 
 class QuadgramTagger(NgramTagger):
 	def __init__(self, *args, **kwargs):
@@ -55,13 +56,12 @@ class COCATagger(SequentialBackoffTagger):
 	def __init__(self, *args, **kwargs):
 		SequentialBackoffTagger.__init__(self, *args, **kwargs)
 		coca_list = csv.reader(open('../files/coca_500k.csv'), delimiter='	')
-#		for row in coca_list:
-#			print row
 		self.tag_map = dict([(row[1], row[2]) for row in coca_list])
+		self.tagset_converter = TagsetConverter()
 	
 	def choose_tag(self, tokens, index, history):
 		word = tokens[index]
-		return self.tag_map[word] if word in self.tag_map else None
+		return self.tagset_converter.claws7ToBrown(self.tag_map[word]) if word in self.tag_map else None
 
 if __name__ == '__main__':
 	import doctest
