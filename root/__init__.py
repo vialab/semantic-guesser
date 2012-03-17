@@ -11,9 +11,12 @@ from taggers import COCATagger
 from time import time
 from database import PwdDb
 from database import WordOccurrence
-import pickle
+from root.tagset_conversion import TagsetConverter
+from root.taggers import SentiWordnetTagger
 
 def getTagger():
+    """ Builds our chain of Taggers """
+    
     train_sents = brown.tagged_sents();
     
     default_tagger = DefaultTagger('KK')
@@ -25,36 +28,41 @@ def getTagger():
     return backoff_tagger(train_sents, [UnigramTagger, BigramTagger, TrigramTagger], 
                                backoff=names_tagger)
 
-#phrases = sentences()
-def main():    
-    tagger = getTagger()
-    #tagger = DefaultTagger('KK')
+
+def main():
+    """ Tags the dataset by POS and sentiment at
+        the same time """    
+        
+    pos_tagger = getTagger()
+    senti_tagger = SentiWordnetTagger()
+    tsc = TagsetConverter()
     
     print "tagging process initialized..."
     start = time()
     
-    #resultWriter = csv.writer(open('../results/brown-wordnet-names-coca.csv','wb'))
     db = PwdDb()
     print "connected to database, tagging..."
     while (db.hasNext()):
-    #for n in range(3):
-        pwd = db.nextPwd()
-        tagged = tagger.tag([wo.word for wo in pwd])
-        for i in range(len(tagged)):
-            pwd[i].pos = tagged[i][1]
+        pwd = db.nextPwd() # list of Words
+        # extracts to a list of strings and tags them
+        pos_tagged = pos_tagger.tag([wo.word for wo in pwd]) 
+        
+        for i in range(len(pos_tagged)):
+            pos = pos_tagged[i][1] # Brown pos tag
+            pwd[i].pos = pos
+            # converts to wordnet tagset and tag by sentiment
+            senti = senti_tagger.tag(pwd[i].word, tsc.brownToWordNet(pos))
+            if (senti is not None):
+                pwd[i].synsets = senti[0]
+                pwd[i].senti = senti[1] 
+            
             db.save(pwd[i])
-    
-    #===============================================================================
-    # for p in phrases :
-    #    for pair in tagger.tag(p) :
-    #        resultWriter.writerow([pair[0], pair[1]])
-    #===============================================================================
     
     db.finish()
     
     print "tagging process took " + str(time()-start) + " seconds."
     
     return 0;
-    
+
 if __name__ == "__main__":
     main()

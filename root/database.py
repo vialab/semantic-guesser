@@ -19,7 +19,8 @@ class PwdDb():
         
         # Use all the SQL you like
         self.cur.execute("SELECT sets.set_id AS set_id, " + \
-                            "set_contains.id AS set_contains_id, dictionary.dict_text " + \
+                            "set_contains.id AS set_contains_id, dictionary.dict_text, " + \
+                            "pos, sent, synsets, category " + \
                             "FROM set_contains LEFT JOIN sets ON set_contains.set_id = sets.set_id " +\
                             "LEFT JOIN dictionary ON set_contains.dict_id = dictionary.dict_id; ") 
         self.row = self.cur.fetchone()
@@ -41,7 +42,9 @@ class PwdDb():
         pwd_id     = old_pwd_id
         pwd = []
         while (pwd_id == old_pwd_id):
-            wo = WordOccurrence(self.row["set_contains_id"], self.row["dict_text"])
+            wo = WordOccurrence(self.row["set_contains_id"], self.row["dict_text"],
+                                self.row["pos"], self.row["sent"], self.row["synsets"],
+                                self.row["category"])
             pwd.append(wo)
             self.row = self.cur.fetchone()
             if (self.row is None):  break
@@ -50,8 +53,19 @@ class PwdDb():
         
         
     def save(self, wo):
-        self.saveCur.execute("UPDATE set_contains set pos=%s where id=%s;", (wo.pos, wo.id))
+#        pos = wo.pos if wo.pos is not None else 'null'
+#        senti = wo.senti if wo.senti is not None else 'null'
+#        synsets = wo.synsets if wo.synsets is not None else 'null'
+        
+#        q = "UPDATE set_contains set pos=%s, sent=%s, synsets=%d where id=%d;" % (pos, senti, synsets, wo.id)
+#        print q
+        self.saveCur.execute("UPDATE set_contains set pos=%s, sent=%s, synsets=%s where id=%s;",
+                             (wo.pos, wo.senti, wo.synsets, wo.id))
     
+    def saveCategory(self, wo):
+        self.saveCur.execute("UPDATE set_contains set category=%s where id=%s;",
+                             (wo.category, wo.id))
+        
     def hasNext(self):
         return self.row is not None
     
@@ -63,10 +77,13 @@ class PwdDb():
     
 class WordOccurrence():
     
-    def __init__(self, id, word, pos=''):
-        self.id = id
+    def __init__(self, ident, word, pos=None, senti=None, synsets=None, category=None):
+        self.id = ident
         self.word = word
         self.pos = pos
+        self.senti = senti
+        self.synsets = synsets
+        self.category = category
 
     def __str__(self):
         return self.word
@@ -75,7 +92,14 @@ class WordOccurrence():
         return self.word
 
 #db = PwdDb()
-#for n in range(50):
-#    pwd = db.nextPwd()
-#    print pwd
+#pos = 'a'
+#senti = None
+#synsets = None
+#id = 1
+#
+#wo = WordOccurrence(id, "rafa", pos, senti, synsets)
+#db.save(wo)
+#db.finish()
+#db = PwdDb()
+
 
