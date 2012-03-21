@@ -51,7 +51,7 @@ class NamesTagger(SequentialBackoffTagger):
 		word = tokens[index]
 		
 		if word.lower() in self.name_set:
-			return 'NNP'
+			return 'NP'
 		else:
 			return None
 
@@ -59,13 +59,32 @@ class COCATagger(SequentialBackoffTagger):
 	def __init__(self, *args, **kwargs):
 		SequentialBackoffTagger.__init__(self, *args, **kwargs)
 		coca_list = csv.reader(open('../files/coca_500k.csv'), delimiter='	')
-		self.tag_map = dict([(row[1], row[2]) for row in coca_list])
+		self.tag_map = dict()
+		for row in coca_list:
+			freq = int(row[0])
+			word = row[1]
+			pos  = row[2]
+			self.insertPair(word, pos, freq)
+			
 		self.tagset_converter = TagsetConverter()
 	
+	def insertPair(self, word, pos, freq):
+		""" Appends a (pos,freq) tuple in the end of the list
+		corresponding to a word. Since they're ranked in coca file
+		it should result in an ordered list by frequency """
+		map_ = self.tag_map
+		if ( word not in map_):	map_[word] = [(pos, freq)]
+		else: map_[word].append((pos,freq))
+			
+			
 	def choose_tag(self, tokens, index, history):
 		word = tokens[index]
-		return self.tagset_converter.claws7ToBrown(self.tag_map[word]) if word in self.tag_map else None
-
+		if word in self.tag_map: 
+			posfreq = self.tag_map[word][0]
+			return self.tagset_converter.claws7ToBrown(posfreq[0])
+		else:
+			return None
+				
 class SentiWordnetTagger():
 	def __init__(self):
 		f = '../files/SentiWordNet_3.0.0_20120206.txt'
@@ -88,20 +107,20 @@ class SemanticTagger():
 	
 	def __init__(self):
 		self.categories = (	
-						(self.synsets('animal'), 'animal'),
-						(self.synsets('food'), 'food'),
-						(self.synsets('emotion'), 'emotion'),
-						(self.synsets('color'), 'color'),
-						(self.synsets('place'), 'place'),
-						(self.synsets('sexual_activity', 'sexy'), 'sexual'),
-						(self.synsets('professional'), 'profession'),
-						(self.synsets('belief', 'religious_person'), 'religious' ),
-						(self.synsets('nation', 'inhabitant'), 'nation' ),
-						(self.synsets('body_part'), 'body' ),
-						(self.synsets('time_period'), 'time' ),
-						(self.synsets('clothing'), 'clothing' ),
-						(self.synsets('sports'), 'sports' )
-						)
+			(self.synsets('animal'), 'animal'),
+			(self.synsets('food'), 'food'),
+			(self.synsets('emotion'), 'emotion'),
+			(self.synsets('color'), 'color'),
+			(self.synsets('place'), 'place'),
+			(self.synsets('sexual_activity', 'sexy'), 'sexual'),
+			(self.synsets('professional'), 'profession'),
+			(self.synsets('belief', 'religious_person'), 'religious' ),
+			(self.synsets('nation', 'inhabitant'), 'nation' ),
+			(self.synsets('body_part'), 'body' ),
+			(self.synsets('time_period'), 'time' ),
+			(self.synsets('clothing'), 'clothing' ),
+			(self.synsets('sports'), 'sports' )
+			)
 	
 	def synsets(self, *args):
 		a = set()
