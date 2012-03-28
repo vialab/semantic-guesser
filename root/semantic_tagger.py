@@ -19,22 +19,17 @@ def main():
     print "tagging process initialized..."
     start = time()
     
-    while (db.hasNext()):
-#    for i in range(30000):
+#    while (db.hasNext()):
+    for i in range(30000):
         words = db.nextPwd() # list of Words
         for w in words:
-#            if w.word=="you":
-#                print "bitch!" 
             t = None
             if w.synsets is not None:
                 pos = TagsetConverter().brownToWordNet(w.pos)
-                if pos is not None: # pos is in wordnet tagset
-                    t = tagger.tag(pos, w.synsets)
-                else:
-                    t = tagger.tag(w.word)
-            
-            if w.pos[:2]=='PP' and w.pos[2]!='$': # no wordnet pos correspondent but personal pronoun
-                    t = 'person'
+                t = tagger.tag(pos, w.synsets)
+            else:
+                t = tagger.tag(w.word)
+        
                      
             if t is not None:
                 w.category = t
