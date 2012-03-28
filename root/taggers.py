@@ -5,6 +5,7 @@ import csv
 from root.tagset_conversion import TagsetConverter
 from sentiwordnet import SentiWordNetCorpusReader, SentiSynset
 from nltk.corpus import wordnet as wn
+from nltk.corpus import gazetteers
 from sets import Set
 
 class QuadgramTagger(NgramTagger):
@@ -95,17 +96,21 @@ class SentiWordnetTagger():
 		
 		if not synsets: return None
 		
-		s = synsets[0]
-		ident = s.offset
+		#assumes the list is ranked and gets the first as the most frequent
+		s = synsets[0] 
+		offset = s.offset
 		if s.pos_score > s.neg_score:	 tag = 'p'
 		elif  s.pos_score < s.neg_score: tag = 'n'
 		else:							 tag = 'z'
 		
-		return (ident, tag)
+		# offset is the synset id
+		return (offset, tag)
 
 class SemanticTagger():
 	
 	def __init__(self):
+		self.names_tagger = NamesTagger()
+		self.months = getMonthsList()
 		self.categories = (	
 			(self.synsets('animal'), 'animal'),
 			(self.synsets('food'), 'food'),
@@ -122,6 +127,10 @@ class SemanticTagger():
 			(self.synsets('sports'), 'sports' )
 			)
 	
+	def getMonthsList(self):
+		reader = csv.reader(open('../wordlists/months.txt'))
+		return (row[0] for row in reader)
+	
 	def synsets(self, *args):
 		a = set()
 		for s in args:
@@ -136,9 +145,13 @@ class SemanticTagger():
 					return cat[1]
 		return None
 	
+	''' Receives either (word, pos [, offset]]). 
+	If offset is passed, assumes the meaning associated with the pos in wordnet.
+	If just pos is passed, assumes that there's no synset associated with word in wordnet
+	and tags according to some rules based on pronouns, proper nouns, etc. '''
 	def tag(self, *args):
-		if (len(args)==2):
-			return self.tag_by_pos_offset(args[0], args[1])
+		if (len(args)==3):
+			return self.tag_by_pos_offset(args[1], args[2])
 		else:
 			return self.tag_by_word(args[0])
 		
@@ -150,13 +163,18 @@ class SemanticTagger():
 		
 		return self._tagIt(s)
 	
-	def tag_by_word(self, word):
-		try:
-			s = wn.synsets(word)[0]
-		except IndexError:
-			return None
-		
-		return self._tagIt(s)
+	''' Receives a word and a tag from Brown tagset.
+	Decides about the category independently of Wordnet'''
+	def tag_by_word(self, word, pos):
+		if word.pos[:2]=='PP' and word.pos[2]!='$': 
+			return 'person'
+		elif word.pos=='NP': # named-entity
+			if (self.names_tagger.tag([word]) is not None):
+				return 'name'
+			elif (word in self.months):
+				return 'month'
+			
+		return None
 	
 
 #s = wn.synsets('hat')[0]
