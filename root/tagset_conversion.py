@@ -155,7 +155,9 @@ class TagsetConverter():
         tag = tag.lower()
         l = tag[0] # first letter
         ll = tag[:2] # two first letters
-        if l == 'n':
+        if ll=='np':
+            return None
+        elif l == 'n':
             return 'n'
         elif l in ('b', 'v', 'h') or ll=='do':
             return 'v'
