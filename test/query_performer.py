@@ -6,7 +6,6 @@ Created on Mar 13, 2012
 
 import MySQLdb.cursors
 import csv
-import sys
 
 def main():
     conn = MySQLdb.connect(host="localhost", # your host, usually localhost
@@ -23,7 +22,7 @@ def main():
     csv_writer = csv.writer(open("result_set.csv","wb"), dialect='excel')
     for i in range(nResults):
         row = [ v for v in cursor.fetchone()]
-        row = [x if x is not None else "Null" for x in row]
+        row = [x if x is not None else "" for x in row]
         csv_writer.writerow(row)
     print "the end."
     
