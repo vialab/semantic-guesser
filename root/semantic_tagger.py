@@ -21,7 +21,7 @@ def main():
     print "tagging process initialized..."
     start = time()
     
-#    csv_writer = csv.writer(open("../results/test1.csv","wb"), dialect='excel')
+    csv_writer = csv.writer(open("../results/test0.csv","wb"), dialect='excel')
     
 #    while (db.hasNext()):
     for i in range(1,30001):
@@ -37,7 +37,7 @@ def main():
         
             w.category = t
             db.saveCategory(w)
-#            csv_writer.writerow([i, w.word, w.category, w.senti, w.pos])
+            csv_writer.writerow([i, w.word, w.category, w.senti, w.pos])
 
     db.finish() 
     
