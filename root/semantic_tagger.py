@@ -8,6 +8,7 @@ from database import PwdDb
 from taggers import SemanticTagger
 from root.tagset_conversion import TagsetConverter
 from time import time
+import csv
 
 def main():
     """ Tags the dataset by semantic categories,
@@ -19,22 +20,26 @@ def main():
     print "tagging process initialized..."
     start = time()
     
+    #csv_writer = csv.writer(open("../results/wordnet-wordlists-semantic-taggin_.csv","wb"), dialect='excel')
+    
 #    while (db.hasNext()):
-    for i in range(30000):
+    for i in range(1,30001):
         words = db.nextPwd() # list of Words
         for w in words:
             t = None
-            if w.synsets is not None:
-                pos = TagsetConverter().brownToWordNet(w.pos)
-                t = tagger.tag(pos, w.synsets)
+            
+            pos = TagsetConverter().brownToWordNet(w.pos)
+            
+            if w.synsets is not None and pos is not None:
+                t = tagger.tag(w.word, pos, w.synsets)
             else:
-                t = tagger.tag(w.word)
+                t = tagger.tag(w.word, w.pos)
         
-                     
-            if t is not None:
-                w.category = t
-#                print w.word, " ", w.category
-                db.saveCategory(w)
+            #if t is not None:
+            w.category = t
+            db.saveCategory(w)
+            #csv_writer.writerow([i, w.word, w.category, w.senti, w.pos])
+
     db.finish() 
     
     print "tagging process took " + str(time()-start) + " seconds."      
