@@ -16,11 +16,12 @@ def main():
     
     db = PwdDb()
     tagger = SemanticTagger()
+    tg = TagsetConverter()
     
     print "tagging process initialized..."
     start = time()
     
-    #csv_writer = csv.writer(open("../results/wordnet-wordlists-semantic-taggin_.csv","wb"), dialect='excel')
+#    csv_writer = csv.writer(open("../results/test1.csv","wb"), dialect='excel')
     
 #    while (db.hasNext()):
     for i in range(1,30001):
@@ -28,17 +29,15 @@ def main():
         for w in words:
             t = None
             
-            pos = TagsetConverter().brownToWordNet(w.pos)
-            
-            if w.synsets is not None and pos is not None:
-                t = tagger.tag(w.word, pos, w.synsets)
+            if w.synsets is not None:
+                wn_pos = tg.brownToWordNet(w.pos)
+                t = tagger.tag(w.word, wn_pos, w.synsets)
             else:
                 t = tagger.tag(w.word, w.pos)
         
-            #if t is not None:
             w.category = t
             db.saveCategory(w)
-            #csv_writer.writerow([i, w.word, w.category, w.senti, w.pos])
+#            csv_writer.writerow([i, w.word, w.category, w.senti, w.pos])
 
     db.finish() 
     

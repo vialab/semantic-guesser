@@ -30,38 +30,6 @@ def getTagger():
     return backoff_tagger(train_sents, [BigramTagger, TrigramTagger], 
                                backoff=coca_tagger)
 
-# Using no context and COCA for unigrams.
-#def getTagger():
-#   """ Builds a chain of Taggers with
-#    COCA as the main one and no context at all"""
-#   
-#   default_tagger = DefaultTagger('KK')
-#   wn_tagger = WordNetTagger(default_tagger)
-#   names_tagger = NamesTagger(wn_tagger)
-#   coca_tagger = COCATagger(names_tagger)
-#   
-#   print "creating backoff chain..."
-#   return coca_tagger
-
-
-# Old approach with Brown as main tagger!!!!
-#===============================================================================
-# def getTagger():
-#    """ Builds a chain of Taggers"""
-#    
-#    train_sents = brown.tagged_sents();
-#    
-#    default_tagger = DefaultTagger('KK')
-#    coca_tagger = COCATagger(default_tagger)
-#    wn_tagger = WordNetTagger(coca_tagger)
-#    names_tagger = NamesTagger(wn_tagger)
-#    
-#    print "creating backoff chain..."
-#    return backoff_tagger(train_sents, [UnigramTagger, BigramTagger, TrigramTagger], 
-#                               backoff=names_tagger)
-#===============================================================================
-
-
 
 def main():
     """ Tags the dataset by POS and sentiment at
@@ -79,7 +47,7 @@ def main():
     db = PwdDb()
     print "connected to database, tagging..."
     while (db.hasNext()):
-    #for j in range(30000):
+#    for j in range(30000):
         pwd = db.nextPwd() # list of Words
         # extracts to a list of strings and tags them
         pos_tagged = pos_tagger.tag([wo.word for wo in pwd])
@@ -87,7 +55,7 @@ def main():
         for i in range(len(pos_tagged)):
             pos = pos_tagged[i][1] # Brown pos tag
             pwd[i].pos = pos
-            #converts to wordnet tagset and tag by sentiment
+            # converts to wordnet tagset and tags by sentiment
             senti = senti_tagger.tag(pwd[i].word, tsc.brownToWordNet(pos))
             pwd[i].synsets = senti[0] if senti is not None else None
             pwd[i].senti   = senti[1] if senti is not None else None 
