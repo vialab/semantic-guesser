@@ -5,7 +5,7 @@ import csv
 from root.tagset_conversion import TagsetConverter
 from sentiwordnet import SentiWordNetCorpusReader, SentiSynset
 from nltk.corpus import wordnet as wn
-from nltk.corpus import gazetteers
+from nltk.stem import PorterStemmer
 from sets import Set
 
 class QuadgramTagger(NgramTagger):
@@ -67,7 +67,7 @@ class COCATagger(SequentialBackoffTagger):
 			pos  = row[2]
 			self.insertPair(word, pos, freq)
 			
-		self.tagset_converter = TagsetConverter()
+		self.tag_converter = TagsetConverter()
 	
 	def insertPair(self, word, pos, freq):
 		""" Appends a (pos,freq) tuple in the end of the list
@@ -82,9 +82,21 @@ class COCATagger(SequentialBackoffTagger):
 		word = tokens[index]
 		if word in self.tag_map: 
 			posfreq = self.tag_map[word][0]
-			return self.tagset_converter.claws7ToBrown(posfreq[0])
+			return self.tag_converter.claws7ToBrown(posfreq[0])
 		else:
 			return None
+	
+	def getFrequency(self, word, tag):
+		pos_freq_pairs = self.tag_map[word]
+		for pair in pos_freq_pairs:
+			if len(tag)==1:
+				pos = self.tag_converter.brownToWordNet(pair[0])
+			else:
+				pos = pair[0]
+			if (pos==tag):
+				return pair[1]
+		return None
+				
 				
 class SentiWordnetTagger():
 	def __init__(self):
@@ -92,6 +104,8 @@ class SentiWordnetTagger():
 		self.swn = SentiWordNetCorpusReader(f)
 	
 	def tag(self, word, pos):
+		if (pos is None):
+			return (None, 'z')
 		synsets = self.swn.senti_synsets(word, pos)
 		
 		if not synsets: return None
@@ -109,27 +123,40 @@ class SentiWordnetTagger():
 class SemanticTagger():
 	
 	def __init__(self):
+		self.stemmer = PorterStemmer()
 		self.names_tagger = NamesTagger()
-		self.months = getMonthsList()
+		self.months = self.getMonthsList()
+		self.nationalities = self.getNationalitiesList()
 		self.categories = (	
 			(self.synsets('animal'), 'animal'),
-			(self.synsets('food'), 'food'),
-			(self.synsets('emotion'), 'emotion'),
+			(self.synsets('food','fruit'), 'food'),
+			(self.synsets('sexual_activity', 'sexy', 'sleep_together', 'kiss'), 'sexual'),
+			(self.synsets('feeling','love'), 'feeling'),
+			(self.synsets('conflict','aggression'), 'aggression'),
 			(self.synsets('color'), 'color'),
 			(self.synsets('place'), 'place'),
-			(self.synsets('sexual_activity', 'sexy'), 'sexual'),
 			(self.synsets('professional'), 'profession'),
 			(self.synsets('belief', 'religious_person'), 'religious' ),
 			(self.synsets('nation', 'inhabitant'), 'nation' ),
 			(self.synsets('body_part'), 'body' ),
 			(self.synsets('time_period'), 'time' ),
 			(self.synsets('clothing'), 'clothing' ),
-			(self.synsets('sports'), 'sports' )
+			(self.synsets('sports'), 'sports' ),
+			(self.synsets('weapon'), 'weapon' ),
+			(self.synsets('music'), 'music' ),
+			(self.synsets('art'), 'art' ),
+			(self.synsets('diversion', 'entertainer'), 'entertainment' ),
+			(self.synsets('crime'), 'crime'),
+			(self.synsets('person'), 'person' )
 			)
 	
+	def getNationalitiesList(self):
+		reader = csv.reader(open('../files/wordlists/nationalities.txt'))
+		return [self.stemmer.stem(row[0]).lower() for row in reader]
+	
 	def getMonthsList(self):
-		reader = csv.reader(open('../wordlists/months.txt'))
-		return (row[0] for row in reader)
+		reader = csv.reader(open('../files/wordlists/months.txt'))
+		return [row[0] for row in reader]
 	
 	def synsets(self, *args):
 		a = set()
@@ -150,37 +177,40 @@ class SemanticTagger():
 	If just pos is passed, assumes that there's no synset associated with word in wordnet
 	and tags according to some rules based on pronouns, proper nouns, etc. '''
 	def tag(self, *args):
+		word = args[0].lower() # lowercasing word
 		if (len(args)==3):
-			return self.tag_by_pos_offset(args[1], args[2])
+			# try to find a match in the synsets bag (wordnet)
+			t = self.tag_by_synset(args[1], args[2])
+			# if wordnet approach wasn't successful we look for matches in wordlists
+			if (t is None):
+				t = self.tag_by_wordlist(word, args[1])
 		else:
-			return self.tag_by_word(args[0])
+			t = self.tag_by_wordlist(word, args[1])
 		
+		return t
+
 	
-	def tag_by_pos_offset(self, pos, offset):
+	def tag_by_synset(self, pos, offset):
 		if not (pos and offset): return None
-		
 		s = wn._synset_from_pos_and_offset(pos, offset)
+		return self._tagIt(s);
 		
-		return self._tagIt(s)
 	
 	''' Receives a word and a tag from Brown tagset.
-	Decides about the category independently of Wordnet'''
-	def tag_by_word(self, word, pos):
-		if word.pos[:2]=='PP' and word.pos[2]!='$': 
+	Decides about the category independently of Wordnet.
+	This function is useful for tagging words whose pos
+	couldn't be converted to wordnet, like PP and NP; or which
+	simply are not found in wordnet. '''
+	def tag_by_wordlist(self, word, pos):
+		if pos[:2]=='PP' and pos[2]!='$' and word!='it': 
 			return 'person'
-		elif word.pos=='NP': # named-entity
-			if (self.names_tagger.tag([word]) is not None):
+		elif pos=='NP' or pos=='NNP' : # named-entity
+			if (self.names_tagger.tag([word])[0][1] is not None):
 				return 'name'
 			elif (word in self.months):
-				return 'month'
+				return 'time'
+		elif pos=='JJ' or pos=='a':
+			if (self.stemmer.stem(word) in self.nationalities):
+				return 'nation'
 			
 		return None
-	
-
-#s = wn.synsets('hat')[0]
-#print s.definition
-#t = SemanticTagger()
-#
-#tag = t.tag('n', s.offset)
-#
-#print tag
