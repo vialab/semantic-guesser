@@ -31,12 +31,16 @@ class WordNetTagger(SequentialBackoffTagger):
 	
 	def choose_tag(self, tokens, index, history):
 		word = tokens[index]
+		if word is None :
+			return None
 		fd = FreqDist()
 		
 		for synset in wordnet.synsets(word):
 			fd.inc(synset.pos)
-		
-		return self.wordnet_tag_map.get(fd.max())
+		try :
+			return self.wordnet_tag_map.get(fd.max())
+		except : # in case fd is empty
+			return None
 
 class NamesTagger(SequentialBackoffTagger):
 	'''
@@ -49,7 +53,11 @@ class NamesTagger(SequentialBackoffTagger):
 		self.name_set = set([n.lower() for n in names.words()])
 	
 	def choose_tag(self, tokens, index, history):
+	
 		word = tokens[index]
+		
+		if word is None :
+			return None
 		
 		if word.lower() in self.name_set:
 			return 'NP'
@@ -172,12 +180,15 @@ class SemanticTagger():
 					return cat[1]
 		return None
 	
-	''' Receives either (word, pos [, offset]]). 
+	''' Receives (word, pos [, offset]]). 
 	If offset is passed, assumes the meaning associated with the pos in wordnet.
 	If just pos is passed, assumes that there's no synset associated with word in wordnet
 	and tags according to some rules based on pronouns, proper nouns, etc. '''
 	def tag(self, *args):
-		word = args[0].lower() # lowercasing word
+		word = args[0]
+		if word is None :
+			return None
+		word = word.lower() # lowercasing word
 		if (len(args)==3):
 			# try to find a match in the synsets bag (wordnet)
 			t = self.tag_by_synset(args[1], args[2])
@@ -192,7 +203,13 @@ class SemanticTagger():
 	
 	def tag_by_synset(self, pos, offset):
 		if not (pos and offset): return None
+		
 		s = wn._synset_from_pos_and_offset(pos, offset)
+		
+		# outputtin verb's paths
+		if pos == 'v':
+			print s.hypernym_paths()
+		
 		return self._tagIt(s);
 		
 	

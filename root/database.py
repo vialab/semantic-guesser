@@ -29,7 +29,7 @@ class PwdDb():
 #           print row[2]
     
     def connection(self):
-        return MySQLdb.connect(host="localhost", # your host, usually localhost
+        return MySQLdb.connect(host="10.121.80.83", # your host, usually localhost
                      user="root", # your username
                      passwd="root", # your password
                      db="passwords",
@@ -69,8 +69,9 @@ class PwdDb():
     def hasNext(self):
         return self.row is not None
     
-    def finish(self):
-        self.conn_save.commit()
+    def finish(self, commit):
+        if commit : 
+            self.conn_save.commit()
         self.saveCur.close()
         self.conn_save.close()
         self.conn_read.close()

@@ -11,20 +11,23 @@ from time import time
 import csv
 
 def main():
-    """ Tags the dataset by semantic categories,
-        assuming it's already pos and sentiment-tagged. """
+    """ Tags the passwords by semantic categories,
+        assuming it's already pos and sentiment-tagged.
+        It doesn't need the sentiment info, but it gets the
+        synset # that was gotten in the sentiment tagging
+        process, to reduce overhead. """
     
     db = PwdDb()
     tagger = SemanticTagger()
-    tg = TagsetConverter()
+    tg = TagsetConverter() # assumes the pwds are pos-tagged using Brown tags
     
     print "tagging process initialized..."
     start = time()
     
-    csv_writer = csv.writer(open("../results/test0.csv","wb"), dialect='excel')
+    csv_writer = csv.writer(open("../results/semantic/test.csv","wb"), dialect='excel')
     
 #    while (db.hasNext()):
-    for i in range(1,30001):
+    for i in range(1,100001):
         words = db.nextPwd() # list of Words
         for w in words:
             t = None

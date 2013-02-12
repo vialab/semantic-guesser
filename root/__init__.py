@@ -46,8 +46,8 @@ def main():
     
     db = PwdDb()
     print "connected to database, tagging..."
-    while (db.hasNext()):
-#    for j in range(30000):
+#    while (db.hasNext()):
+    for j in range(100000):
         pwd = db.nextPwd() # list of Words
         # extracts to a list of strings and tags them
         pos_tagged = pos_tagger.tag([wo.word for wo in pwd])
@@ -71,4 +71,6 @@ def main():
     return 0;
 
 if __name__ == "__main__":
-    main()
+    t = COCATagger(DefaultTagger('KK'))
+    print t.tag(['rose'])
+#    main()
