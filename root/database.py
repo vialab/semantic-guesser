@@ -37,8 +37,8 @@ class PwdDb():
     
     def connection(self):
         return MySQLdb.connect(host="localhost", # your host, usually localhost
-                     user="root",
-                     passwd="root",
+                     user="root", # your username
+                     passwd="root", # your password
                      db="passwords",
                      cursorclass = MySQLdb.cursors.SSDictCursor) # stores result in the server. records as dict
     

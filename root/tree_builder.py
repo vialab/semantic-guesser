@@ -41,8 +41,10 @@ def main():
                     path.append(w.word)
                     tree.insert(path);
                 
-    db.finish()
-    
+
+    db.finish(False)
+    tree.updateEntropy()
+
     treeFile.write(tree.toJSON())
     
     return 0
