@@ -8,7 +8,7 @@ Created on 2012-11-23
 '''
 
 from database import PwdDb
-from root.tagset_conversion import TagsetConverter
+from tagset_conversion import TagsetConverter
 
 def main():
     db = PwdDb()

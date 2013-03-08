@@ -6,7 +6,7 @@ hypernym paths of all verbs tagged in the db.
 '''
 
 from database import PwdDb
-from root.tagset_conversion import TagsetConverter
+from tagset_conversion import TagsetConverter
 from nltk.corpus import wordnet as wn
 from time import time
 import csv

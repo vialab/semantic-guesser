@@ -6,7 +6,7 @@ Created on Mar 8, 2012
 
 from database import PwdDb
 from taggers import SemanticTagger
-from root.tagset_conversion import TagsetConverter
+from tagset_conversion import TagsetConverter
 from time import time
 import csv
 

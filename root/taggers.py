@@ -2,7 +2,7 @@ from nltk.tag import NgramTagger, SequentialBackoffTagger
 from nltk.corpus import wordnet, names
 from nltk.probability import FreqDist
 import csv
-from root.tagset_conversion import TagsetConverter
+from tagset_conversion import TagsetConverter
 from sentiwordnet import SentiWordNetCorpusReader, SentiSynset
 from nltk.corpus import wordnet as wn
 from nltk.stem import PorterStemmer
