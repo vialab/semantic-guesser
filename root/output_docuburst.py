@@ -17,16 +17,22 @@ def main():
     offset = 0
     size   = 1000000
     
-    docuburstFile = open('../results/semantic/nouns/{0}_{1}.txt'.format(offset, size), 'wb')
-    
-    for i in range(offset,offset+size):
+    #docuburstFile = open('../results/semantic/nouns/{0}_{1}.txt'.format(offset, size), 'wb')
+    docuburstFile = open('../results/pos/verbs/all.txt'.format(offset, size), 'wb')
+
+
+    while (db.hasNext()):    
+#    for i in range(offset,offset+size):
         words = db.nextPwd() # list of Words
+        
         for w in words:
+            if w.pos is None :
+                continue
             wn_pos = tg.brownToWordNet(w.pos)
-            if wn_pos == 'n':
-                docuburstFile.write(str(w.word) + ' ')
+            if wn_pos == 'v':
+                docuburstFile.write(str(w.word) + '\n')
     
-    db.finish(False)
+    db.finish()
     
     return 0
 

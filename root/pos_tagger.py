@@ -74,3 +74,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    # tests
+#    t = getTagger()
+#    print t.tag(['nar'])
