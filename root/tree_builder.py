@@ -38,7 +38,7 @@ def main():
                     tree.insert(path);
                 
     db.finish(False)
-    
+    tree.updateEntropy()
     treeFile.write(tree.toJSON())
     
     return 0

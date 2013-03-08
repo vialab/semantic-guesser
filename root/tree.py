@@ -1,8 +1,12 @@
-""" Left child, right sibling tree 
-Inspired by Cormen's Introduction to Algorithms 3rd edition (p. 247)
+""" Left child, right sibling tree.
+Inspired by Cormen's Introduction to Algorithms 3rd edition (p. 247).
+
+@author: Rafa
+
 """
 
 import json
+from math import log
 
 class TreeNode:
     
@@ -11,6 +15,7 @@ class TreeNode:
         self.rightSibling = None
         self.key          = key
         self.value        = 0
+        self._entropy     = 0
         
     def children(self):
         children = list()
@@ -59,14 +64,29 @@ class TreeNode:
                 c = c.rightSibling
         return None
     
+    def entropy(self):
+        self._entropy = 0
+        total = self.value
+        
+        for c in self.children():
+            p = float(c.value)/total
+            self._entropy -= p * log(p,2)
+        
+        return self._entropy
+          
+    
     def wrap(self):
+        """ Returns a representation of this node (including all children)
+        as a single object, JSON-style.
+        """
         children = list()
         for child in self.children() :
             children.append(child.wrap())
         if len(children) == 0 :
             return {'key': self.key, 'value': self.value}
         else :    
-            return {'key': self.key, 'value': self.value, 'children': children}
+            return {'key': self.key, 'value': self.value, 
+                    'children': children, 'entropy': self._entropy}
 
 class Tree:
     
@@ -85,13 +105,27 @@ class Tree:
         """
         currNode = self.root
         
-        # insert all keys into the tree
+        # insert all keys into the tree, increasing their value
         for key in path :
+            currNode.value += 1
             currNode = currNode.insert(key)
         
         # increments the count of the leaf
-        currNode.value += 1;
+        currNode.value += 1
 
+    def updateEntropy(self, node=None):
+        """ The __entropy of the nodes is not updated
+        every time the structure changes cause it can be
+        too expensive. You need to update this attribute
+        manually by calling this method.
+        """
+        if node is None:
+            self.updateEntropy(self.root)
+        else:
+            e = node.entropy()
+            for c in node.children():
+                self.updateEntropy(c)
+                    
             
     def toJSON(self):   
         return json.dumps(self.root.wrap())
@@ -99,5 +133,14 @@ class Tree:
 
 #tree = Tree()
 #tree.insert(['object', 'automobile', 'car'])
-#tree.insert(['object', 'automobile'])
-#print 'end'
+#tree.insert(['object', 'automobile', 'truck'])
+#tree.insert(['house'])
+#tree.insert(['building'])
+#tree.insert(['car'])
+#tree.insert(['six'])
+#tree.insert(['seven'])
+#tree.insert(['eight'])
+#tree.insert(['nine'])
+#tree.insert(['ten'])
+#tree.updateEntropy()
+#print tree.toJSON()

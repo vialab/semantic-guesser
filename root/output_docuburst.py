@@ -1,5 +1,5 @@
 ''' This script outputs all the nouns found in a given range of
-password ids in a format that be inputted in docuburst for visualization
+password ids in a format that can be put in docuburst for visualization
 of the categories.
 
 Created on 2012-11-23

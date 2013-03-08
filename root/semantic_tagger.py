@@ -32,6 +32,7 @@ def main():
         for w in words:
             t = None
             
+            # if there's a synset for this word
             if w.synsets is not None:
                 wn_pos = tg.brownToWordNet(w.pos)
                 t = tagger.tag(w.word, wn_pos, w.synsets)

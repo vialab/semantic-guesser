@@ -29,7 +29,7 @@ class PwdDb():
 #           print row[2]
     
     def connection(self):
-        return MySQLdb.connect(host="10.121.80.83", # your host, usually localhost
+        return MySQLdb.connect(host="localhost", # your host, usually localhost
                      user="root", # your username
                      passwd="root", # your password
                      db="passwords",
