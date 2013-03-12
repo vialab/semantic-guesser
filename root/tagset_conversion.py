@@ -132,7 +132,7 @@ class TagsetConverter():
                     'VHI' : 'HV',
                     'VHN' : 'HVN',
                     'VHZ' : 'HVZ',
-                    'VM' : 'MD',
+                    'VM'  : 'MD',
                     'VMK' : 'MD',
                     'VV0' : 'VB',
                     'VVD' : 'VBD',
@@ -155,9 +155,9 @@ class TagsetConverter():
         tag = tag.lower()
         l = tag[0] # first letter
         ll = tag[:2] # two first letters
-        if ll=='np':
-            return None
-        elif l == 'n':
+#        if ll=='np':
+#            return None
+        if l == 'n':
             return 'n'
         elif l in ('b', 'v', 'h') or ll=='do':
             return 'v'
