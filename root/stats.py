@@ -59,15 +59,21 @@ def main():
         
     db.finish()
     
+    # convert to list of tuples so we can sort it by value
+    pos_dist = pos_dist.items()
+    pos_dist = sorted(pos_dist, key = lambda entry: entry[1], reverse=True)
+    
     print "Total number of fragments: {}".format(fragments_total)
-    print 'of which {} are POS tagged words ({}%)'.format(pos_total, float(pos_total)/fragments_total)
-    print '\nPOS distribution:\n', pos_dist
+    print 'of which {} are POS tagged words ({}%)'.format(pos_total, float(pos_total)*100/fragments_total)
+    print '\nPOS distribution (Brown tagset):\n', pos_dist
     print '\nPOS distribution (WordNet tagset):\n', wn_pos_dist     
-    print '\n{} verbs found in WordNet ({}% of verbs)'.format(wn_verbs_total, float(wn_verbs_total)/wn_pos_dist['v'])
-    print '\n{} nouns found in WordNet ({}% of nouns)'.format(wn_nouns_total, float(wn_nouns_total)/wn_pos_dist['n'])
+    print '\n{} verbs found in WordNet ({}% of verbs)'.format(wn_verbs_total, float(wn_verbs_total)*100/wn_pos_dist['v'])
+    print '\n{} nouns found in WordNet ({}% of nouns)'.format(wn_nouns_total, float(wn_nouns_total)*100/wn_pos_dist['n'])
     
     return 0
     
 if __name__ == "__main__":
     main()
+
+    
 
