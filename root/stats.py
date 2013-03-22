@@ -4,18 +4,8 @@ Basic statistics on classification.
 @author: Rafa
 '''
 
-'''
-This script outputs a tree in JSON format representing the
-hypernym paths of all verbs tagged in the db.
-
-@author: Rafa
-'''
-
 from database import PwdDb
 from tagset_conversion import TagsetConverter
-from nltk.corpus import wordnet as wn
-from time import time
-from tree import Tree, TreeNode
 
 def main():
     

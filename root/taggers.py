@@ -118,7 +118,7 @@ class SentiWordnetTagger():
 		
 		if not synsets: return None
 		
-		#assumes the list is ranked and gets the first as the most frequent
+		# assumes the list is ranked and gets the first as the most frequent
 		s = synsets[0] 
 		offset = s.offset
 		if s.pos_score > s.neg_score:	 tag = 'p'
@@ -182,7 +182,7 @@ class SemanticTagger():
 	
 	''' Receives (word, pos [, offset]]). 
 	If offset is passed, assumes the meaning associated with the pos in wordnet.
-	If just pos is passed, assumes that there's no synset associated with word in wordnet
+	If only pos is passed, assumes that there's no synset associated with word in wordnet
 	and tags according to some rules based on pronouns, proper nouns, etc. '''
 	def tag(self, *args):
 		word = args[0]
