@@ -5,63 +5,64 @@ Inspired by Cormen's Introduction to Algorithms 3rd edition (p. 247).
 
 """
 
+import Tree, TreeNode
 import json
 from math import log
 
-class TreeNode:
+class DefaultTreeNode (TreeNode):
     
     def __init__(self, key):
-        self.leftChild    = None
-        self.rightSibling = None
+        self.leftchild    = None
+        self.rightsibling = None
         self.key          = key
         self.value        = 0
         self._entropy     = 0
         
     def children(self):
         children = list()
-        c = self.leftChild # c is the current child
+        c = self.leftchild # c is the current child
         # moving to the right until the last child
         while c is not None :
             children.append(c)
-            c = c.rightSibling
+            c = c.rightsibling
         return children
     
-    def insert(self, key):
+    def insert(self, key=None, node=None):
         '''Inserts a child to this node.
         If it already exists, do nothing...
         In both cases, returns the child.
         '''
-        newKid = None
-        if self.leftChild is None :
-            self.leftChild = newKid = TreeNode(key)
+        newchild = DefaultTreeNode(key) if key is not None else node
+        
+        if self.leftchild is None :
+            self.leftchild = newchild
         else :
-            c = self.leftChild # c is the current child
+            c = self.leftchild # c is the current child
             
             while True:
                 # if key is already there, do nothing
                 if c.key == key :
                     #c.value += 1
                     return c
-                if c.rightSibling is None : # if reached the last child
+                if c.rightsibling is None : # if reached the last child
                     # add the key as right sibling of the last child
-                    c.rightSibling = newKid = TreeNode(key)
+                    c.rightsibling = newchild
                     break
                     
-                # moving to the right
-                c = c.rightSibling
+                c = c.rightsibling # moving to the right
         
-        return newKid 
+        return newchild 
     
     def child (self, key):
         """Returns the child corresponding to the key
         or None. 
         """
-        c = self.leftChild # current child
+        c = self.leftchild # current child
         while c is not None :
             if c.key == key :
                 return c
             else :
-                c = c.rightSibling
+                c = c.rightsibling
         return None
     
     def entropy(self):
@@ -88,10 +89,10 @@ class TreeNode:
             return {'key': self.key, 'value': self.value, 
                     'children': children, 'entropy': self._entropy}
 
-class Tree:
+class DefaultTree (Tree) :
     
     def __init__(self):
-        self.root = TreeNode('root')
+        self.root = DefaultTreeNode('root')
         self.root.value = 0
         
     def insert(self, path):
@@ -108,7 +109,7 @@ class Tree:
         # insert all keys into the tree, increasing their value
         for key in path :
             currNode.value += 1
-            currNode = currNode.insert(key)
+            currNode = currNode.insert(key=key)
         
         # increments the count of the leaf
         currNode.value += 1
@@ -118,11 +119,12 @@ class Tree:
         every time the structure changes cause it can be
         too expensive. You need to update this attribute
         manually by calling this method.
+        
         """
         if node is None:
             self.updateEntropy(self.root)
         else:
-            e = node.entropy()
+            node.entropy() # calculates entropy
             for c in node.children():
                 self.updateEntropy(c)
                     
@@ -131,7 +133,7 @@ class Tree:
         return json.dumps(self.root.wrap())
     
 
-#tree = Tree()
+#tree = DefaultTree()
 #tree.insert(['object', 'automobile', 'car'])
 #tree.insert(['object', 'automobile', 'truck'])
 #tree.insert(['house'])

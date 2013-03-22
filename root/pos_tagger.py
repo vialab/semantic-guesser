@@ -1,10 +1,11 @@
 from database import PwdDb
-from nltk.corpus import brown
+from nltk.corpus import brown, treebank
 from nltk.tag.sequential import DefaultTagger, BigramTagger, TrigramTagger
 from tag_util import backoff_tagger
 from taggers import COCATagger, NamesTagger, WordNetTagger, SentiWordnetTagger
 from tagset_conversion import TagsetConverter
 from time import time
+import nltk
 import csv
 
 def getTagger():
@@ -73,8 +74,19 @@ def main():
     return 0;
 
 if __name__ == "__main__":
-    main()
-
+#    main()
+    
+#    train_sents = treebank.tagged_sents();
+    
+#    t = backoff_tagger(train_sents, [BigramTagger, TrigramTagger], backoff=DefaultTagger('kk'))
+    
     # tests
 #    t = getTagger()
-#    print t.tag(['nar'])
+    print nltk.pos_tag(['all', 'yours'])
+    print nltk.pos_tag(['fuck','you', 'all'])
+    print nltk.pos_tag(['all','that', 'counts'])
+    print nltk.pos_tag(['all','day'])
+    print nltk.pos_tag(['all','day'])
+    print nltk.pos_tag(['all','the', 'cake'])
+    print nltk.pos_tag(['all', 'alone'])
+    print nltk.pos_tag(['to', 'lose', "one's", 'all'])
