@@ -6,35 +6,51 @@ Created on Feb 24, 2012
 
 import MySQLdb.cursors
 import threading
+import query
 
 class PwdDb():
+    """ A few notes:
     
-    def __init__(self):
+    - caching is implemented for saving, not for reading
+    - as for reading, the result set is kept in the server (SSDictCursor)
+      and the rows are fetched one by one 
+    - the size param in the constructor is important when not planning to fetch only
+      a sample. The MySQLDb docs mention: "you MUST retrieve the entire result set and
+      close() the cursor before additional queries can be peformed on
+      the connection."
+      If you don't retrieve the entire result set before calling finish(), it will take
+      forever to close the connection.
+      
+    """
+    
+    def __init__(self, save_cachesize = 100000, offset=0, size=None):
         self.saving_cache = []
-        self.cachelimit   = 100000
-        self.cachecount   = 0
+        self.cachelimit = save_cachesize
         
         # different connections for reading and saving
+        self._init_read_cursor(offset, size)
+        self._init_save_cursor()
+
+    
+    def _init_read_cursor(self, offset, size):
         self.conn_read = self.connection()
-        self.conn_save = self.connection()
+        self.readcursor = self.conn_read.cursor()
         
-        self.readcursor = self.conn_read.cursor() 
-        self.savecursor = self.conn_save.cursor()
-        
+        # getting number of 'sets' (or fragments) 
         self.readcursor.execute("SELECT * FROM sets ORDER BY set_id DESC LIMIT 1;")
         self.sets_size = self.readcursor.fetchone()["set_id"]
         self.readcursor.close()
-        
+
+        # fetching the first fragment        
         self.readcursor = self.conn_read.cursor()
-        
-        self.readcursor.execute("SELECT sets.set_id AS set_id, " + \
-                            "set_contains.id AS set_contains_id, dict_text, dictset_id, " + \
-                            "pos, sentiment, synset, category, dictset_id " + \
-                            "FROM set_contains LEFT JOIN sets ON set_contains.set_id = sets.set_id " +\
-                            "LEFT JOIN dictionary ON set_contains.dict_id = dictionary.dict_id; ") 
+        bounds = [offset, size] if size else None
+        self.readcursor.execute(query.fragments(bounds))
         self.row = self.readcursor.fetchone()
+
+    def _init_save_cursor(self):
+        self.conn_save = self.connection()
+        self.savecursor = self.conn_save.cursor()
         
-    
     def connection(self):
         return MySQLdb.connect(host="localhost", # your host, usually localhost
                      user="root", # your username
@@ -58,15 +74,12 @@ class PwdDb():
             else:                   pwd_id = self.row["set_id"]
         return pwd
         
-    # TODO: Get rid of cachecount    
     def save(self, wo, cache=False):
-        if cache :
+        if cache:
             self.saving_cache.append((wo.pos, wo.senti, wo.synsets, wo.id))
-            self.cachecount += 1
-            if self.cachecount >= self.cachelimit :
+            if len(self.cache) >= self.cachelimit:
                 self.flush_save()
-                self.cachecount = 0
-        else :
+        else:
             self.savecursor.execute("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;", (wo.pos, wo.senti, wo.synsets, wo.id))
 
 #    def flush_save(self):
@@ -76,7 +89,7 @@ class PwdDb():
     
     def flush_save (self):
         print "updating {} records on the database...".format(len(self.saving_cache))
-        self.conn_save.ping(True) # if connections has died, ressurect it
+        self.conn_save.ping(True) # if connection has died, ressurect it
         self.savecursor.executemany("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;", self.saving_cache)
         self.conn_save.commit()
         self.saving_cache = []
@@ -89,7 +102,7 @@ class PwdDb():
         return self.row is not None
     
     def finish(self):
-        if len(self.saving_cache)>0 :
+        if len(self.saving_cache)>0:
             self.flush_save()
         self.readcursor.close()
         self.savecursor.close()
