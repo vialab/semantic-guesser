@@ -9,6 +9,7 @@ from abstract import Tree, TreeNode
 import json
 from math import log
 
+
 class DefaultTreeNode (TreeNode):
     
     def __init__(self, key):
@@ -17,6 +18,9 @@ class DefaultTreeNode (TreeNode):
         self.key          = key
         self.value        = 0
         self._entropy     = 0
+    
+    def __str__(self):
+        return self.key
         
     def children(self):
         children = list()
@@ -74,7 +78,16 @@ class DefaultTreeNode (TreeNode):
             self._entropy -= p * log(p,2)
         
         return self._entropy
-          
+     
+    def leaves(self):
+        count = 0
+        for c in self.children():
+            if c.is_leaf():
+                count += 1
+            else:
+                count += c.leaves()
+
+        return count
     
     def wrap(self):
         """ Returns a representation of this node (including all children)
@@ -88,31 +101,37 @@ class DefaultTreeNode (TreeNode):
         else :    
             return {'key': self.key, 'value': self.value, 
                     'children': children, 'entropy': self._entropy}
+            
+    def __repr__(self):
+        return self.__str__()
 
-class DefaultTree (Tree) :
+
+class DefaultTree (Tree):
     
     def __init__(self):
         self.root = DefaultTreeNode('root')
         self.root.value = 0
         
-    def insert(self, path):
+    def insert(self, path, freq=1):
         """Insert a subtree.
         Increments the value of the last node (leaf in this path), 
         regardless it will be a leaf in this tree.
         
         Args:
             path: a list of keys, from root to leaf, e.g.:
-                ['connect', 'join', 'copulate', 'sleep_together']    
+                ['connect', 'join', 'copulate', 'sleep_together']
+            freq: frequency of the leaf    
         """
+
         currNode = self.root
         
         # insert all keys into the tree, increasing their value
         for key in path :
-            currNode.value += 1
+            currNode.value += freq
             currNode = currNode.insert(key=key)
         
         # increments the count of the leaf
-        currNode.value += 1
+        currNode.value += freq
 
     def updateEntropy(self, node=None):
         """ The __entropy of the nodes is not updated
@@ -127,8 +146,7 @@ class DefaultTree (Tree) :
             node.entropy() # calculates entropy
             for c in node.children():
                 self.updateEntropy(c)
-                    
-            
+
     def toJSON(self):   
         return json.dumps(self.root.wrap())
     
