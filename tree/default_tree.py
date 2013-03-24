@@ -5,7 +5,7 @@ Inspired by Cormen's Introduction to Algorithms 3rd edition (p. 247).
 
 """
 
-import Tree, TreeNode
+from abstract import Tree, TreeNode
 import json
 from math import log
 
