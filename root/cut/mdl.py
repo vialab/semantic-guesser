@@ -40,22 +40,24 @@ def ddl(pn_list):
         
     """
     result = 0
-    for f, pn in pn_list :
-        if pn > 0.0 :
-            result += math.log(pn,2)*f
+    for f, pn in pn_list:
+        if pn > 0.0:
+            result += math.log(pn, 2) * f
     
     return -result
 
 
-def pdl(k, s_length):
+def pdl(len_cut, s_length):
     """ L(teta|T) - parameter description length.
     Equation 9 in Li & Abe (1998).
     
-    k        - number of nodes in the cut
+    len_cut  - number of nodes in the cut
     s_length - sample size (# of words)
     
     """
-    return (k-1)*math.log(s_length,2)/2
+    k = len_cut - 1
+    # We can use k or k+1. See Appendix A of Li and Abe (1998)
+    return k * math.log(s_length, 2) / 2
 
 
 #---------------------------------------------------
@@ -92,9 +94,9 @@ def compute_dl(cut, sample_size):
     return compute_ddl(cut, sample_size) + compute_pdl(cut, sample_size)
 
     
-def test_cut(cut):
-    ddl = compute_ddl(cut)
-    pdl = compute_pdl(cut)
+def test_cut(cut, sample_size):
+    ddl = compute_ddl(cut, sample_size)
+    pdl = compute_pdl(cut, sample_size)
     
     print """Cut: {}
     Data description length: {}
@@ -105,11 +107,13 @@ def test_cut(cut):
 #--------------------------------------------------------
 # Comparing the results with Table 4 of Li & Abe (1998).
 #--------------------------------------------------------
-#cut1  = [('ANIMAL', 10, 7)]
-#cut2  = [('BIRD', 8, 4), ('INSECT', 2, 3)]
-#cut3  = [('BIRD', 8, 4), ('bug', 0, 1), ('bee', 2, 1), ('insect', 0, 1)]
-#cut4  = [('swallow', 0, 1), ('crow', 2, 1), ('eagle', 2, 1), ('bird', 4, 1), ('INSECT', 2, 3)]
-#cut5  = [('swallow', 0, 1), ('crow', 2, 1), ('eagle', 2, 1), ('bird', 4, 1), 
-#         ('bug', 0, 1), ('bee', 2, 1), ('insect', 0, 1)]
-#
-#for c in [cut1, cut2, cut3, cut4, cut5] : test_cut(c)
+# cut1  = [('ANIMAL', 10, 7)]
+# cut2  = [('BIRD', 8, 4), ('INSECT', 2, 3)]
+# cut3  = [('BIRD', 8, 4), ('bug', 0, 1), ('bee', 2, 1), ('insect', 0, 1)]
+# cut4  = [('swallow', 0, 1), ('crow', 2, 1), ('eagle', 2, 1), ('bird', 4, 1), ('INSECT', 2, 3)]
+# cut5  = [('swallow', 0, 1), ('crow', 2, 1), ('eagle', 2, 1), ('bird', 4, 1), 
+#          ('bug', 0, 1), ('bee', 2, 1), ('insect', 0, 1)]
+# 
+# for c in [cut1, cut2, cut3, cut4, cut5] : test_cut(c, 10)
+
+

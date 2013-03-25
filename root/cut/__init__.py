@@ -29,7 +29,6 @@ def findcut(node, sample_size):
 def desc_length(cut, sample_size):
     """ Returns the description length of a cut """
     cut = [(n.key, n.value, 1 if n.is_leaf() else n.leaves()) for n in cut]
-    try:
-        return mdl.compute_dl(cut, sample_size)
-    except:
-        print "error", cut
+    dl = mdl.compute_dl(cut, sample_size)
+    # print "Cut: {}\n\tDescription length: {}".format(cut, dl)
+    return dl
