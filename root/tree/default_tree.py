@@ -22,7 +22,7 @@ class DefaultTreeNode (TreeNode):
     def __str__(self):
         return self.key
     
-    def print_nested(self, indent_level):
+    def print_nested(self, indent_level=0):
         s = indent_level*'\t' + self.key + ' ' + str(self.value) +  '\n'
         for c in self.children():
             s += c.print_nested(indent_level + 1)
