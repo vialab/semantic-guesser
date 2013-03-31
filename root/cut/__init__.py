@@ -11,14 +11,17 @@ Created on Mar 23, 2013
 import mdl
 
 
-def findcut(node, sample_size):
+def findcut(tree):
+    return _findcut(tree.root, tree.root.value)
+
+def _findcut(node, sample_size):
     if node.is_leaf():
         return [node]
     else:
         c = []
         
         for child in node.children():
-            c.extend(findcut(child, sample_size))
+            c.extend(_findcut(child, sample_size))
         
         if desc_length([node], sample_size) < desc_length(c, sample_size):
             return [node]

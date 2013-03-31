@@ -24,8 +24,6 @@ Created on 2013-03-25
 
 from nltk.corpus import wordnet as wn 
 from default_tree import DefaultTree, DefaultTreeNode
-from ..cut import findcut
-
 
 def load(pos):
     
@@ -55,49 +53,7 @@ def append_child(synset, parent):
     
     for h in hyponyms:
         append_child(h, node)
-
-def freq_dist():
-    dist = dict()
-    f = open('/home/rafaveguim/workspace/pwd_classifier/root/tree/all_nouns.txt', 'r')
-
-    LIMIT = 100000
-    
-    word = f.readline()[:-2]
-    counter = 0
-    while word is not None:
-        counter += 1
-        if counter>=LIMIT:
-            break
-        if word in dist:
-            dist[word] += 1
-        else:
-            dist[word] = 1
-        word = f.readline()[:-2]
-        
-    return dist
-
-def populate(tree, dist, pos):
-    for key, freq in dist.items():
-        try :
-            synset = wn.synsets(key,pos)[0]
-        except:
-            continue
-        for path in synset.hypernym_paths():
-            path = [s.name for s in path]
-            if len(synset.hyponyms())>0:  # internal node
-                path.append('s.'+path[-1])
-            tree.insert(path, freq)
-    return tree
             
             
 if __name__ == '__main__':
-    # TODO: need to get the correct synset, by part-of-speech
-    pos = 'n'
-    tree = load(pos)
-    dist = freq_dist()
-#    print dist
-    tree = populate(tree, dist, pos)
-    print tree.root.print_nested()
-#    print findcut(tree.root, tree.root.value)
-#    print tree.root.print_nested()
-     
+    pass
