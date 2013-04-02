@@ -57,12 +57,17 @@ class DefaultTreeNode (TreeNode):
     
     def trim(self, threshold, update_values):
         subtract = 0  # the total value trimmed from the subtree
+        
         for c in self.children():
+#             if c.value <= threshold:
+#                 subtract += c.value
+#                 self.remove(c)
+#             else:
+            subtract += c.trim(threshold, update_values)
+            # re-evaluate c after it has trimmed its subtree 
             if c.value <= threshold:
                 subtract += c.value
-                self.remove(c)
-            else:
-                subtract += c.trim(threshold, update_values)
+                self.remove(c);
         # updates this value
         self.value -= subtract if update_values else 0
         # propagates the impact of trimming on value
@@ -192,16 +197,12 @@ class DefaultTree (Tree):
         return json.dumps(self.root.wrap())
     
 
-# tree = DefaultTree()
-# tree.insert(['object', 'automobile', 'car'], 10)
-# tree.insert(['object', 'automobile', 'truck'], 5)
-# tree.insert(['house'], 1)
-# tree.insert(['building'], 40)
-# tree.insert(['car'])
-# tree.insert(['six'])
-# tree.insert(['seven'])
-# tree.insert(['eight'])
-# tree.insert(['nine'])
-# tree.insert(['ten'])
-# tree.trim(20)
-# print tree.toJSON()
+tree = DefaultTree()
+
+tree.insert(['object', 'automobile', 'car'], 10)
+tree.insert(['object', 'automobile', 'truck'], 10)
+tree.insert(['object', 'house'], 30)
+tree.insert(['building'], 5)
+
+tree.trim(10)
+print tree.toJSON()
