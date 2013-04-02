@@ -37,6 +37,38 @@ class DefaultTreeNode (TreeNode):
             c = c.rightsibling
         return children
     
+    def remove(self, child):
+        children = self.children()
+        if child not in children:
+            return False
+        
+        if child == self.leftchild:
+            self.leftchild = child.rightsibling
+            return True
+        
+        target = children.index(child)
+        
+        try:
+            children[target-1].rightsibling = children[target+1]
+        except:
+            children[target-1].rightsibling = None
+        
+        return True
+    
+    def trim(self, threshold, update_values):
+        subtract = 0  # the total value trimmed from the subtree
+        for c in self.children():
+            if c.value <= threshold:
+                subtract += c.value
+                self.remove(c)
+            else:
+                subtract += c.trim(threshold, update_values)
+        # updates this value
+        self.value -= subtract if update_values else 0
+        # propagates the impact of trimming on value
+        return subtract
+        
+    
     def insert(self, key=None, node=None):
         '''Inserts a child to this node.
         If it already exists, do nothing...
@@ -63,7 +95,7 @@ class DefaultTreeNode (TreeNode):
         
         return newchild 
     
-    def child (self, key):
+    def child(self, key):
         """Returns the child corresponding to the key
         or None. 
         """
@@ -138,7 +170,10 @@ class DefaultTree (Tree):
         
         # increments the count of the leaf
         currNode.value += freq
-
+    
+    def trim(self, threshold, update_values=True):
+        self.root.trim(threshold, update_values)
+        
     def updateEntropy(self, node=None):
         """ The __entropy of the nodes is not updated
         every time the structure changes cause it can be
@@ -157,16 +192,16 @@ class DefaultTree (Tree):
         return json.dumps(self.root.wrap())
     
 
-#tree = DefaultTree()
-#tree.insert(['object', 'automobile', 'car'])
-#tree.insert(['object', 'automobile', 'truck'])
-#tree.insert(['house'])
-#tree.insert(['building'])
-#tree.insert(['car'])
-#tree.insert(['six'])
-#tree.insert(['seven'])
-#tree.insert(['eight'])
-#tree.insert(['nine'])
-#tree.insert(['ten'])
-#tree.updateEntropy()
-#print tree.toJSON()
+# tree = DefaultTree()
+# tree.insert(['object', 'automobile', 'car'], 10)
+# tree.insert(['object', 'automobile', 'truck'], 5)
+# tree.insert(['house'], 1)
+# tree.insert(['building'], 40)
+# tree.insert(['car'])
+# tree.insert(['six'])
+# tree.insert(['seven'])
+# tree.insert(['eight'])
+# tree.insert(['nine'])
+# tree.insert(['ten'])
+# tree.trim(20)
+# print tree.toJSON()

@@ -10,12 +10,15 @@ class Tree:
         self.root = root
 
 
-class TreeNode :
+class TreeNode:
     def __init__(self, key):
         self.key   = key
         self.value = 0 
            
     def insert(self, key=None, node=None):
+        pass
+    
+    def remove(self, child):
         pass
     
     def children(self):
@@ -29,4 +32,7 @@ class TreeNode :
     
     def leaves(self):
         """ Returns number of leaves under this node """
+        pass
+    
+    def trim(self, threshold):
         pass
