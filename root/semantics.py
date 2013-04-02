@@ -51,15 +51,8 @@ def main(pos, size, file_):
     target_total     = 0  # number of words tagged as pos 
     in_wordnet_total = 0  # number of verbs that are found in wordnet
 
-    count = 0        
-    
-    if size is None: size = float('inf')
     
     while (db.hasNext()):
-        count += 1
-        if count >= size:
-            break
-        
         words = db.nextPwd() # list of Words
         
         for w in words:

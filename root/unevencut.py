@@ -6,7 +6,7 @@ Created on 2013-03-29
 @author: rafa
 '''
 
-from tree.wordnet import load
+from tree.wordnet import WordNetTree
 import cut
 from argparse import ArgumentParser
 from database import PwdDb
@@ -27,10 +27,42 @@ def populate(tree, pos, samplesize):
             
             # check if the synset returned has the pos we want
             if synset is not None and synset.pos==pos:
-                insert(tree, synset)
+                tree.insert_synset(synset)
                 
     return tree
 
+def main(pos, cut_file, samplesize, tree_file, threshold):
+    
+    tree = WordNetTree(pos)
+    tree = populate(tree, pos, samplesize)
+    tree.trim(threshold)
+    cut_ = cut.findcut(tree)
+    
+    if cut_file:    
+        output = open(cut_file, 'wb')
+        output.write(str(cut_))
+        output.close()
+    else:
+        print str(cut_)
+        
+    if tree_file:
+        output = open(tree_file, 'wb')
+        output.write(tree.toJSON())
+        output.close()
+    
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('pos', help='part-of-speech')
+    parser.add_argument('-f','--file', help='complete path of the output file')
+    parser.add_argument('-s', '--samplesize', type=int, help='if this argument is not passed, runs over the entire database')
+    parser.add_argument('-t', '--tree', help='if a path is provided, the populated tree will be ouput to the informed file')
+    parser.add_argument('-o', '--threshold', default=0, type=int, help='nodes with value <= threshold are removed')
+    
+    args = parser.parse_args()
+    
+    main(args.pos, args.file, args.samplesize, args.tree, args.threshold)
 
 # this is populate for a frequency distribution of words,
 # suitable for reading from a file
@@ -45,53 +77,21 @@ def populate(tree, pos, samplesize):
 #     return tree
 
 
-def insert(tree, synset, freq=1):
-    paths = synset.hypernym_paths()
-    for path in paths:
-        path = [s.name for s in path]
-        if len(synset.hyponyms())>0:  # internal node
-            path.append('s.'+path[-1])
-        tree.insert(path, freq)
-
-                    
-def freq_dist_from_file(f):
-    dist = dict()
-
-    LIMIT = 100000
-    
-    word = f.readline()[:-2]
-    counter = 0
-    while word is not None:
-        counter += 1
-        if counter>=LIMIT:
-            break
-        if word in dist:
-            dist[word] += 1
-        else:
-            dist[word] = 1
-        word = f.readline()[:-2]
-        
-    return dist
-
-
-def main(pos, f, samplesize):
-    output = open(f, 'wb')
-    
-    tree = load(pos)
-    tree = populate(tree, pos, samplesize)
-    
-    output.write(str(cut.findcut(tree)))
-    
-    output.close()
-
-
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('pos', help='part-of-speech')
-    parser.add_argument('-f','--file', default=DEFAULT_FILE, help='complete path of the output file')
-    parser.add_argument('-s', '--samplesize', type=int, help='if this argument is not passed, runs over the entire database')
-    
-    args = parser.parse_args()
-    
-    main(args.pos, args.file, args.samplesize)
-    
+# def freq_dist_from_file(f):
+#     dist = dict()
+# 
+#     LIMIT = 100000
+#     
+#     word = f.readline()[:-2]
+#     counter = 0
+#     while word is not None:
+#         counter += 1
+#         if counter>=LIMIT:
+#             break
+#         if word in dist:
+#             dist[word] += 1
+#         else:
+#             dist[word] = 1
+#         word = f.readline()[:-2]
+#         
+#     return dist
