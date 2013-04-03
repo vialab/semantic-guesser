@@ -73,13 +73,16 @@ class DefaultTreeNode (TreeNode):
         # propagates the impact of trimming on value
         return subtract
         
+    def create_node(self, key):
+        """ A factory-style method to make things more extensible """
+        return DefaultTreeNode(key)
     
     def insert(self, key=None, node=None):
         '''Inserts a child to this node.
         If it already exists, do nothing...
         In both cases, returns the child.
         '''
-        newchild = DefaultTreeNode(key) if key is not None else node
+        newchild = self.create_node(key) if key is not None else node
         
         if self.leftchild is None :
             self.leftchild = newchild
@@ -197,12 +200,12 @@ class DefaultTree (Tree):
         return json.dumps(self.root.wrap())
     
 
-tree = DefaultTree()
-
-tree.insert(['object', 'automobile', 'car'], 10)
-tree.insert(['object', 'automobile', 'truck'], 10)
-tree.insert(['object', 'house'], 30)
-tree.insert(['building'], 5)
-
-tree.trim(10)
-print tree.toJSON()
+# tree = DefaultTree()
+# 
+# tree.insert(['object', 'automobile', 'car'], 10)
+# tree.insert(['object', 'automobile', 'truck'], 10)
+# tree.insert(['object', 'house'], 30)
+# tree.insert(['building'], 5)
+# 
+# tree.trim(10)
+# print tree.toJSON()
