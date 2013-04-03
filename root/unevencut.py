@@ -38,6 +38,10 @@ def main(pos, cut_file, samplesize, tree_file, threshold):
     tree.trim(threshold)
     cut_ = cut.findcut(tree)
     
+    # toggles the cut boolean for each node of the cut
+    for c in cut_:
+        c.cut = True
+
     if cut_file:    
         output = open(cut_file, 'wb')
         output.write(str(cut_))
