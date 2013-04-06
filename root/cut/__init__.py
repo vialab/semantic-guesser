@@ -23,7 +23,9 @@ def _findcut(node, sample_size):
         for child in node.children():
             c.extend(_findcut(child, sample_size))
         
-        if desc_length([node], sample_size) < desc_length(c, sample_size):
+        # using <= instead of < leads to better generalization
+        # deviates slightly from Li & Abe
+        if desc_length([node], sample_size) <= desc_length(c, sample_size):
             return [node]
         else:
             return c
