@@ -35,16 +35,16 @@ def main(pos, cut_file, samplesize, tree_file, threshold):
     
     tree = WordNetTree(pos)
     tree = populate(tree, pos, samplesize)
-    tree.trim(threshold)
     cut_ = cut.findcut(tree)
+    tree.trim(threshold)
     
-    # toggles the cut boolean for each node of the cut
-    for c in cut_:
-        c.cut = True
+#     # toggles the cut boolean for each node of the cut
+#     for c in cut_:
+#         c.cut = True
 
     if cut_file:    
         output = open(cut_file, 'wb')
-        output.write(str(cut_))
+        output.write(str([ node.id for node in cut_]))
         output.close()
     else:
         print str(cut_)
@@ -67,35 +67,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     main(args.pos, args.file, args.samplesize, args.tree, args.threshold)
-
-# this is populate for a frequency distribution of words,
-# suitable for reading from a file
-# def populate(tree, dist, pos):
-#     for word, freq in dist.items():
-#         synset = semantics.synset(word)
-#         
-#         # check if the synset returned has the pos we want
-#         if synset is not None and synset.pos==pos:
-#             insert(tree, synset, freq)
-#             
-#     return tree
-
-
-# def freq_dist_from_file(f):
-#     dist = dict()
-# 
-#     LIMIT = 100000
-#     
-#     word = f.readline()[:-2]
-#     counter = 0
-#     while word is not None:
-#         counter += 1
-#         if counter>=LIMIT:
-#             break
-#         if word in dist:
-#             dist[word] += 1
-#         else:
-#             dist[word] = 1
-#         word = f.readline()[:-2]
-#         
-#     return dist

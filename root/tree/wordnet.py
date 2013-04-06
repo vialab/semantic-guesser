@@ -1,21 +1,6 @@
 """
-Loads WordNet into a DefaultTree.
-
-1. Nodes with multiple parents are duplicated
-2. Senses are separated from semantic class, i.e.,
-   for each non-leaf node, a node with prefix 's' 
-   is appended as first child representing its sense.
-   So all leaves represent senses, all internal nodes
-   represent classes.
-   For example:
-       person.n.01
-           s.person.n.01
-           cripple.n.01
-               humpback.n.02
-           faller.n.02                 
-           hater.n.01
+Specialized Tree and TreeNode for WordNet.
    
-
 Created on 2013-03-25
 
 @author: rafa
@@ -26,9 +11,20 @@ from nltk.corpus import wordnet as wn
 from default_tree import DefaultTree, DefaultTreeNode
 
 class WordNetTreeNode(DefaultTreeNode):
+    
+    # a counter for ids. Everytime a node is created, next_id is assigned to it
+    # and incremented.
+    next_id = 0
+    
     def __init__(self, key):
         DefaultTreeNode.__init__(self, key)
-        self.cut = False
+#         self.cut = False
+
+        # a unique identifier is necessary, since many nodes are duplicated
+        # and preserve the same name
+        self.id = WordNetTreeNode.next_id
+        WordNetTreeNode.next_id += 1  
+    
     
     def wrap(self):
         """ Returns a representation of this node (including all children)
@@ -38,20 +34,42 @@ class WordNetTreeNode(DefaultTreeNode):
         for child in self.children():
             children.append(child.wrap())
         if len(children) == 0:
-            return {'key': self.key, 'value': self.value, 'cut': self.cut}
+            return {'key': self.key, 'value': self.value, 'id': self.id}
         else :    
             return {'key': self.key, 'value': self.value,
-                    'entropy': self._entropy, 'cut': self.cut, 'children': children}
+                    'entropy': self._entropy, 'id': self.id, 'children': children}
+    
     
     def create_node(self, key):
         return WordNetTreeNode(key)
 
 class WordNetTree(DefaultTree):
+    """
+    1. Nodes with multiple parents are duplicated
+    2. Senses are separated from semantic class, i.e.,
+       for each non-leaf node, a node with prefix 's' 
+       is appended as first child representing its sense.
+       So all leaves represent senses, all internal nodes
+       represent classes.
+       For example:
+           person.n.01
+               s.person.n.01
+               cripple.n.01
+                   humpback.n.02
+               faller.n.02                 
+               hater.n.01
+    """
+    
     def __init__(self, pos):
+        """ Loads the WordNet tree for a given part-of-speech.
+           'entity.n.01' is the root for nouns; otherwise, creates an artificial
+           root named 'root' whose children are all the root nodes (the verbs ontology
+           has several roots).
+            
+        """
         self.load(pos)
 
     def load(self, pos):
-        """ Loads WordNet """
         if (pos=='n'):
             roots = wn.synsets('entity')
         else:
@@ -103,3 +121,7 @@ class WordNetTree(DefaultTree):
             
 if __name__ == '__main__':
     pass
+#     print WordNetTreeNode('rafa')
+#     print WordNetTreeNode('tommy')
+#     
+#     print WordNetTreeNode.next_id
