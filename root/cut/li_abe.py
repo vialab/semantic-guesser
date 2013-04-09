@@ -60,15 +60,6 @@ def pdl(len_cut, s_length):
     return k * math.log(s_length, 2) / 2
 
 
-#---------------------------------------------------
-# Helper functions defined by myself for convenience
-#---------------------------------------------------
-
-# def s_length(cut):
-#     "Calculates the length of the sample"
-#     return sum([c[1] for c in cut])
-
-
 def compute_ddl(cut, sample_size):
     """ Computes the data description length of a cut.
     This function just 'extracts' from the cut the exact info needed to calculate ddl,

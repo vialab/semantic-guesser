@@ -8,11 +8,12 @@ Created on Mar 23, 2013
 
 """
 
-import mdl
+import li_abe
 
 
 def findcut(tree):
     return _findcut(tree.root, tree.root.value)
+
 
 def _findcut(node, sample_size):
     if node.is_leaf():
@@ -34,6 +35,6 @@ def _findcut(node, sample_size):
 def desc_length(cut, sample_size):
     """ Returns the description length of a cut """
     cut = [(n.key, n.value, 1 if n.is_leaf() else n.leaves()) for n in cut]
-    dl = mdl.compute_dl(cut, sample_size)
+    dl = li_abe.compute_dl(cut, sample_size)
     # print "Cut: {}\n\tDescription length: {}".format(cut, dl)
     return dl
