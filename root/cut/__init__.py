@@ -8,33 +8,57 @@ Created on Mar 23, 2013
 
 """
 
-import li_abe
+import li_abe as _li_abe
+import wagner as _wagner
 
 
-def findcut(tree):
-    return _findcut(tree.root, tree.root.value)
+class li_abe:
+    
+    def findcut(self, tree):
+        return self._findcut(tree.root, tree.root.value)
 
-
-def _findcut(node, sample_size):
-    if node.is_leaf():
-        return [node]
-    else:
-        c = []
-        
-        for child in node.children():
-            c.extend(_findcut(child, sample_size))
-        
-        # using <= instead of < leads to better generalization
-        # deviates slightly from Li & Abe
-        if desc_length([node], sample_size) <= desc_length(c, sample_size):
+    def _findcut(self, node, sample_size, **args):
+        if node.is_leaf():
             return [node]
         else:
-            return c
-        
+            c = []
+            
+            for child in node.children():
+                c.extend(self._findcut(child, sample_size, **args))
+            
+            # using <= instead of < leads to better generalization
+            # deviates slightly from Li & Abe
+            if self.desc_length([node], sample_size, **args) <= self.desc_length(c, sample_size, **args):
+                return [node]
+            else:
+                return c
+                
+    def desc_length(self, cut, sample_size, **args):
+        """ Returns the description length of a cut """
+        cut = [(n.key, n.value, 1 if n.is_leaf() else n.leaves()) for n in cut]
+        dl = _li_abe.compute_dl(cut, sample_size)
+        return dl
+    
 
-def desc_length(cut, sample_size):
-    """ Returns the description length of a cut """
-    cut = [(n.key, n.value, 1 if n.is_leaf() else n.leaves()) for n in cut]
-    dl = li_abe.compute_dl(cut, sample_size)
-    # print "Cut: {}\n\tDescription length: {}".format(cut, dl)
-    return dl
+class wagner(li_abe):
+    
+    default_c = 50  # default weighting factor 
+    
+    def findcut(self, tree, c=default_c):
+        return self._findcut(tree.root, tree.root.value, c=c)
+    
+    def desc_length(self, cut, sample_size, **args):
+        """ Returns the description length of a cut """
+        
+        weighting_factor = args['c']
+        cut = [(n.key, n.value, 1 if n.is_leaf() else n.leaves()) for n in cut]
+        dl = _wagner.compute_dl(cut, sample_size, weighting_factor)
+        
+        return dl
+
+#:::::::::::::::::::::
+# PUBLIC API
+#:::::::::::::::::::::
+
+li_abe = li_abe()
+wagner = wagner()

@@ -28,7 +28,7 @@ def pn(pc, c):
        c  - |C|,  # of children of a class (1 for leaves)
        
     """
-    return float(pc)/c
+    return float(pc) / c
 
 
 def ddl(pn_list):
@@ -93,7 +93,8 @@ def test_cut(cut, sample_size):
     Data description length: {}
     Parameter description length: {}
     Description length: {}
-    """.format(cut, ddl, pdl, ddl+pdl)
+    """.format(cut, ddl, pdl, ddl + pdl)
+
 
 #--------------------------------------------------------
 # Comparing the results with Table 4 of Li & Abe (1998).

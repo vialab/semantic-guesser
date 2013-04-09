@@ -1,4 +1,5 @@
-from . import findcut
+from . import li_abe
+from . import wagner
 from ..tree.default_tree import DefaultTree
 
 
@@ -10,15 +11,16 @@ from ..tree.default_tree import DefaultTree
 #------------------------------------------------
 
 t = DefaultTree()
-t.insert(['ANIMAL', 'INSECT', 'bee'],2)
+t.insert(['ANIMAL', 'INSECT', 'bee'], 2)
 t.insert(['ANIMAL', 'INSECT', 'bug'], 0)
 t.insert(['ANIMAL', 'INSECT', 'insect'], 0)
 t.insert(['ANIMAL', 'BIRD', 'bird'], 4)
 t.insert(['ANIMAL', 'BIRD', 'crow'], 2)
 t.insert(['ANIMAL', 'BIRD', 'eagle'], 2)
 t.insert(['ANIMAL', 'BIRD', 'swallow'], 0)
- 
-print findcut(t)
+
+print li_abe.findcut(t)
+print wagner.findcut(t)
 
 
 #------------------------------------------------
@@ -39,4 +41,5 @@ t.insert(['ENTITY', 'ARTIFACT', 'VEHICLE', 'bike'], 0)
 t.insert(['ENTITY', 'ARTIFACT', 'AIRPLANE', 'jet'], 4)
 t.insert(['ENTITY', 'ARTIFACT', 'AIRPLANE', 'helicopter'], 0)
 t.insert(['ENTITY', 'ARTIFACT', 'AIRPLANE', 'airplane'], 4)
-print findcut(t)
+print li_abe.findcut(t)
+print wagner.findcut(t)
