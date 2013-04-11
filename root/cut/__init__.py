@@ -44,8 +44,10 @@ class wagner(li_abe):
     
     default_c = 50  # default weighting factor 
     
-    def findcut(self, tree, c=default_c):
-        return self._findcut(tree.root, tree.root.value, c=c)
+    def findcut(self, tree, weighting=None):
+        if weighting is None:
+            weighting = wagner.default_c
+        return self._findcut(tree.root, tree.root.value, c=weighting)
     
     def desc_length(self, cut, sample_size, **args):
         """ Returns the description length of a cut """
