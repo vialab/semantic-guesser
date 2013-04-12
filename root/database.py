@@ -1,12 +1,13 @@
-'''
+"""
 Created on Feb 24, 2012
 
 @author: Rafa
-'''
+"""
 
 import MySQLdb.cursors
 import threading
 import query
+
 
 class PwdDb():
     """ A few notes:
@@ -23,15 +24,14 @@ class PwdDb():
       
     """
     
-    def __init__(self, save_cachesize = 100000, offset=0, size=None):
+    def __init__(self, save_cachesize=100000, offset=0, size=None,):
         self.saving_cache = []
         self.cachelimit = save_cachesize
-        
+
         # different connections for reading and saving
         self._init_read_cursor(offset, size)
         self._init_save_cursor()
 
-    
     def _init_read_cursor(self, offset, size):
         self.conn_read = self.connection()
         self.readcursor = self.conn_read.cursor()
@@ -52,26 +52,37 @@ class PwdDb():
         self.savecursor = self.conn_save.cursor()
         
     def connection(self):
-        return MySQLdb.connect(host="localhost", # your host, usually localhost
-                     user="root", # your username
-                     passwd="root", # your password
+        return MySQLdb.connect(host="localhost",  # your host, usually localhost
+                     user="root",  # your username
+                     passwd="root",  # your password
                      db="passwords",
-                     cursorclass = MySQLdb.cursors.SSDictCursor) # stores result in the server. records as dict
+                     cursorclass=MySQLdb.cursors.SSDictCursor)  # stores result in the server. records as dict
     
     def nextPwd(self):
-        if (self.row is None): 
+        """
+        only_dict - if True, will not return fragments from the dynamic dictionaries
+
+        """
+        # TODO: test accomplishing only_dict through WHERE clause
+
+        if self.row is None:
             return None
-        old_pwd_id = self.row["set_id"]
-        pwd_id     = old_pwd_id
+
+        pwd_id = old_pwd_id = self.row["set_id"]
         pwd = []
-        while (pwd_id == old_pwd_id):
+
+        while pwd_id == old_pwd_id:
             wo = Fragment(self.row["set_contains_id"], self.row["dictset_id"], self.row["dict_text"],
                                 self.row["pos"], self.row["sentiment"], self.row["synset"],
                                 self.row["category"])
             pwd.append(wo)
+
             self.row = self.readcursor.fetchone()
-            if (self.row is None):  break
-            else:                   pwd_id = self.row["set_id"]
+            if self.row is None:
+                break
+            else:
+                pwd_id = self.row["set_id"]
+
         return pwd
         
     def save(self, wo, cache=False):
@@ -84,7 +95,8 @@ class PwdDb():
 
 #    def flush_save(self):
 #        print "updating {} records on the database...".format(len(self.saving_cache))
-#        u = Updater("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;", self.saving_cache, self.cachelimit, self.conn_save, self.savecursor)
+#        u = Updater("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;",
+# self.saving_cache, self.cachelimit, self.conn_save, self.savecursor)
 #        u.start()
     
     def flush_save (self):
@@ -108,6 +120,7 @@ class PwdDb():
         self.savecursor.close()
         self.conn_save.close()
         self.conn_read.close()
+
 
 class Updater(threading.Thread):
     def __init__(self, query, cache, cachelimit, conn, cursor) :
@@ -140,6 +153,10 @@ class Fragment():
     
     def __repr__(self):
         return self.word
+
+    def is_gap(self):
+        return self.dictset_id > 90
+
 
 #db = PwdDb()
 #pos = 'a'

@@ -23,6 +23,10 @@ def populate(tree, pos, samplesize):
         words = db.nextPwd()  # list of Fragment
         
         for w in words:
+            # we don't want dynamic dict. entries
+            if w.is_gap():
+                continue
+
             # best effort to get a synset matching the fragment's pos
             synset = semantics.synset(w)    
             
@@ -81,8 +85,10 @@ if __name__ == '__main__':
     filename = "{}-{}".format(args.pos, args.algorithm)
     if args.algorithm == 'wagner':
         filename += '-{}'.format(args.weighting)
+    filename += '-{}'.format(args.threshold)
     if args.samplesize:
         filename += '-{}'.format(args.samplesize)
+
     if args.commit:
         filename += '-{}'.format(args.commit)
 
