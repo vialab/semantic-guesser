@@ -1,9 +1,9 @@
-'''
+"""
 This script outputs a tree in JSON format representing the
 hypernym paths of all verbs/nouns/etc. tagged in the db.
 
 @author: Rafa
-'''
+"""
 
 from database import PwdDb
 from tagset_conversion import TagsetConverter
@@ -13,31 +13,31 @@ import argparse
 
 tag_converter = TagsetConverter()
 
+
 def synset(f):
     """Given a fragment, determines its synset by
     converting the Brown tag to WordNet tag and querying
     the associated synset from WordNet.
+
+    If more than one synset is retrieved, return the first,
+    which is, presumably, the most frequent.
+    More on this at: http://wordnet.princeton.edu/wordnet/man/cntlist.5WN.html
     
-    When the tag has no correspondent in WordNet, but
-    the word exists (e.g., ('all', 'DT')), we get the 
-    most common sense, e.g., ('all', 'n'). That means
-    the returned synset's pos might not match the
-    fragment's pos.
+    If the fragment has no POS tag or no synset is found in
+    WordNet for the POS tag, None is returned.
     
     f - fragment
     
     """
-    synsets = None
-    
+
     wn_pos = tag_converter.brownToWordNet(f.pos) if f.pos else None
-    
-    if wn_pos is not None:
-        synsets = wn.synsets(f.word, wn_pos) 
-    else:
-        synsets = wn.synsets(f.word)
-    
-    # returns the most frequent
-    return synsets[0] if len(synsets)>0 else None 
+
+    if wn_pos is None:
+        return None
+
+    synsets = wn.synsets(f.word, wn_pos)
+
+    return synsets[0] if len(synsets) > 0 else None
     
 
 def main(pos, size, file_):
@@ -51,9 +51,8 @@ def main(pos, size, file_):
     target_total     = 0  # number of words tagged as pos 
     in_wordnet_total = 0  # number of verbs that are found in wordnet
 
-    
-    while (db.hasNext()):
-        words = db.nextPwd() # list of Words
+    while db.hasNext():
+        words = db.nextPwd()  # list of Words
         
         for w in words:
             if w.pos is None:
@@ -64,10 +63,10 @@ def main(pos, size, file_):
             if wn_pos == pos:
                 target_total += 1
                 
-            synset_ = synset(w) # best effort to get a synset matching the fragment's pos   
+            synset_ = synset(w)  # best effort to get a synset matching the fragment's pos
             
             # check if the synset returned has the pos we want
-            if synset_ is not None and synset_.pos==pos:
+            if synset_ is not None and synset_.pos == pos:
                 in_wordnet_total += 1
                 paths = synset_.hypernym_paths()
                 for path in paths:
