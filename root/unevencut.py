@@ -81,18 +81,25 @@ if __name__ == '__main__':
         cut.wagner.default_c = args.weighting
         cutter = cut.wagner
 
-    # forming the cut file name
-    filename = "{}-{}".format(args.pos, args.algorithm)
+    # forming the cut and tree file names
+    cut_filepath = "cut-{}-{}".format(args.pos, args.algorithm)
+    tree_filepath = "tree-{}".format(args.pos)
+
     if args.algorithm == 'wagner':
-        filename += '-{}'.format(args.weighting)
-    filename += '-{}'.format(args.threshold)
+        cut_filepath += '-{}'.format(args.weighting)
+
+    cut_filepath += '-{}'.format(args.threshold)
+    tree_filepath += '-{}'.format(args.threshold)
+
     if args.samplesize:
-        filename += '-{}'.format(args.samplesize)
+        cut_filepath += '-{}'.format(args.samplesize)
+        tree_filepath += '-{}'.format(args.threshold)
 
     if args.commit:
-        filename += '-{}'.format(args.commit)
+        cut_filepath += '-{}'.format(args.commit)
+        tree_filepath += '-{}'.format(args.threshold)
 
-    cut_file_path = "{}cut-{}.txt".format(args.file, filename)
-    tree_file_path = "{}tree-{}.json".format(args.tree, filename) if args.tree else None
+    cut_filepath = args.file + cut_filepath + '.txt'
+    tree_filepath = args.tree + tree_filepath + '.json' if args.tree else None
 
-    main(args.pos, cutter, cut_file_path, args.samplesize, tree_file_path, args.threshold)
+    main(args.pos, cutter, cut_filepath, args.samplesize, tree_filepath, args.threshold)
