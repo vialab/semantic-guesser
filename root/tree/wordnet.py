@@ -43,6 +43,7 @@ class WordNetTreeNode(DefaultTreeNode):
     def create_node(self, key):
         return WordNetTreeNode(key)
 
+
 class WordNetTree(DefaultTree):
     """
     1. Nodes with multiple parents are duplicated

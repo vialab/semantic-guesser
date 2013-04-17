@@ -59,7 +59,7 @@ def main(pos, size, file_):
                 continue
             pos_tagged_total += 1
 
-            wn_pos = tag_converter.brownToWordNet(w.pos) # assumes the pwds are pos-tagged using Brown tags
+            wn_pos = tag_converter.brownToWordNet(w.pos)  # assumes the pwds are pos-tagged using Brown tags
             if wn_pos == pos:
                 target_total += 1
                 
@@ -80,8 +80,8 @@ def main(pos, size, file_):
     db.finish()
     
     print '{} POS tagged words'.format(pos_tagged_total)
-    print 'of which {} are {} ({}%)'.format(target_total, pos, float(target_total)*100/pos_tagged_total)
-    print 'of which {} are found in WordNet ({}%)'.format(in_wordnet_total, float(in_wordnet_total)*100/target_total)
+    print 'of which {} are {} ({}%)'.format(target_total, pos, float(target_total) * 100 / pos_tagged_total)
+    print 'of which {} are found in WordNet ({}%)'.format(in_wordnet_total, float(in_wordnet_total) * 100 / target_total)
     
     return 0
     

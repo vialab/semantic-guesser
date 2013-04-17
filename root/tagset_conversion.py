@@ -5,6 +5,7 @@ Created on Feb 24, 2012
 '''
 from string import lower
 
+
 class TagsetConverter(): 
 
     def __init__(self):
@@ -153,18 +154,17 @@ class TagsetConverter():
     
     def brownToWordNet(self, tag):
         tag = tag.lower()
-        l = tag[0] # first letter
-        ll = tag[:2] # two first letters
-#        if ll=='np':
-#            return None
-        if l == 'n':
+        l = tag[0]  # first letter
+        ll = tag[:2]  # two first letters
+        if ll == 'np':
+            return None
+        elif l == 'n':
             return 'n'
-        elif l in ('b', 'v', 'h') or ll=='do':
+        elif l in ('b', 'v', 'h') or ll == 'do':
             return 'v'
-        elif l in ('r') or ll=='wr':
+        elif l in ('r') or ll == 'wr':
             return 'r'
         elif l == 'j':
             return 'a'
-        else: return None
-        
-                
+        else:
+            return None
