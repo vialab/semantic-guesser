@@ -42,7 +42,7 @@ def main(pos, cutter, cut_file, samplesize, tree_file, threshold):
     tree = WordNetTree(pos)
     tree = populate(tree, pos, samplesize)
     cut_ = cutter.findcut(tree)
-    tree.trim(threshold)
+    tree.trim(threshold)  # trimming the 0 frequency nodes by default!!!
 
     if cut_file:    
         output = open(cut_file, 'wb')
@@ -93,11 +93,11 @@ if __name__ == '__main__':
 
     if args.samplesize:
         cut_filepath += '-{}'.format(args.samplesize)
-        tree_filepath += '-{}'.format(args.threshold)
+        tree_filepath += '-{}'.format(args.samplesize)
 
     if args.commit:
         cut_filepath += '-{}'.format(args.commit)
-        tree_filepath += '-{}'.format(args.threshold)
+        tree_filepath += '-{}'.format(args.commit)
 
     cut_filepath = args.file + cut_filepath + '.txt'
     tree_filepath = args.tree + tree_filepath + '.json' if args.tree else None
