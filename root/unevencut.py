@@ -6,41 +6,17 @@ Created on 2013-03-29
 @author: rafa
 """
 
-from tree.wordnet import WordNetTree
 import cut
-from argparse import ArgumentParser
-from database import PwdDb
 import semantics
+from argparse import ArgumentParser
+
 
 DEFAULT_FILE = '../results/cut/cut.txt'
 
 
-def populate(tree, pos, samplesize):
-    
-    db = PwdDb(size=samplesize)
-    
-    while db.hasNext():
-        words = db.nextPwd()  # list of Fragment
-        
-        for w in words:
-            # we don't want dynamic dict. entries
-            if w.is_gap():
-                continue
-
-            # best effort to get a synset matching the fragment's pos
-            synset = semantics.synset(w)    
-            
-            # check if the synset returned has the pos we want
-            if synset is not None and synset.pos == pos:
-                tree.insert_synset(synset)
-                
-    return tree
-
-
 def main(pos, cutter, cut_file, samplesize, tree_file, threshold):
     
-    tree = WordNetTree(pos)
-    tree = populate(tree, pos, samplesize)
+    tree = semantics.load_semantictree(pos, samplesize)
     cut_ = cutter.findcut(tree)
     tree.trim(threshold)  # trimming the 0 frequency nodes by default!!!
 

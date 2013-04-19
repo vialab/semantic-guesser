@@ -24,7 +24,7 @@ class PwdDb():
       
     """
     
-    def __init__(self, save_cachesize=100000, offset=0, size=None,):
+    def __init__(self, save_cachesize=100000, offset=0, size=None):
         self.saving_cache = []
         self.cachelimit = save_cachesize
 
