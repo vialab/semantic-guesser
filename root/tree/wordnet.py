@@ -10,6 +10,7 @@ Created on 2013-03-25
 from nltk.corpus import wordnet as wn 
 from default_tree import DefaultTree, DefaultTreeNode
 
+
 class WordNetTreeNode(DefaultTreeNode):
     
     # a counter for ids. Everytime a node is created, next_id is assigned to it
@@ -18,14 +19,13 @@ class WordNetTreeNode(DefaultTreeNode):
     
     def __init__(self, key):
         DefaultTreeNode.__init__(self, key)
-#         self.cut = False
+        self.cut = False  # True if this node belongs to a tree cut
 
         # a unique identifier is necessary, since many nodes are duplicated
         # and preserve the same name
         self.id = WordNetTreeNode.next_id
         WordNetTreeNode.next_id += 1  
-    
-    
+
     def wrap(self):
         """ Returns a representation of this node (including all children)
         as a single object, JSON-style.
@@ -35,17 +35,18 @@ class WordNetTreeNode(DefaultTreeNode):
             children.append(child.wrap())
         if len(children) == 0:
             return {'key': self.key, 'value': self.value, 'id': self.id}
-        else :    
+        else:
             return {'key': self.key, 'value': self.value,
                     'entropy': self._entropy, 'id': self.id, 'children': children}
-    
-    
+
     def create_node(self, key):
         return WordNetTreeNode(key)
 
 
 class WordNetTree(DefaultTree):
     """
+    A POS-specific tree representation of WordNet.
+
     1. Nodes with multiple parents are duplicated
     2. Senses are separated from semantic class, i.e.,
        for each non-leaf node, a node with prefix 's' 
@@ -68,20 +69,20 @@ class WordNetTree(DefaultTree):
            has several roots).
             
         """
+        self.pos = pos
         self.load(pos)
 
     def load(self, pos):
-        if (pos=='n'):
+        if pos == 'n':
             roots = wn.synsets('entity')
         else:
-            roots = [s for s in wn.all_synsets(pos) if len(s.hypernyms())==0]
+            roots = [s for s in wn.all_synsets(pos) if len(s.hypernyms()) == 0]
         
         self.root = WordNetTreeNode('root')
         
         for synset in roots:
             self.__append_synset(synset, self.root)
         
-
     def __append_synset(self, synset, parent):
         """ Given a parent node, creates a node for the informed synset 
         and inserts it as a child.
@@ -96,33 +97,25 @@ class WordNetTree(DefaultTree):
         hyponyms = synset.hyponyms()
         
         # if not leaf, insert a child representing the sense 
-        if len(hyponyms)>0: 
+        if len(hyponyms) > 0:
             node.insert('s.'+synset.name)
         
         for h in hyponyms:
             self.__append_synset(h, node)
             
-
-    def insert_synset(self, synset, freq=1):         
+    def insert_synset(self, synset, freq=1):
         paths = synset.hypernym_paths()
         
-        if len(paths)>1:
-            freq = float(freq)/len(paths)
+        if len(paths) > 1:
+            freq = float(freq) / len(paths)
         
         # multiplies the sense if has more than one parent 
         for i, path in enumerate(paths):
             path = [s.name for s in path]
-            if len(synset.hyponyms())>0:  # internal node
-                path.append('s.'+path[-1])
-            # appends the number of the sense if necessary
-#             if len(paths)>1:
-#                 path[-1] = '{}.{}'.format(path[-1], i)
+            if len(synset.hyponyms()) > 0:  # internal node
+                path.append('s.' + path[-1])
             self.insert(path, freq)
             
             
 if __name__ == '__main__':
     pass
-#     print WordNetTreeNode('rafa')
-#     print WordNetTreeNode('tommy')
-#     
-#     print WordNetTreeNode.next_id

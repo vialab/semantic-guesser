@@ -23,16 +23,16 @@ class DefaultTreeNode (TreeNode):
         return self.key
     
     def print_nested(self, indent_level=0):
-        s = indent_level*'\t' + self.key + ' ' + str(self.value) +  '\n'
+        s = indent_level * '\t' + self.key + ' ' + str(self.value) + '\n'
         for c in self.children():
             s += c.print_nested(indent_level + 1)
         return s
         
     def children(self):
         children = list()
-        c = self.leftchild # c is the current child
+        c = self.leftchild  # c is the current child
         # moving to the right until the last child
-        while c is not None :
+        while c is not None:
             children.append(c)
             c = c.rightsibling
         return children
@@ -67,7 +67,7 @@ class DefaultTreeNode (TreeNode):
             # re-evaluate c after it has trimmed its subtree 
             if c.value <= threshold:
                 subtract += c.value
-                self.remove(c);
+                self.remove(c)
         # updates this value
         self.value -= subtract if update_values else 0
         # propagates the impact of trimming on value
@@ -78,43 +78,59 @@ class DefaultTreeNode (TreeNode):
         return DefaultTreeNode(key)
     
     def insert(self, key=None, node=None):
-        '''Inserts a child to this node.
+        """Inserts a child to this node.
         If it already exists, do nothing...
         In both cases, returns the child.
-        '''
+        """
         newchild = self.create_node(key) if key is not None else node
         
-        if self.leftchild is None :
+        if self.leftchild is None:
             self.leftchild = newchild
-        else :
-            c = self.leftchild # c is the current child
+        else:
+            c = self.leftchild  # c is the current child
             
             while True:
                 # if key is already there, do nothing
-                if c.key == key :
+                if c.key == key:
                     #c.value += 1
                     return c
-                if c.rightsibling is None : # if reached the last child
+                if c.rightsibling is None:  # if reached the last child
                     # add the key as right sibling of the last child
                     c.rightsibling = newchild
                     break
                     
-                c = c.rightsibling # moving to the right
+                c = c.rightsibling  # moving to the right
         
-        return newchild 
-    
+        return newchild
+
     def child(self, key):
         """Returns the child corresponding to the key
         or None. 
         """
-        c = self.leftchild # current child
-        while c is not None :
-            if c.key == key :
+        c = self.leftchild  # current child
+        while c is not None:
+            if c.key == key:
                 return c
-            else :
+            else:
                 c = c.rightsibling
         return None
-    
+
+    def path(self, key):
+        children = self.children()
+
+        # trivial case, self has the key
+        if self.key == key:
+            return [self]
+
+        # if one of the children has the key, insert self
+        # this node to the front of the path an return it
+        for c in children:
+            path = c.path(key)
+            if path is not None:
+                return [self] + path
+
+        return None
+
     def entropy(self):
         self._entropy = 0
         total = self.value
@@ -140,11 +156,11 @@ class DefaultTreeNode (TreeNode):
         as a single object, JSON-style.
         """
         children = list()
-        for child in self.children() :
+        for child in self.children():
             children.append(child.wrap())
-        if len(children) == 0 :
+        if len(children) == 0:
             return {'key': self.key, 'value': self.value}
-        else :    
+        else:
             return {'key': self.key, 'value': self.value, 
                     'children': children, 'entropy': self._entropy}
             
@@ -172,7 +188,7 @@ class DefaultTree (Tree):
         currNode = self.root
         
         # insert all keys into the tree, increasing their value
-        for key in path :
+        for key in path:
             currNode.value += freq
             currNode = currNode.insert(key=key)
         
@@ -181,7 +197,10 @@ class DefaultTree (Tree):
     
     def trim(self, threshold, update_values=True):
         self.root.trim(threshold, update_values)
-        
+
+    def path(self, key):
+        return self.root.path(key)
+
     def updateEntropy(self, node=None):
         """ The __entropy of the nodes is not updated
         every time the structure changes cause it can be
@@ -192,7 +211,7 @@ class DefaultTree (Tree):
         if node is None:
             self.updateEntropy(self.root)
         else:
-            node.entropy() # calculates entropy
+            node.entropy()  # calculates entropy
             for c in node.children():
                 self.updateEntropy(c)
 

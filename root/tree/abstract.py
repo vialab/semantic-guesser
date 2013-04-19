@@ -1,8 +1,8 @@
-'''
+"""
 Created on 2013-03-23
 
 @author: rafa
-'''
+"""
 
 
 class Tree:
@@ -12,7 +12,7 @@ class Tree:
 
 class TreeNode:
     def __init__(self, key):
-        self.key   = key
+        self.key = key
         self.value = 0 
            
     def insert(self, key=None, node=None):
@@ -33,6 +33,10 @@ class TreeNode:
     def leaves(self):
         """ Returns number of leaves under this node """
         pass
-    
+
+    def path(self, key):
+        """ Returns an array containing the path from root to the desired node """
+        pass
+
     def trim(self, threshold):
         pass
