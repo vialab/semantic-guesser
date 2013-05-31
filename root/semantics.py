@@ -56,7 +56,7 @@ def populate(tree, samplesize):
 
     """
 
-    db = PwdDb(size=samplesize)
+    db = PwdDb(sample=samplesize)
 
     while db.hasNext():
         fragments = db.nextPwd()  # list of Fragment
