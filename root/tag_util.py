@@ -1,5 +1,11 @@
 from nltk.tag import brill
 from nltk.probability import FreqDist, ConditionalFreqDist
+from nltk.tag.sequential import SequentialBackoffTagger, TrigramTagger,\
+    BigramTagger, UnigramTagger, DefaultTagger
+from root.taggers import COCATagger, NamesTagger, WordNetTagger
+from nltk.corpus import brown
+from nltk.model import NgramModel
+
 
 def backoff_tagger(train_sents, tagger_classes, backoff=None):
     for cls in tagger_classes:
@@ -36,3 +42,11 @@ def train_brill_tagger(initial_tagger, train_sents, **kwargs):
 
 def unigram_feature_detector(tokens, index, history):
     return {'word': tokens[index]}
+
+# test
+# t = StatyBackoffTagger()
+# t.tag(['she', 'said'])
+# t.tag(['he', 'ate'])
+# t.tag(['the', 'problem'])
+  
+    
