@@ -8,7 +8,7 @@ Inspired by Cormen's Introduction to Algorithms 3rd edition (p. 247).
 from abstract import Tree, TreeNode
 import json
 from math import log
-
+from collections import deque
 
 class DefaultTreeNode (TreeNode):
     
@@ -114,23 +114,7 @@ class DefaultTreeNode (TreeNode):
             else:
                 c = c.rightsibling
         return None
-
-    def path(self, key):
-        children = self.children()
-
-        # trivial case, self has the key
-        if self.key == key:
-            return [self]
-
-        # if one of the children has the key, insert self
-        # this node to the front of the path an return it
-        for c in children:
-            path = c.path(key)
-            if path is not None:
-                return [self] + path
-
-        return None
-
+    
     def entropy(self):
         self._entropy = 0
         total = self.value
@@ -194,12 +178,50 @@ class DefaultTree (Tree):
         
         # increments the count of the leaf
         currNode.value += freq
+        
+    def flat(self):
+        """ Non-recursive depth search.
+        Adds every visited node to a list and returns it.
+        """
+        nodes = []
+        
+        to_visit = deque([self.root])
+
+        while to_visit:
+            curr = to_visit.popleft()
+
+            # visit
+            nodes.append(curr)
+            
+            children = curr.children()
+            if len(children) > 0:
+                to_visit.extendleft(curr.children())
+
+        return nodes
     
     def trim(self, threshold, update_values=True):
         self.root.trim(threshold, update_values)
-
-    def path(self, key):
-        return self.root.path(key)
+    
+    def path(self, key, root=None):
+        if not root: 
+            root = self.root
+        
+        # trivial case, root has the key
+        if root.key == key:
+            return [root]
+    
+        # if one of the children has the key, insert
+        # this node to the front of the path an return it
+        # otherwise, search among the children
+        child = root.leftchild
+        while child: 
+            path = self.path(key, child)
+            if path:
+                path.insert(0, root)
+                return path
+            child = child.rightsibling
+    
+        return None
 
     def updateEntropy(self, node=None):
         """ The __entropy of the nodes is not updated

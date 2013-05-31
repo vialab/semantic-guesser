@@ -34,9 +34,9 @@ class TreeNode:
         """ Returns number of leaves under this node """
         pass
 
-    def path(self, key):
-        """ Returns an array containing the path from root to the desired node """
-        pass
+#     def path(self, key):
+#         """ Returns an array containing the path from root to the desired node """
+#         pass
 
     def trim(self, threshold):
         pass

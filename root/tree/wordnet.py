@@ -17,10 +17,12 @@ class WordNetTreeNode(DefaultTreeNode):
     # and incremented.
     next_id = 0
     
-    def __init__(self, key):
+    def __init__(self, key, parent=None):
         DefaultTreeNode.__init__(self, key)
+        
         self.cut = False  # True if this node belongs to a tree cut
-
+        self.parent = parent
+        
         # a unique identifier is necessary, since many nodes are duplicated
         # and preserve the same name
         self.id = WordNetTreeNode.next_id
@@ -39,8 +41,19 @@ class WordNetTreeNode(DefaultTreeNode):
             return {'key': self.key, 'value': self.value,
                     'entropy': self._entropy, 'id': self.id, 'children': children}
 
+    def path(self):
+		""" Returns the path to the root based on the parent attribute."""
+        path = list()
+        
+        curr = self
+        while curr:
+            path.insert(0, curr)
+            curr = curr.parent
+        
+        return path
+    
     def create_node(self, key):
-        return WordNetTreeNode(key)
+        return WordNetTreeNode(key, self)
 
 
 class WordNetTree(DefaultTree):
@@ -84,7 +97,8 @@ class WordNetTree(DefaultTree):
             self.__append_synset(synset, self.root)
         
     def __append_synset(self, synset, parent):
-        """ Given a parent node, creates a node for the informed synset 
+        """Recursive method to a append a synset (and all its children) to a parent. 
+        Given a parent node, creates a node for the informed synset 
         and inserts it as a child.
         If the synset is not a leaf, creates its first child representing
         its sense, with 's.' as a prefix, e.g.,
