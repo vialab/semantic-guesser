@@ -42,7 +42,7 @@ class WordNetTreeNode(DefaultTreeNode):
                     'entropy': self._entropy, 'id': self.id, 'children': children}
 
     def path(self):
-	""" Returns the path to the root based on the parent attribute."""
+        """ Returns the path to the root based on the parent attribute."""
         path = list()
         
         curr = self
