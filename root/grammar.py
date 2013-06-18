@@ -39,7 +39,10 @@ class DictionaryTag:
     @classmethod
     def get(cls, id):
         return DictionaryTag.map[id] if id in DictionaryTag.map else None
-
+    
+    @classmethod
+    def gaps(cls):
+        return [ v for k, v in DictionaryTag.map.items() if k > 90]
 
 def generalize(synset):
     """ Generalizes a synset based on a tree cut. """
