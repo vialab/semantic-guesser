@@ -8,8 +8,12 @@
 #include <queue>
 #include <regex>
 #include <iterator>
+#include <algorithm>
+#include <string>
+#include "cpp-argparse/OptionParser.h"
 
 using namespace std;
+using namespace optparse;
 
 typedef match_results<const char*> cmatch;
 
@@ -26,12 +30,7 @@ class Guess {
         unsigned pivot;
 };
 
-/*typedef struct {
-    double p;
-    std::string rule;
-    int[] terminals;
-} Guess;*/
-
+std::set<std::string> gaps = {"number", "num+special", "special", "char", "all_mixed"};
 std::unordered_map<std::string, double> rules;
 std::unordered_map<std::string, std::vector<Terminal>> tag_dicts;
 
@@ -78,16 +77,6 @@ std::vector<std::string> unpack(const std::string &s){
     return tags;
 }
 
-/*def probability(base_struct, tags, terminals):
-    p = base_structures[base_struct]
-    
-    for i, tag in enumerate(tags):
-        word_index = terminals[i]
-        p *= tag_dicts[tag][word_index][1]
-    
-    return p
-*/
-
 double probability(const std::string &rule, const std::vector<std::string> &tags, 
                     const std::vector<int> &terminals){
     
@@ -102,20 +91,32 @@ double probability(const std::string &rule, const std::vector<std::string> &tags
     return p;
 }
 
-/*def decode_guess(p, tags, terminals, pivot):
-    result = ''
-    for i, tag in enumerate(tags):
-        word_index = terminals[i]
-        result += tag_dicts[tag][word_index][0]
+std::string mangle_guess(const Guess &guess, std::vector<std::string> &tags, const std::string &action, std::vector<bool> &gap_map){
+
+    std:stringstream guess_str;
+    for (int i=0; i<tags.size(); i++){
+        int word_index = guess.terminals[i];
+        std::string word = tag_dicts[tags[i]][word_index].word;
+        if (!gap_map[i]){
+            if (action=="upper")
+                std::transform(word.begin(), word.end(), word.begin(), ::toupper);
+            else if (action=="lower")
+                std::transform(word.begin(), word.end(), word.begin(), ::tolower);
+            else if (action=="title"){
+                std::transform(word.begin(), word.end(), word.begin(), ::tolower);
+                word[0] = toupper(word[0]);
+            }
+        }
+       guess_str << word;
+    }
     
-    return [result]*/
+    return guess_str.str();
+}
 
+std::vector<std::string> decode_guess(const Guess &guess, std::vector<std::string> &tags){
 
-std::string decode_guess(const Guess &guess){
     std::stringstream temp("");
                 
-    std::vector<std::string> tags = unpack(guess.rule);
-
     for (int i=0; i<tags.size(); i++){
         std::string tag = tags[i];
         int word_index = guess.terminals[i];
@@ -123,14 +124,49 @@ std::string decode_guess(const Guess &guess){
         temp << tag_dicts[tag][word_index].word;
     }
     
-    return temp.str();
+    std::vector<std::string> guesses {temp.str()};
+    
+    return guesses;
 }
+
+std::vector<std::string> decode_guess_mangled(const Guess &guess, std::vector<std::string> &tags){
+    std::vector<bool> gap_map;
+    bool allgaps = true;
+    for (int i=0; i<tags.size(); i++){
+        const bool is_gap = gaps.find(tags[i]) != gaps.end();  
+        gap_map.push_back(is_gap);
+        if (!is_gap) allgaps = false;
+    }
+    
+    // if it's all gaps, there's nothing to mangle
+    if (allgaps) return decode_guess(guess, tags); 
+    
+    std::vector<std::string> guesses;
+
+    guesses.push_back(mangle_guess(guess, tags, "lower", gap_map));
+    guesses.push_back(mangle_guess(guess, tags, "upper", gap_map));
+    guesses.push_back(mangle_guess(guess, tags, "title", gap_map));
+    
+    // if at least two tags are not gap, including the first
+    // makes a title guess, since the previous block will only make camel case
+    // e.g., alice2go -> Alice2go.
+    if (std::count(gap_map.begin(), gap_map.end(), false) > 1 && !gap_map[0]){
+        std::string temp(guesses[0]);
+        std::transform(temp.begin(), temp.end(), temp.begin(), ::tolower);
+        temp[0] = toupper(temp[0]);
+        guesses.push_back(temp);
+    }
+    
+    return guesses;
+}
+
 
 bool operator<( const Guess& a, const Guess& b ) {
     return a.p < b.p;
 }
 
-int main() {
+
+int run(bool mangle, double limit, int min_length){
 
     std::ifstream fs("grammar/rules.txt");
     std::string line;
@@ -168,11 +204,6 @@ int main() {
         
         tag_dicts[tag] = terminals;
 
-        /*std::vector<Terminal> pi = tag_dicts[tag];
-        for(std::vector<int>::size_type i = 0; i != pi.size(); i++) {        
-            cout << tag << pi[i].word << pi[i].p <<'\n'; 
-        }*/
-
         fs.close();
 
     }
@@ -198,20 +229,41 @@ int main() {
         
         queue.push(g);
     }
-    
+
     int nguesses = 0;
 
     while (!queue.empty()){
         Guess curr = queue.top();
         queue.pop();
                 
-//        std::cout << decode_guess(curr) << "\n";
-        nguesses++;
-        
-        if (nguesses % 1000000 == 0)
-            cout << nguesses << "\n";
-        
         std::vector<std::string> tags = unpack(curr.rule);
+        
+        std::vector<std::string> guesses;
+        if (mangle) 
+            guesses = decode_guess_mangled(curr, tags);
+        else
+            guesses = decode_guess(curr, tags);
+            
+        for (int i=0; i<guesses.size(); i++){
+            // TODO: if we want to make things faster, should not generate the
+            // unwanted guesses in the first place.
+            if (guesses[i].length() < min_length)
+                continue;
+            
+            nguesses++;
+                
+            if (nguesses % 10000000 == 0){ // output status line
+                cerr << "# of guesses: " << nguesses          << "\n"; 
+                cerr << "queue size: "   << (int)queue.size() << "\n";
+            }
+                
+            cout << guesses[i] << "\n"; // output guess
+
+            if (nguesses == limit)
+                return 0;
+        }  
+        
+
         for (int i=curr.pivot; i<tags.size(); i++ ){
             std::string tag = tags[i];
             int next_word_index = curr.terminals[i] + 1;
@@ -234,39 +286,26 @@ int main() {
         }
     }
     
-    /*    nguesses = 0  
-    while not queue.empty():
-        curr = queue.get()
-
-        (p, base_struct, terminals, pivot) = curr
-        tags = unpack(base_struct)
-        
-        gs = decode_function(p, tags, terminals, pivot)
-            
-        for g in gs: 
-            if len(g) >= min_length:
-                try:
-                    print g
-                    nguesses += 1
-                    if nguesses >= max_guesses: return
-                    # debugging
-                    #if nguesses % 1000000 == 0: print queue.qsize()
-                except:  # treat errors like "Broken pipe"
-                    return
-                
-        
-        for i in range(pivot, len(tags)):
-            tag = tags[i]
-            next_word_index = terminals[i] + 1
-            
-            # if possible, replace terminals[i] by the next lower probability value
-            if next_word_index < len(tag_dicts[tag]):
-                new_terminals = tuple([next_word_index if j == i else t for j, t in enumerate(terminals)])
-                new_p = probability(base_struct, tags, new_terminals)
-                new_pivot = i
-                queue.put((-new_p, base_struct, new_terminals, new_pivot))
-*/
-    
+    return 0;
 }
 
+optparse::Values options(int argc, char *argv[]){    
+    OptionParser parser = OptionParser().description("just an example");
+
+    parser.add_option("-m", "--mangle").help("enables mangling rules").action("store_true");
+    parser.add_option("-n", "--limit").type("double").help("limits the number of guesses generated")
+                                .set_default(std::numeric_limits<double>::infinity());
+    parser.add_option("-l", "--length").help("minimum length of the guesses").type("int")
+                                .set_default(0);
+    
+    return parser.parse_args(argc, argv);
+}
+
+int main(int argc, char *argv[]) {
+
+    optparse::Values opts = options(argc, argv);
+    
+    return run(opts.get("mangle"), (double) opts.get("limit"), (int)opts.get("length"));
+
+}
 
