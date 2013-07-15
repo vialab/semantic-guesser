@@ -472,16 +472,19 @@ def processGaps(db, resultSet, password):
         nextStartIndex = 0
         i = 0
         try:
-            for x in resultSet[0][0]:
-                (xw, xs, xe) = x
-                nextStartIndex = xs
-                if (nextStartIndex > lastEndIndex):
-                    # find the gap, see if it is a #/sc chunk
-                    resultSet = addInTheGapsHelper(db, resultSet, i, password, lastEndIndex, nextStartIndex)
-                lastEndIndex = xe
-                i = i + 1
-            if (len(password) > lastEndIndex):
-                    resultSet = addInTheGapsHelper(db, resultSet, i, password, lastEndIndex, len(password))
+            # iterates through the results. after the filtering by coverage
+            # and frequency, there should be only one, though
+            for result in resultSet[0]: 
+                for x in result:
+                    (xw, xs, xe) = x
+                    nextStartIndex = xs
+                    if (nextStartIndex > lastEndIndex):
+                        # find the gap, see if it is a #/sc chunk
+                        resultSet = addInTheGapsHelper(db, resultSet, i, password, lastEndIndex, nextStartIndex)
+                    lastEndIndex = xe
+                    i = i + 1
+                if (len(password) > lastEndIndex):
+                        resultSet = addInTheGapsHelper(db, resultSet, i, password, lastEndIndex, len(password))
         except :
             print ("Warning: caught unknown error in addTheGaps -- resultSet=", resultSet, "password", password)
 
@@ -506,7 +509,6 @@ def mineLine(db, password, dictionary, freqInfo):
         
     # Otherwise, try to find the best word-parsing
     else:
-        # do a speed up for strings of only one character.
         permutations = permuteString(password.lower())
         words = list()
         for x in permutations:
@@ -514,9 +516,10 @@ def mineLine(db, password, dictionary, freqInfo):
                 words.append(x)
 
         candidates = generateCandidates(words, password)
-        print candidates
+#         print candidates
         resultSet  = bestCandidate(password, candidates, freqInfo, dictionary)
-        print resultSet
+#         print resultSet
+
         # add the trashy fragments in the database    
         resultSet  = processGaps(db, resultSet, password)
 
