@@ -20,8 +20,29 @@ import sys
 import traceback
 from nltk.probability import FreqDist, ConditionalFreqDist
 from timer import Timer
+import re
+
+#-----------------------------------------
+# Initializing module variables
+#-----------------------------------------
+
+nouns_tree = semantics.load_semantictree('n')
+verbs_tree = semantics.load_semantictree('v')
+
+cut = wagner.findcut(nouns_tree, 5000)
+for c in cut: c.cut = True
+
+cut = wagner.findcut(verbs_tree, 5000)
+for c in cut: c.cut = True
+
+flat = nouns_tree.flat() + verbs_tree.flat()
 
 node_index = dict()
+for node in flat:
+    if node.key not in node_index:
+        node_index[node.key] = node 
+
+#-------------------------------------------
 
 class DictionaryTag:
     map = {10: 'month',
@@ -44,6 +65,7 @@ class DictionaryTag:
     def gaps(cls):
         return [ v for k, v in DictionaryTag.map.items() if k > 90]
 
+
 def generalize(synset):
     """ Generalizes a synset based on a tree cut. """
 
@@ -53,10 +75,11 @@ def generalize(synset):
     # an internal node is split into a node representing the class and other
     # representing the sense. The former's name starts with 's.'
     key = synset.name if is_leaf(synset) else 's.' + synset.name
-        
-    node = node_index[key]
-    if not node:
-        print "{} could not be generalized".format(key)
+    
+    try:    
+        node = node_index[key]
+    except KeyError:
+        sys.stderr.write("{} could not be generalized".format(key))
         return None
     
     path = node.path()
@@ -90,8 +113,27 @@ def stringify_pattern(tags):
     return ''.join(['({})'.format(tag) for tag in tags])
 
 
+def pattern(segments):
+    return stringify_pattern([classify(s) for s in segments])
+
+
+def sample(db):
+    """ I wrote this function to output data for a table
+    that shows words, the corresponding synsets, and their generalizations."""
+    
+    while db.hasNext():
+        segments = db.nextPwd()
+        for s in segments:
+            tag = classify(s)
+            if re.findall(r'.+\..+\..+', tag): # test if it's a synset
+                synset = semantics.synset(s.word, s.pos)
+            else:
+                synset = None
+            print "{}\t{}\t{}\t{}".format(s.password, s.word, tag, synset)
+        
+
 def main(db):
-    tags_file = open('grammar/debug.txt', 'w+')
+#     tags_file = open('grammar/debug.txt', 'w+')
     
     patterns_dist = FreqDist()  # distribution of patterns
     segments_dist = ConditionalFreqDist()  # distribution of segments, grouped by semantic tag
@@ -100,7 +142,7 @@ def main(db):
     
     while db.hasNext():
         segments = db.nextPwd()
-        password = ''.join([s.word for s in segments])
+#         password = ''.join([s.word for s in segments])
         tags     = [] 
 
         for s in segments:  # semantic tags
@@ -112,14 +154,15 @@ def main(db):
         
         patterns_dist.inc(pattern)
         
-        for i in range(len(segments)):
-            tags_file.write("{}\t{}\t{}\t{}\n".format(password, segments[i].word, tags[i], pattern))
+        # outputs the classification results for debug purposes
+#         for i in range(len(segments)):
+#             tags_file.write("{}\t{}\t{}\t{}\n".format(password, segments[i].word, tags[i], pattern))
 
         counter += 1
         if counter % 100000 == 0:
             print "{} passwords processed so far ({:.2%})... ".format(counter, float(counter)/db.sets_size)
          
-    tags_file.close()
+#     tags_file.close()
         
     with open('grammar/rules.txt', 'w+') as f:
         total = patterns_dist.N()
@@ -132,30 +175,17 @@ def main(db):
         with open('grammar/seg_dist/'+tag+'.txt', 'w+') as f:
             for k, v  in segments_dist[tag].items():
                 f.write("{}\t{}\n".format(k, float(v)/total))
-    
+
+
 
 # TODO: Option for online version (calculation of everything on the fly) and from db
 if __name__ == '__main__':
     try:
-        nouns_tree = semantics.load_semantictree('n')
-        verbs_tree = semantics.load_semantictree('v')
-
-        cut = wagner.findcut(nouns_tree, 5000)
-        for c in cut: c.cut = True
-        
-        cut = wagner.findcut(verbs_tree, 5000)
-        for c in cut: c.cut = True
-        
-        flat = nouns_tree.flat() + verbs_tree.flat()
-        
-        for node in flat:
-            if node.key not in node_index:
-                node_index[node.key] = node
-        
         with Timer('grammar generation'):
-            db = PwdDb(100, random=True)
+            db = PwdDb(sample=1000)
             try:
                 main(db)
+#                sample(db)
             except KeyboardInterrupt:
                 db.finish()
                 raise
