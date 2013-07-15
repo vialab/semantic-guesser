@@ -9,8 +9,7 @@ import re
 import os
 import sys
 import argparse
-
-# from guppy import hpy
+import operator
 
 base_structures = dict()  # (tag1, tag2, tag3..) : probability 
 tag_dicts = dict()  # tag: [(word, p)...]
@@ -51,7 +50,9 @@ def decode_guess_mangled(p, tags, terminals, pivot):
         
         guesses.append(guess)
     
+    # if at least two tags are not gap, including the first
     # makes a title guess, since the previous block will only make camel case
+    # e.g., alice2go -> Alice2go.
     if not gap_map[0] and not all(gap_map[1:]):
         guesses.append(guesses[0].title())
                 
@@ -68,8 +69,6 @@ def decode_guess(p, tags, terminals, pivot):
 
 
 def guess(min_length, max_guesses, mangled):
-#     hp = hpy()
-#     hp.setrelheap()
     
     queue = PriorityQueue()
     
@@ -102,7 +101,7 @@ def guess(min_length, max_guesses, mangled):
                     nguesses += 1
                     if nguesses >= max_guesses: return
                     # debugging
-                    #if nguesses % 1000000 == 0: print queue.qsize()
+#                     if nguesses % 10000000 == 0: print queue.qsize()
                 except:  # treat errors like "Broken pipe"
                     return
                 
@@ -154,6 +153,19 @@ def load_grammar(base_structures, tag_dicts):
             tag_dicts[tag] = words 
 
 
+def count_max_guesses():
+    """ Calculates the total # of guesses this grammar is capable of generating """
+    total = 0
+    for base_struct in base_structures.keys():
+        tags = unpack(base_struct)
+        total += reduce(operator.mul, [len(tag_dicts[t]) for t in tags])
+        
+    return total
+            
+        
+
+    
+
 def options():
     parser = argparse.ArgumentParser()
     parser.add_argument('-l', '--length', type=int, default=0, help='minimum length of the guesses')
@@ -167,6 +179,7 @@ if __name__ == '__main__':
     opts = options()
     load_grammar(base_structures, tag_dicts)
     guess(opts.length, opts.limit, opts.mangle)
+#     print "{:.1e}".format(count_max_guesses())
     
 
 
@@ -176,13 +189,14 @@ if __name__ == '__main__':
 # test
 #:::::::::::::::
 
-# base_structures[('D1', 'L3', 'S2', 'D1')] = 0.75
-# base_structures[('L3', 'D1', 'S1')] = 0.25
-#   
+# base_structures["(D1)(L3)(S2)(D1))"] = 0.75
+# base_structures["(L3)(D1)(S1)"] = 0.25
+#     
 # tag_dicts['D1'] = [('4', 0.6), ('5', 0.2), ('6', 0.2)]
 # tag_dicts['S1'] = [('!', 0.65), ('%', 0.3), ('#', 0.05)]
 # tag_dicts['S2'] = [('$$', 0.7), ('**', 0.3)]
 # tag_dicts['L3'] = [('yay', 1)]
-#  
-# guess(0, 999)    
+   
+# guess(0, 999, False)
+# print count_max_guesses()    
    
