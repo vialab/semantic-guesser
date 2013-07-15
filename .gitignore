@@ -1,2 +1,19 @@
-*.pyc
-*~
+# PyCharm
+# http://www.jetbrains.com/pycharm/webhelp/project.html
+.idea
+.iml
+
+.pydevproject
+
+*.csv
+results/*.txt
+results/cut/
+grammar/
+root/pickles/
+
+.pyc
+
+*.o
+*.so
+
+
