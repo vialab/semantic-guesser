@@ -3,7 +3,35 @@ import re
 from timer import Timer
 from nltk.probability import FreqDist
 
-def main(db):
+def bysegment(db):
+    dist = FreqDist()
+    
+    total = 0
+
+    while db.hasNext():
+        fragments = db.nextPwd()
+        pwd = fragments[0].password
+        
+        for f in fragments: # iterate through fragments
+            total += 1
+            if total % 100000 == 0:
+                print "{} segments processed...".format(total)
+                
+            if f.is_gap(): 
+                dist.inc("gap")
+            else:
+                raw_word = pwd[f.s_index:f.e_index]
+
+                if     raw_word.isupper():  dist.inc('upper')
+                elif   raw_word.istitle():  dist.inc('capitalized')
+                elif   raw_word.islower():  dist.inc('lower')
+                else:                       dist.inc('mangled')
+            
+    for k, v in dist.items():
+        print "{}\t{}".format(k, v)
+
+
+def bypassword(db):
     
     dist = FreqDist()
     
@@ -15,9 +43,6 @@ def main(db):
     while db.hasNext():
         fragments = db.nextPwd()
         pwd = fragments[0].password
-        
-#         if pwd == '*FENix915':
-#             print 'stop'
         
         total += 1
         
@@ -38,25 +63,24 @@ def main(db):
                 
                 raw_word = pwd[f.s_index:f.e_index]
                 
-                if   raw_word.istitle():  bag.add('captlzd')
-                elif raw_word.islower():  bag.add('lower')
-                elif raw_word.isupper():  bag.add('upper')
+                if     raw_word.isupper():  bag.add('upper')
+                elif   raw_word.istitle():  bag.add('captlzd')
+                elif   raw_word.islower():  bag.add('lower')
                 else:                     bag.add('mangled')
-
+                
             pattern = ', '.join(sorted(bag))
+            if pattern == 'captlzd, upper': print pwd
 
         dist.inc(pattern)    
-#         print "{}\t{}".format(pattern, pwd)
     
     for k, v in dist.items():
         print "{}\t{}".format(k, v)
 
     
 if __name__ == '__main__':
-#     test()
     with Timer('Loading passwords'):
 #         db = PwdDb(sample=100, random=True)
         db = PwdDb()
      
     with Timer('Processing'):
-        main(db)
+        bysegment(db)
