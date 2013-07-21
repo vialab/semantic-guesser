@@ -29,7 +29,7 @@ class Guess {
         std::vector<int> terminals;
         unsigned pivot;
 };
-
+//testing
 std::set<std::string> gaps = {"number", "num+special", "special", "char", "all_mixed"};
 std::unordered_map<std::string, double> rules;
 std::unordered_map<std::string, std::vector<Terminal>> tag_dicts;
@@ -160,14 +160,7 @@ std::vector<std::string> decode_guess_mangled(const Guess &guess, std::vector<st
     return guesses;
 }
 
-
-bool operator<( const Guess& a, const Guess& b ) {
-    return a.p < b.p;
-}
-
-
-int run(bool mangle, double limit, int min_length){
-
+void load_grammar(){
     std::ifstream fs("grammar/rules.txt");
     std::string line;
     
@@ -208,6 +201,49 @@ int run(bool mangle, double limit, int min_length){
 
     }
     closedir(dir);
+}
+
+/**
+ * Used with std::sort to sort an array in decreasing order.
+ */
+bool compare(std::pair<std::string, double> a, std::pair<std::string, double> b){
+    return a.second < b.second;
+}
+
+/**
+ * Returns the *approximate* probabilities of the least and most probable guesses.
+ */
+double* prob_bounds(){
+    std::vector<std::pair<std::string, double>> vec(rules.begin(), rules.end());
+    std::sort(vec.begin(), vec.end(), &compare);
+    
+    // calculate the highest probability guess
+    std::string max_rule = vec.back().first;
+    std::vector<std::string> tmp_tags = unpack(max_rule);
+    double max_p = probability(max_rule, tmp_tags, std::vector<int>(tmp_tags.size(), 0));
+    
+    // calculate the lowest probability guess
+    std::string min_rule = vec[0].first;
+//    cerr << "least probable rule: " << min_rule << '\n';
+    tmp_tags = unpack(min_rule);
+    double min_p = vec[0].second;
+    for (std::vector<int>::size_type i = 0; i != tmp_tags.size(); i++){
+        min_p *= tag_dicts[tmp_tags[i]].back().p;
+    }
+    
+    double bounds[2];
+    bounds[0] = min_p;
+    bounds[1] = max_p;
+    
+    return bounds;
+}
+
+bool operator<( const Guess& a, const Guess& b ) {
+    return a.p < b.p;
+}
+
+
+int run(bool mangle, double limit, int min_length){
 
     priority_queue<Guess, vector<Guess>, less<vector<Guess>::value_type> > queue;
 
@@ -229,6 +265,15 @@ int run(bool mangle, double limit, int min_length){
         
         queue.push(g);
     }
+
+    // output a snapshot of the queue for debug
+/*    while (!queue.empty()){
+        Guess x = queue.top();
+        queue.pop();
+        cout << probability(x.rule, unpack(x.rule), x.terminals) << '\n' ;
+    }
+    return 0;
+*/
 
     int nguesses = 0;
 
@@ -258,9 +303,14 @@ int run(bool mangle, double limit, int min_length){
             }
                 
             cout << guesses[i] << "\n"; // output guess
-
-            if (nguesses == limit)
+//            cout << curr.p << "\n"; // output probability
+            
+            // exit when reach the limit of guesses
+            if (nguesses == limit){
+                cerr << "Last guess: (" << guesses[i] << ", " << curr.p << ")\n";
+                
                 return 0;
+            }
         }  
         
 
@@ -305,7 +355,12 @@ int main(int argc, char *argv[]) {
 
     optparse::Values opts = options(argc, argv);
     
+    load_grammar();
+//    double *bounds = prob_bounds();
+//    cout << bounds[0] << '\t' << bounds[1] << '\n';
+    
     return run(opts.get("mangle"), (double) opts.get("limit"), (int)opts.get("length"));
+    
 
 }
 
