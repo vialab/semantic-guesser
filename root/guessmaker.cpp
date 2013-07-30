@@ -22,16 +22,21 @@ typedef struct {
     double p;
 } Terminal;
 
+typedef struct {
+    std::string str;
+    double p;
+} Rule;
+
 class Guess {
     public:
         double p;
-        std::string rule;
+        Rule * rule;
         std::vector<int> terminals;
         unsigned pivot;
 };
 //testing
 std::set<std::string> gaps = {"number", /*"num+special",*/ "special", "char"/*, "all_mixed"*/};
-std::unordered_map<std::string, double> rules;
+std::vector<Rule> rules;
 std::unordered_map<std::string, std::vector<Terminal>> tag_dicts;
 
 bool replace(std::string& str, const std::string& from, const std::string& to) {
@@ -77,17 +82,17 @@ std::vector<std::string> unpack(const std::string &s){
     return tags;
 }
 
-double probability(const std::string &rule, const std::vector<std::string> &tags, 
+double probability(double p_rule, const std::vector<std::string> &tags,
                     const std::vector<int> &terminals){
     
-    double p = rules[rule];
-    
+    double p = p_rule;
+//    cout << p_rule << endl;
     for (int i=0; i<tags.size(); i++){
         std::string tag = tags[i];
         int word_index = terminals[i];
         p *= tag_dicts[tag][word_index].p;
     }
-    
+//    cout << "end probability" << endl;
     return p;
 }
 
@@ -172,9 +177,10 @@ void load_grammar(){
     
     while (std::getline(fs, line)){
         std::vector<std::string> fields = split(line, '\t');
-        std::string rule = fields[0];
-        double p = atof(fields[1].c_str());
-        rules[rule] = p;
+        Rule rule;
+        rule.str = fields[0];  // string
+        rule.p = atof(fields[1].c_str());  // probability
+        rules.push_back(rule);
     }
     fs.close();
 
@@ -219,7 +225,7 @@ bool compare(std::pair<std::string, double> a, std::pair<std::string, double> b)
 /**
  * Returns the *approximate* probabilities of the least and most probable guesses.
  */
-double* prob_bounds(){
+/*double* prob_bounds(){
     std::vector<std::pair<std::string, double>> vec(rules.begin(), rules.end());
     std::sort(vec.begin(), vec.end(), &compare);
     
@@ -242,7 +248,7 @@ double* prob_bounds(){
     bounds[1] = max_p;
     
     return bounds;
-}
+}*/
 
 bool operator<( const Guess& a, const Guess& b ) {
     return a.p < b.p;
@@ -251,29 +257,45 @@ bool operator<( const Guess& a, const Guess& b ) {
 
 int run(bool mangle, double limit, int min_length, double min_prob){
 
-    priority_queue<Guess, vector<Guess>, less<vector<Guess>::value_type> > queue;
+    priority_queue<Guess, vector<Guess>, less<vector<Guess>::value_type>> queue;
 
     // Initialize queue with the most probable guess of each rule
-    for (auto kv : rules) {
-        std::string r = kv.first;
-
-        std::vector<std::string> tags = unpack(r);
+//for (auto kv : rules) {
+    for (std::vector<Rule>::iterator it = rules.begin(); it != rules.end(); ++it){
+    	Rule * rule = &(*it);
         
+        std::vector<std::string> tags = unpack(rule->str);
+
         std::vector<int> terminals;
         for (int i=0; i<tags.size(); i++){
             terminals.push_back(0);
         }
         
         Guess g;
-        g.p = probability(r, tags, terminals);
+        g.p = probability(rule->p, tags, terminals);
         g.terminals = terminals;
         g.pivot = 0;
-        g.rule = r;
+        g.rule = rule;
         
         // only enqueue guesses with probability higher than threshold
         if (g.p >= min_prob)
         	queue.push(g);
     }
+
+/*    while (!queue.empty()){
+           Guess curr_guess = queue.top();
+           queue.pop();
+    	Rule r = *curr_guess.rule;
+    	cout << r.str << endl;
+    	cout << r.p << endl;
+    }
+    return 0;*/
+    /*cout << "passou" << endl;
+    Rule r = *queue.top().rule;
+    cout << "passou variable" << endl;
+    cout << r.str << endl;
+    cout << r.p << endl;
+    return 0;*/
 
     // output a snapshot of the queue for debug
 /*    while (!queue.empty()){
@@ -283,7 +305,6 @@ int run(bool mangle, double limit, int min_length, double min_prob){
     }
     return 0;
 */
-
     long long nguesses = 0;
     Guess curr_guess;
     std::string guess_string;
@@ -293,7 +314,7 @@ int run(bool mangle, double limit, int min_length, double min_prob){
         curr_guess = queue.top();
         queue.pop();
                 
-        std::vector<std::string> tags = unpack(curr_guess.rule);
+        std::vector<std::string> tags = unpack((*curr_guess.rule).str);
         
         std::vector<std::string> guesses;
         if (mangle) 
@@ -314,7 +335,7 @@ int run(bool mangle, double limit, int min_length, double min_prob){
                 cerr << "# of guesses: " << nguesses          << "\n"; 
                 cerr << "queue size: "   << (int)queue.size() << "\n";
             }
-                
+
             cout << guess_string << "\n"; // output guess
             //cout << curr_guess.p << "\n"; // output probability
             
@@ -329,6 +350,7 @@ int run(bool mangle, double limit, int min_length, double min_prob){
             }
         }  
         
+
         // enqueue lower probability guesses from the same rule of curr_guess
         for (int i=curr_guess.pivot; i<tags.size(); i++ ){
             std::string tag = tags[i];
@@ -338,7 +360,11 @@ int run(bool mangle, double limit, int min_length, double min_prob){
                 std::vector<int> new_terminals(curr_guess.terminals);
                 new_terminals[i]++;                
 
-                double new_p = probability(curr_guess.rule, tags, new_terminals);
+
+//                double new_p = probability((*curr_guess.rule).p, tags, new_terminals);
+                double new_p = probability((*curr_guess.rule).p, tags, new_terminals);
+
+
 
                 // do not enqueue guesses with probability lower than threshold
                 if (new_p < min_prob) continue;
@@ -351,7 +377,10 @@ int run(bool mangle, double limit, int min_length, double min_prob){
                 g.pivot = new_pivot;
                 g.rule = curr_guess.rule;
                 
-                queue.push(g);   
+
+                queue.push(g);
+
+
             }
         }
     }
