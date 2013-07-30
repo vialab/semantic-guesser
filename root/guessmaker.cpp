@@ -30,7 +30,7 @@ class Guess {
         unsigned pivot;
 };
 //testing
-std::set<std::string> gaps = {"number", "num+special", "special", "char", "all_mixed"};
+std::set<std::string> gaps = {"number", /*"num+special",*/ "special", "char"/*, "all_mixed"*/};
 std::unordered_map<std::string, double> rules;
 std::unordered_map<std::string, std::vector<Terminal>> tag_dicts;
 
@@ -129,13 +129,19 @@ std::vector<std::string> decode_guess(const Guess &guess, std::vector<std::strin
     return guesses;
 }
 
+bool is_gap(std::string str){
+    return (str.find("number") == 0)
+    || (str.find("special") == 0)
+    || (str.find("char") == 0);
+}
+
 std::vector<std::string> decode_guess_mangled(const Guess &guess, std::vector<std::string> &tags){
     std::vector<bool> gap_map;
     bool allgaps = true;
     for (int i=0; i<tags.size(); i++){
-        const bool is_gap = gaps.find(tags[i]) != gaps.end();  
-        gap_map.push_back(is_gap);
-        if (!is_gap) allgaps = false;
+        const bool is_gap_ = is_gap(tags[i]);
+        gap_map.push_back(is_gap_);
+        if (!is_gap_) allgaps = false;
     }
     
     // if it's all gaps, there's nothing to mangle
@@ -243,10 +249,11 @@ bool operator<( const Guess& a, const Guess& b ) {
 }
 
 
-int run(bool mangle, double limit, int min_length){
+int run(bool mangle, double limit, int min_length, double min_prob){
 
     priority_queue<Guess, vector<Guess>, less<vector<Guess>::value_type> > queue;
 
+    // Initialize queue with the most probable guess of each rule
     for (auto kv : rules) {
         std::string r = kv.first;
 
@@ -258,12 +265,14 @@ int run(bool mangle, double limit, int min_length){
         }
         
         Guess g;
-        g.terminals = terminals;
         g.p = probability(r, tags, terminals);
+        g.terminals = terminals;
         g.pivot = 0;
         g.rule = r;
         
-        queue.push(g);
+        // only enqueue guesses with probability higher than threshold
+        if (g.p >= min_prob)
+        	queue.push(g);
     }
 
     // output a snapshot of the queue for debug
@@ -275,24 +284,28 @@ int run(bool mangle, double limit, int min_length){
     return 0;
 */
 
-    int nguesses = 0;
+    long long nguesses = 0;
+    Guess curr_guess;
+    std::string guess_string;
 
+    // Generate (output) guesses in highest probability order
     while (!queue.empty()){
-        Guess curr = queue.top();
+        curr_guess = queue.top();
         queue.pop();
                 
-        std::vector<std::string> tags = unpack(curr.rule);
+        std::vector<std::string> tags = unpack(curr_guess.rule);
         
         std::vector<std::string> guesses;
         if (mangle) 
-            guesses = decode_guess_mangled(curr, tags);
+            guesses = decode_guess_mangled(curr_guess, tags);
         else
-            guesses = decode_guess(curr, tags);
+            guesses = decode_guess(curr_guess, tags);
             
         for (int i=0; i<guesses.size(); i++){
+        	guess_string = guesses[i];
             // TODO: if we want to make things faster, should not generate the
             // unwanted guesses in the first place.
-            if (guesses[i].length() < min_length)
+            if (guess_string.length() < min_length)
                 continue;
             
             nguesses++;
@@ -302,40 +315,50 @@ int run(bool mangle, double limit, int min_length){
                 cerr << "queue size: "   << (int)queue.size() << "\n";
             }
                 
-            cout << guesses[i] << "\n"; // output guess
-//            cout << curr.p << "\n"; // output probability
+            cout << guess_string << "\n"; // output guess
+            //cout << curr_guess.p << "\n"; // output probability
             
+            //cout << curr_guess.rule << "\n"; //output rule
+
+
             // exit when reach the limit of guesses
             if (nguesses == limit){
-                cerr << "Last guess: (" << guesses[i] << ", " << curr.p << ")\n";
-                
-                return 0;
+            	cerr << "Last guess: (" << guess_string << ", " << curr_guess.p << ")\n";
+            	cerr << nguesses << " guesses generated\n";
+            	return 0;
             }
         }  
         
-
-        for (int i=curr.pivot; i<tags.size(); i++ ){
+        // enqueue lower probability guesses from the same rule of curr_guess
+        for (int i=curr_guess.pivot; i<tags.size(); i++ ){
             std::string tag = tags[i];
-            int next_word_index = curr.terminals[i] + 1;
+            int next_word_index = curr_guess.terminals[i] + 1;
             
             if (next_word_index < tag_dicts[tag].size()){
-                std::vector<int> new_terminals(curr.terminals);
+                std::vector<int> new_terminals(curr_guess.terminals);
                 new_terminals[i]++;                
 
-                double new_p = probability(curr.rule, tags, new_terminals);
+                double new_p = probability(curr_guess.rule, tags, new_terminals);
+
+                // do not enqueue guesses with probability lower than threshold
+                if (new_p < min_prob) continue;
+
                 int new_pivot = i;
                 
                 Guess g;
                 g.terminals = new_terminals;
                 g.p = new_p;
                 g.pivot = new_pivot;
-                g.rule = curr.rule;
+                g.rule = curr_guess.rule;
                 
                 queue.push(g);   
             }
         }
     }
     
+    cerr << "Last guess: (" << guess_string << ", " << curr_guess.p << ")\n";
+    cerr << nguesses << " guesses generated\n";
+
     return 0;
 }
 
@@ -347,6 +370,7 @@ optparse::Values options(int argc, char *argv[]){
                                 .set_default(std::numeric_limits<double>::infinity());
     parser.add_option("-l", "--length").help("minimum length of the guesses").type("int")
                                 .set_default(0);
+    parser.add_option("-p", "--prob").type("double").help("sets a minimum guess probability threshold").set_default(0);
     
     return parser.parse_args(argc, argv);
 }
@@ -359,7 +383,7 @@ int main(int argc, char *argv[]) {
 //    double *bounds = prob_bounds();
 //    cout << bounds[0] << '\t' << bounds[1] << '\n';
     
-    return run(opts.get("mangle"), (double) opts.get("limit"), (int)opts.get("length"));
+    return run((bool)opts.get("mangle"), (double) opts.get("limit"), (int)opts.get("length"), (double)opts.get("prob"));
     
 
 }
