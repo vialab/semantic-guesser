@@ -29,9 +29,8 @@ typedef struct {
 
 class Guess {
     public:
-        double p;
         Rule * rule;
-        std::vector<int> terminals;
+        std::vector<std::vector<Terminal>::iterator> terminals;
         unsigned pivot;
 };
 //testing
@@ -82,51 +81,50 @@ std::vector<std::string> unpack(const std::string &s){
     return tags;
 }
 
-double probability(double p_rule, const std::vector<std::string> &tags,
-                    const std::vector<int> &terminals){
+double probability(double p_rule,
+		std::vector<std::vector<Terminal>::iterator> &terminals){
     
     double p = p_rule;
-//    cout << p_rule << endl;
-    for (int i=0; i<tags.size(); i++){
-        std::string tag = tags[i];
-        int word_index = terminals[i];
-        p *= tag_dicts[tag][word_index].p;
+
+    for (int i=0; i<terminals.size(); i++){
+    	p *= (*terminals[i]).p;
     }
-//    cout << "end probability" << endl;
     return p;
 }
 
-std::string mangle_guess(const Guess &guess, std::vector<std::string> &tags, const std::string &action, std::vector<bool> &gap_map){
-
-    std:stringstream guess_str;
-    for (int i=0; i<tags.size(); i++){
-        int word_index = guess.terminals[i];
-        std::string word = tag_dicts[tags[i]][word_index].word;
-        if (!gap_map[i]){
-            if (action=="upper")
-                std::transform(word.begin(), word.end(), word.begin(), ::toupper);
-            else if (action=="lower")
-                std::transform(word.begin(), word.end(), word.begin(), ::tolower);
-            else if (action=="title"){
-                std::transform(word.begin(), word.end(), word.begin(), ::tolower);
-                word[0] = toupper(word[0]);
-            }
-        }
-       guess_str << word;
-    }
-    
-    return guess_str.str();
+double probability(Guess g){
+    return probability(g.rule->p, g.terminals);
 }
 
-std::vector<std::string> decode_guess(const Guess &guess, std::vector<std::string> &tags){
+
+//std::string mangle_guess(const Guess &guess, std::vector<std::string> &tags, const std::string &action, std::vector<bool> &gap_map){
+//
+//    std:stringstream guess_str;
+//    for (int i=0; i<tags.size(); i++){
+//        int word_index = guess.terminals[i];
+//        std::string word = tag_dicts[tags[i]][word_index].word;
+//        if (!gap_map[i]){
+//            if (action=="upper")
+//                std::transform(word.begin(), word.end(), word.begin(), ::toupper);
+//            else if (action=="lower")
+//                std::transform(word.begin(), word.end(), word.begin(), ::tolower);
+//            else if (action=="title"){
+//                std::transform(word.begin(), word.end(), word.begin(), ::tolower);
+//                word[0] = toupper(word[0]);
+//            }
+//        }
+//       guess_str << word;
+//    }
+//
+//    return guess_str.str();
+//}
+
+std::vector<std::string> decode_guess(const Guess &guess){
 
     std::stringstream temp("");
                 
-    for (int i=0; i<tags.size(); i++){
-        std::string tag = tags[i];
-        int word_index = guess.terminals[i];
-        
-        temp << tag_dicts[tag][word_index].word;
+    for (int i=0; i < guess.terminals.size(); i++){
+        temp << (*guess.terminals[i]).word;
     }
     
     std::vector<std::string> guesses {temp.str()};
@@ -140,36 +138,36 @@ bool is_gap(std::string str){
     || (str.find("char") == 0);
 }
 
-std::vector<std::string> decode_guess_mangled(const Guess &guess, std::vector<std::string> &tags){
-    std::vector<bool> gap_map;
-    bool allgaps = true;
-    for (int i=0; i<tags.size(); i++){
-        const bool is_gap_ = is_gap(tags[i]);
-        gap_map.push_back(is_gap_);
-        if (!is_gap_) allgaps = false;
-    }
-    
-    // if it's all gaps, there's nothing to mangle
-    if (allgaps) return decode_guess(guess, tags); 
-    
-    std::vector<std::string> guesses;
-
-    guesses.push_back(mangle_guess(guess, tags, "lower", gap_map));
-    guesses.push_back(mangle_guess(guess, tags, "upper", gap_map));
-    guesses.push_back(mangle_guess(guess, tags, "title", gap_map));
-    
-    // if at least two tags are not gap, including the first
-    // makes a title guess, since the previous block will only make camel case
-    // e.g., alice2go -> Alice2go.
-    if (std::count(gap_map.begin(), gap_map.end(), false) > 1 && !gap_map[0]){
-        std::string temp(guesses[0]);
-        std::transform(temp.begin(), temp.end(), temp.begin(), ::tolower);
-        temp[0] = toupper(temp[0]);
-        guesses.push_back(temp);
-    }
-    
-    return guesses;
-}
+//std::vector<std::string> decode_guess_mangled(const Guess &guess, std::vector<std::string> &tags){
+//    std::vector<bool> gap_map;
+//    bool allgaps = true;
+//    for (int i=0; i<tags.size(); i++){
+//        const bool is_gap_ = is_gap(tags[i]);
+//        gap_map.push_back(is_gap_);
+//        if (!is_gap_) allgaps = false;
+//    }
+//
+//    // if it's all gaps, there's nothing to mangle
+//    if (allgaps) return decode_guess(guess, tags);
+//
+//    std::vector<std::string> guesses;
+//
+//    guesses.push_back(mangle_guess(guess, tags, "lower", gap_map));
+//    guesses.push_back(mangle_guess(guess, tags, "upper", gap_map));
+//    guesses.push_back(mangle_guess(guess, tags, "title", gap_map));
+//
+//    // if at least two tags are not gap, including the first
+//    // makes a title guess, since the previous block will only make camel case
+//    // e.g., alice2go -> Alice2go.
+//    if (std::count(gap_map.begin(), gap_map.end(), false) > 1 && !gap_map[0]){
+//        std::string temp(guesses[0]);
+//        std::transform(temp.begin(), temp.end(), temp.begin(), ::tolower);
+//        temp[0] = toupper(temp[0]);
+//        guesses.push_back(temp);
+//    }
+//
+//    return guesses;
+//}
 
 void load_grammar(){
     std::ifstream fs("grammar/rules.txt");
@@ -218,9 +216,9 @@ void load_grammar(){
 /**
  * Used with std::sort to sort an array in decreasing order.
  */
-bool compare(std::pair<std::string, double> a, std::pair<std::string, double> b){
-    return a.second < b.second;
-}
+//bool compare(std::pair<std::string, double> a, std::pair<std::string, double> b){
+//    return a.second < b.second;
+//}
 
 /**
  * Returns the *approximate* probabilities of the least and most probable guesses.
@@ -251,7 +249,7 @@ bool compare(std::pair<std::string, double> a, std::pair<std::string, double> b)
 }*/
 
 bool operator<( const Guess& a, const Guess& b ) {
-    return a.p < b.p;
+    return probability(a) < probability(b);
 }
 
 
@@ -266,19 +264,18 @@ int run(bool mangle, double limit, int min_length, double min_prob){
         
         std::vector<std::string> tags = unpack(rule->str);
 
-        std::vector<int> terminals;
+        std::vector<std::vector<Terminal>::iterator> terminals;
         for (int i=0; i<tags.size(); i++){
-            terminals.push_back(0);
+            terminals.push_back(tag_dicts[tags[i]].begin());
         }
         
         Guess g;
-        g.p = probability(rule->p, tags, terminals);
         g.terminals = terminals;
         g.pivot = 0;
         g.rule = rule;
         
         // only enqueue guesses with probability higher than threshold
-        if (g.p >= min_prob)
+        if (probability(g) >= min_prob)
         	queue.push(g);
     }
 
@@ -314,13 +311,13 @@ int run(bool mangle, double limit, int min_length, double min_prob){
         curr_guess = queue.top();
         queue.pop();
                 
-        std::vector<std::string> tags = unpack((*curr_guess.rule).str);
+//        std::vector<std::string> tags = unpack((*curr_guess.rule).str);
         
         std::vector<std::string> guesses;
-        if (mangle) 
-            guesses = decode_guess_mangled(curr_guess, tags);
-        else
-            guesses = decode_guess(curr_guess, tags);
+//        if (mangle)
+//            guesses = decode_guess_mangled(curr_guess, tags);
+//        else
+            guesses = decode_guess(curr_guess);
             
         for (int i=0; i<guesses.size(); i++){
         	guess_string = guesses[i];
@@ -331,7 +328,7 @@ int run(bool mangle, double limit, int min_length, double min_prob){
             
             nguesses++;
                 
-            if (nguesses % 10000000 == 0){ // output status line
+            if (nguesses % 1000000 == 0){ // output status line
                 cerr << "# of guesses: " << nguesses          << "\n"; 
                 cerr << "queue size: "   << (int)queue.size() << "\n";
             }
@@ -344,27 +341,23 @@ int run(bool mangle, double limit, int min_length, double min_prob){
 
             // exit when reach the limit of guesses
             if (nguesses == limit){
-            	cerr << "Last guess: (" << guess_string << ", " << curr_guess.p << ")\n";
+            	cerr << "Last guess: (" << guess_string << ", " << probability(curr_guess) << ")\n";
             	cerr << nguesses << " guesses generated\n";
             	return 0;
             }
         }  
         
-
+        std::vector<std::string> tags = unpack(curr_guess.rule->str);
         // enqueue lower probability guesses from the same rule of curr_guess
         for (int i=curr_guess.pivot; i<tags.size(); i++ ){
             std::string tag = tags[i];
-            int next_word_index = curr_guess.terminals[i] + 1;
             
-            if (next_word_index < tag_dicts[tag].size()){
-                std::vector<int> new_terminals(curr_guess.terminals);
-                new_terminals[i]++;                
+            std::vector<std::vector<Terminal>::iterator> new_terminals(curr_guess.terminals);
+            ++new_terminals[i];
 
-
+            if (new_terminals[i] != tag_dicts[tag].end()){
 //                double new_p = probability((*curr_guess.rule).p, tags, new_terminals);
-                double new_p = probability((*curr_guess.rule).p, tags, new_terminals);
-
-
+                double new_p = probability((*curr_guess.rule).p, new_terminals);
 
                 // do not enqueue guesses with probability lower than threshold
                 if (new_p < min_prob) continue;
@@ -373,7 +366,6 @@ int run(bool mangle, double limit, int min_length, double min_prob){
                 
                 Guess g;
                 g.terminals = new_terminals;
-                g.p = new_p;
                 g.pivot = new_pivot;
                 g.rule = curr_guess.rule;
                 
@@ -385,7 +377,7 @@ int run(bool mangle, double limit, int min_length, double min_prob){
         }
     }
     
-    cerr << "Last guess: (" << guess_string << ", " << curr_guess.p << ")\n";
+    cerr << "Last guess: (" << guess_string << ", " << probability(curr_guess) << ")\n";
     cerr << nguesses << " guesses generated\n";
 
     return 0;
