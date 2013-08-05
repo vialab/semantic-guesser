@@ -96,6 +96,19 @@ def transform(seg_candidates, dictionary):
             
     return result
 
+def probability(base_struct, tags, segmentation):
+    p = base_structures[base_struct]
+    
+    for i, tag in enumerate(tags):
+        p_t = None  # terminal probability
+        # finds the terminal probability
+        for terminal in tag_dicts[tag]:
+            if terminal[0] == segmentation[i]:
+                p_t = terminal[1]
+
+        p *= p_t
+    
+    return p
 
 def is_guessable(pattern, segments):
     answer = True
@@ -171,11 +184,11 @@ def main(base_structures, tag_dicts, file):
                 guessable_count += 1 
                 break
         
-        print "{}\t{}\t{}".format(password, pattern, guessable)    
+        print "{}\t{}\t{}".format(password, pattern, guessable, probability(pattern, guesser.unpack(pattern), s))    
 #         print "{}\t{}".format(password, guessable)
         
         i += 1
-        if i >= 1000: break
+#        if i >= 1000: break
         
     
     # print # of guessable passwords
