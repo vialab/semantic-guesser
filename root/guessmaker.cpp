@@ -258,7 +258,6 @@ int run(bool mangle, double limit, int min_length, double min_prob){
     priority_queue<Guess, vector<Guess>, less<vector<Guess>::value_type>> queue;
 
     // Initialize queue with the most probable guess of each rule
-//for (auto kv : rules) {
     for (std::vector<Rule>::iterator it = rules.begin(); it != rules.end(); ++it){
     	Rule * rule = &(*it);
         
@@ -278,6 +277,8 @@ int run(bool mangle, double limit, int min_length, double min_prob){
         if (probability(g) >= min_prob)
         	queue.push(g);
     }
+
+
 
 /*    while (!queue.empty()){
            Guess curr_guess = queue.top();
@@ -312,7 +313,7 @@ int run(bool mangle, double limit, int min_length, double min_prob){
         queue.pop();
                 
 //        std::vector<std::string> tags = unpack((*curr_guess.rule).str);
-        
+
         std::vector<std::string> guesses;
 //        if (mangle)
 //            guesses = decode_guess_mangled(curr_guess, tags);
