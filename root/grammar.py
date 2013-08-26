@@ -10,7 +10,6 @@ It's based on Weir (2009)*.
 Created on Apr 18, 2013
 
 """
-from database import Fragment
 
 __author__ = 'rafa'
 
@@ -57,23 +56,14 @@ class DictionaryTag:
            202: 'special',
            203: 'char',
            204: 'all_mixed'}
-    
-    _gaps = None
-    
+
     @classmethod
     def get(cls, id):
         return DictionaryTag.map[id] if id in DictionaryTag.map else None
     
     @classmethod
     def gaps(cls):
-        if not DictionaryTag._gaps:
-            DictionaryTag._gaps = [ v for k, v in DictionaryTag.map.items() if DictionaryTag.is_gap(k)]
-    
-        return DictionaryTag._gaps
-    
-    @classmethod
-    def is_gap(cls, id):
-        return id > 90
+        return [ v for k, v in DictionaryTag.map.items() if k > 90]
 
 
 def generalize(synset):
@@ -103,14 +93,10 @@ def generalize(synset):
 def is_leaf(synset):
     return not bool(synset.hyponyms())
 
-def refine_gap(segment):
-    return DictionaryTag.map[segment.dictset_id] + str(len(segment.word))
 
 def classify(segment):
 
-    if DictionaryTag.is_gap(segment.dictset_id):
-        tag = refine_gap(segment)
-    elif segment.pos in ['NP', None] and segment.dictset_id in DictionaryTag.map:
+    if segment.pos in ['NP', None] and segment.dictset_id in DictionaryTag.map:
         tag = DictionaryTag.map[segment.dictset_id]
     else:
         synset = semantics.synset(segment.word, segment.pos)
@@ -144,34 +130,6 @@ def sample(db):
             else:
                 synset = None
             print "{}\t{}\t{}\t{}".format(s.password, s.word, tag, synset)
-
-
-def expand_gaps(segments):
-    temp = []
-    
-    for s in segments:
-        if s.dictset_id == 204 or s.dictset_id == 201:
-            temp += segment_gaps(s.word)
-        else:
-            temp.append(s)
-    
-    return temp
-             
-def segment_gaps(pwd):
-    regex = r'\d+|[a-zA-Z]+|[^a-zA-Z0-9]+'
-    segments = re.findall(regex, pwd)
-    segmented = []
-    for s in segments:
-        if s[0].isalpha():
-            f = Fragment(0, 203, s)
-        elif s[0].isdigit():
-            f = Fragment(0, 200, s)
-        else:
-            f = Fragment(0, 202, s) 
-        
-        segmented.append(f)
-    
-    return segmented    
         
 
 def main(db):
@@ -187,8 +145,6 @@ def main(db):
 #         password = ''.join([s.word for s in segments])
         tags     = [] 
 
-        segments = expand_gaps(segments)
-        
         for s in segments:  # semantic tags
             tag = classify(s)
             tags.append(tag)
@@ -226,7 +182,6 @@ def main(db):
 if __name__ == '__main__':
     try:
         with Timer('grammar generation'):
-#             db = PwdDb(sample=1000, random=True)
             db = PwdDb()
             try:
                 main(db)
