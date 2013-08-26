@@ -17,6 +17,22 @@ import util
 base_structures = dict()
 tag_dicts = dict()
 
+# class Terminal:
+#     def __init__(self, word, p):
+#         self.word = word
+#         self.p = p
+# 
+#     def __eq__(self, other):
+#         if isinstance(other, self.__class__):
+#             return self.word == other.word
+#         else:
+#             return False
+#     
+#     def __ne__(self, other):
+#         return not self.__eq__(other)
+#     
+#     def __gt__(self, other):
+#         return self.word > other.word
 
 def options():
     parser = argparse.ArgumentParser()
@@ -65,7 +81,7 @@ def processGaps(db, segmentation, password):
         if (len(password) > lastEndIndex):
                 segmentation = addInTheGapsHelper(db, segmentation, i, password, lastEndIndex, len(password))
     except :
-        print ("Warning: caught unknown error in addTheGaps -- resultSet=", resultSet, "password", password)
+        print ("Warning: caught unknown error in addTheGaps -- resultSet=", segmentation, "password", password)
 
     return segmentation
 
@@ -96,18 +112,23 @@ def transform(seg_candidates, dictionary):
             
     return result
 
-def probability(base_struct, tags, segmentation):
-    p = base_structures[base_struct]
+def probability(base_struct, segmentation):
+    if base_struct in base_structures:
+        p = base_structures[base_struct]
+    else:
+        return 0
+    
+    tags = guesser.unpack(base_struct)
     
     for i, tag in enumerate(tags):
-        p_t = None  # terminal probability
-        # finds the terminal probability
-        for terminal in tag_dicts[tag]:
-            if terminal[0] == segmentation[i]:
-                p_t = terminal[1]
-
-        p *= p_t
-    
+        word = segmentation[i].word
+        terminals = tag_dicts[tag]
+         
+        if word in terminals:
+            p *= terminals[word]
+        else:
+            return 0
+        
     return p
 
 def is_guessable(pattern, segments):
@@ -115,6 +136,7 @@ def is_guessable(pattern, segments):
     if pattern in base_structures:
         tags = guesser.unpack(pattern)
         for i, segment in enumerate(segments):
+            # if segment.word in not among the words of the tag 
             if segment.word not in tag_dicts[tags[i]]:
                 answer = False
                 break
@@ -143,14 +165,23 @@ def load_grammar(base_structures, tag_dicts):
         
         with open(os.path.join(tagdicts_dir, fname)) as f:
             tag = fname.replace('.txt', '')
-            words = []
+            words = dict()
             for line in f:
                 fields = line.split('\t')
                 try:
-                    words.append(fields[0])
+                    words[fields[0]] = float(fields[1])
                 except:
                     sys.stderr.write("error inserting {} in the tag dictionary {}\n".format(fields, tag))
+                
             tag_dicts[tag] = words 
+
+def pos_tag(tagger, fragments):
+    tags = tagger.tag([ f.word for f in fragments if f.dictset_id <= 90])
+    for j in range(len(fragments)):
+        if fragments[j].dictset_id > 90:
+            fragments[j].pos = None
+        else:
+            fragments[j].pos = tags.pop(0)[1]
 
 def main(base_structures, tag_dicts, file):
     db = parser.connectToDb()
@@ -167,25 +198,27 @@ def main(base_structures, tag_dicts, file):
         
         segmentations = segment(password, dictionary, db)
         
-        guessable = False
-
-        for s in segmentations:
-            tags = pos_tagger.tag([ f.word for f in s if f.dictset_id <= 90])
-            for j in range(len(s)):
-                if s[j].dictset_id > 90:
-                    s[j].pos = None
-                else:
-                    s[j].pos = tags.pop(0)[1]
-            
-            pattern = grammar.pattern(s)
-            guessable = is_guessable(pattern, s)
-            
-            if guessable:
-                guessable_count += 1 
-                break
+        most_probable_seg = (None, 0)  # most probable rule that generates the password in the grammar -> (base_struct, probability)
         
-        print "{}\t{}\t{}".format(password, pattern, guessable, probability(pattern, guesser.unpack(pattern), s))    
-#         print "{}\t{}".format(password, guessable)
+        for s in segmentations:
+            pos_tag(pos_tagger, s)
+            
+            base_struct = grammar.pattern(s)
+            
+            if base_struct in base_structures and base_structures[base_struct] < most_probable_seg[1]:
+                continue
+            
+            p = probability(base_struct, s)
+            
+            if p > most_probable_seg[1]:
+                most_probable_seg = (base_struct, p)
+        
+        guessable = most_probable_seg[0] is not None
+                
+        if guessable:
+            guessable_count += 1 
+        
+        print "{}\t{}\t{}".format(password, most_probable_seg[1], most_probable_seg[0] if most_probable_seg[0] else "")
         
         i += 1
 #        if i >= 1000: break
