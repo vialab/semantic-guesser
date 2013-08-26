@@ -5,6 +5,11 @@
 
 .pydevproject
 
+.project
+.cproject
+
+root/guessmaker
+
 *.csv
 results/*.txt
 results/cut/
