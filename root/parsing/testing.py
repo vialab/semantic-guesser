@@ -27,7 +27,7 @@
 
 
 from testWordMiner import *
-from testMinerCache import *
+from cache import *
 from testMinerQueries import *
 
 if __name__ == '__main__':

@@ -2,16 +2,13 @@
 
 from argparse import ArgumentParser
 from custom_exceptions import AllowedTimeExceededError
-from operator import itemgetter, attrgetter
-from optparse import OptionParser
-from testMinerCache import *
-from testMinerQueries import *
+from cache import *
+from queries import *
 from utils import *
 import argparse
 import os
 import oursql
 import re
-import sys
 import time
 import timer
 
@@ -33,8 +30,10 @@ def fileLength(fname, fcode='utf-8'):
 
 def connectToDb():
     '''Contains the connection string to the database, and returns the connection object.'''
-    return oursql.connect(host='localhost', user='root', passwd='root', db='passwords', raise_on_warnings=False, charset='utf8', use_unicode=True, port=3306)
-    # return oursql.connect(unix_socket='/var/lib/mysql/mysql.sock', user='root', passwd='vialab', db='newtest', charset='utf8', use_unicode=True)
+    return oursql.connect(host='localhost', user='root', passwd='root', db='passwords',
+                          raise_on_warnings=False, charset='utf8', use_unicode=True, port=3306)
+    # return oursql.connect(unix_socket='/var/lib/mysql/mysql.sock', user='root',
+    # passwd='vialab', db='newtest', charset='utf8', use_unicode=True)
     
     
 def makeSearchingDict(words):
@@ -592,7 +591,7 @@ def sqlMine(dbe, options, dictSetIds):
 
     currTime = time.time()    # always wall time.
 
-    lastResult = (None, None) # (password, result)
+    lastResult = (None, None)  # (password, result)
 
     wbuff = WriteBuffer(dbe, dictionary, 100000)
     for p in rbuff:
@@ -634,14 +633,14 @@ def sqlMine(dbe, options, dictSetIds):
     print ("pwcount=", pwcount, "rbuff._count=", rbuff._count)
 
 
-def main(options):
-    '''I'm main.'''
+def main(opts):
+    """I'm main."""
     global dict_sets
     db = connectToDb()
-    sqlMine(db, options, dict_sets)
+    sqlMine(db, opts, dict_sets)
 
 
-def cliOptions():
+def cli_options():
     parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--erase', action='store_true', help='erase dynamic dictionaries')
     parser.add_argument('-r', '--reset', action='store_true', help='reset results (truncates tables set and set_contains)')
@@ -654,7 +653,5 @@ def cliOptions():
     return parser.parse_args()
      
 if __name__ == '__main__':
-    options = cliOptions()
+    options = cli_options()
     main(options)
-    
-    

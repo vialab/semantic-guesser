@@ -1,5 +1,5 @@
 import oursql
-from testMinerQueries import *
+from queries import *
 
 class pwReadCache(object):
     '''A class to cache/buffer the SQL reads from the database, to speed up the process.'''

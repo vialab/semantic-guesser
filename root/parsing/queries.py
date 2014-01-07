@@ -1,5 +1,5 @@
 from oursql import CollatedWarningsError
-from dictionaryTrie import Trie
+from dictionary_trie import Trie
 from utils import *
 
 NUM_DICT_ID    = 200
