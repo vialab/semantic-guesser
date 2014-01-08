@@ -357,12 +357,15 @@ def lastPassword():
 
 
 def clearResults(dbe):
-    query = """truncate table sets;
-       ALTER TABLE sets AUTO_INCREMENT=1;
-       truncate table set_contains;
-       ALTER TABLE set_contains AUTO_INCREMENT=1;"""
+#     query = """truncate table sets;
+# ALTER TABLE sets AUTO_INCREMENT=1;
+# truncate table set_contains;
+# ALTER TABLE set_contains AUTO_INCREMENT=1;"""
     with dbe.cursor() as cursor:
-        cursor.execute(query)
+        cursor.execute("TRUNCATE table sets;")
+        cursor.execute("ALTER TABLE sets AUTO_INCREMENT=1;")
+        cursor.execute("TRUNCATE table set_contains;")
+        cursor.execute("ALTER TABLE set_contains AUTO_INCREMENT=1;")
         
 
 def currentdir():
@@ -376,24 +379,27 @@ def between(x, y, z):
     else:
         return False
 
+# Compiled regular expressions
+reg_isint = re.compile("^[\d]+$")
+reg_isNumAndSCChunk = re.compile("^[\W0-9_]+$")
+reg_isSCChunk = re.compile("^[\W_]+$")
+reg_isCharChunk = re.compile("^[a-zA-Z]+$")
+
+
 def isInt(s):
-    reg = re.compile("^[\d]+$")
-    return bool(reg.match(s))
-      
-            
+    return bool(reg_isint.match(s))
+
+
 def isNumAndSCChunk(s):
-    reg = re.compile("^[\W0-9_]+$")
-    return bool(reg.match(s))
-    
-    
+    return bool(reg_isNumAndSCChunk.match(s))
+
+
 def isSCChunk(s):
-    reg = re.compile("^[\W_]+$")
-    return bool(reg.match(s))
+    return bool(reg_isSCChunk.match(s))
 
 
 def isCharChunk(s):
-    reg = re.compile("^[a-zA-Z]+$")
-    return bool(reg.match(s))
+    return bool(reg_isCharChunk.match(s))
 
 
 def reduceSubwords_v0_1(pwres):
@@ -422,7 +428,7 @@ def reduceSubwords_v0_1(pwres):
     return newPwres
 
 
-def tagChunk (s):
+def tagChunk(s):
     if isInt(s):
         dynDictionaryID = NUM_DICT_ID
     elif isCharChunk(s):
@@ -516,11 +522,11 @@ def mineLine(db, password, dictionary, freqInfo):
 
         candidates = generateCandidates(words, password)
 #         print candidates
-        resultSet  = bestCandidate(password, candidates, freqInfo, dictionary)
+        resultSet = bestCandidate(password, candidates, freqInfo, dictionary)
 #         print resultSet
 
         # add the trashy fragments in the database    
-        resultSet  = processGaps(db, resultSet, password)
+        resultSet = processGaps(db, resultSet, password)
 
     return resultSet
 
@@ -597,9 +603,9 @@ def sqlMine(dbe, options, dictSetIds):
     for p in rbuff:
         pwcount += 1
         if len(p[1]) == 0: 
-            continue # skipping empty password
+            continue  # skipping empty password
         if p[1].strip(" ") == '': 
-            continue # skipping whitespace password
+            continue  # skipping whitespace password
         
         pass_id = p[0]
         currPass = p[1]
