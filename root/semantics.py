@@ -1,6 +1,7 @@
 """
-This script outputs a tree in JSON format representing the
-hypernym paths of all verbs/nouns/etc. tagged in the db.
+This module contains functions for semantic classification of password fragments.
+The main function classifies a sample and outputs the WordNet hierarchy with the nodes
+containing the frequency in the sample, in JSON format.
 
 @author: Rafa
 """
@@ -20,7 +21,7 @@ tag_converter = TagsetConverter()
 
 def synset(word, pos):
     """Given a POS-tagged word, determines its synset by
-    converting the Brown tag to WordNet tag and querying
+    converting the CLAWS tag to WordNet tag and querying
     the associated synset from WordNet.
 
     If more than one synset is retrieved, return the first,
@@ -30,7 +31,7 @@ def synset(word, pos):
     If the fragment has no POS tag or no synset is found in
     WordNet for the POS tag, None is returned.
 
-    - pos: a part-of-speech tag from the Brown tagset
+    - pos: a part-of-speech tag from the CLAWS7 tagset
 
     """
     if pos is None:
@@ -152,7 +153,8 @@ def main(pos, size, file_):
     return 0
     
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Performs semantic classification on a sample and outputs its synsets "
+                                                 "tree in JSON, containing frequency info.")
     parser.add_argument('pos', help='part-of-speech of the semantic tree. n (noun) or v (verb)')
     parser.add_argument('file', help='complete path of the output file')
     parser.add_argument('-s', '--size', type=int, default=None,

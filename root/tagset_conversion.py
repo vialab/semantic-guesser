@@ -1,10 +1,8 @@
-'''
+"""
 Created on Feb 24, 2012
 
 @author: 100457636
-'''
-from string import lower
-
+"""
 
 class TagsetConverter(): 
 
@@ -361,6 +359,23 @@ class TagsetConverter():
         elif l in ('b', 'v', 'h') or ll == 'do':
             return 'v'
         elif l in ('r') or ll == 'wr':
+            return 'r'
+        elif l == 'j':
+            return 'a'
+        else:
+            return None
+
+    def clawsToWordNet(self, tag):
+        tag = tag.lower()
+        l = tag[0]  # first letter
+        ll = tag[:2]  # two first letters
+        if ll == 'np':
+            return None
+        elif l == 'n':
+            return 'n'
+        elif l == 'v':
+            return 'v'
+        elif l == 'r':
             return 'r'
         elif l == 'j':
             return 'a'

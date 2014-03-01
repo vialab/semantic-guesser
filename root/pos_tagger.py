@@ -1,8 +1,10 @@
+#!/usr/bin/env python
+
 from database import PwdDb
-from nltk.corpus import brown
 from nltk.tag.sequential import DefaultTagger, BigramTagger, TrigramTagger, SequentialBackoffTagger
 from nltk.probability import FreqDist
 from taggers import COCATagger, NamesTagger, WordNetTagger
+import cPickle as pickle
 import sys
 import traceback
 from timer import Timer
@@ -15,9 +17,12 @@ class BackoffTagger(SequentialBackoffTagger):
         SequentialBackoffTagger.__init__(self, *args, **kwargs)
         self.dist = FreqDist()
         
-        train_sents = brown.tagged_sents();
-    
-        default_tagger = DefaultTagger('NN')
+#       train_sents = brown.tagged_sents()
+        train_sents = pickle.load(open("pickles/brown_clawstags.pickle"))
+        # make sure all tuples are in the required format: (TAG, word)
+        train_sents = [[t for t in sentence if len(t) == 2] for sentence in train_sents]
+
+        default_tagger = DefaultTagger('nn')
         wn_tagger      = WordNetTagger(default_tagger)
         names_tagger   = NamesTagger(wn_tagger)
         coca_tagger    = COCATagger(names_tagger)
@@ -38,7 +43,7 @@ class BackoffTagger(SequentialBackoffTagger):
         return tag 
 
 
-def main(sample, dryrun, stats):
+def main(sample, dryrun, stats, verbose):
     """ Tags the dataset by POS and sentiment at
         the same time """    
     
@@ -49,12 +54,12 @@ def main(sample, dryrun, stats):
     
     with Timer("POS tagging"):
         db = PwdDb(sample=sample)
-        total  = db.sets_size 
+        total = db.sets_size
         
         print "Connected to database, tagging..."
         
-        while (db.hasNext()):
-            pwd = db.nextPwd() # list of segments
+        while db.hasNext():
+            pwd = db.nextPwd()  # list of segments
             counter += 1
             # filters segments that are not dictionary words
             pwd = [f for f in pwd if f.dictset_id <= 90]
@@ -67,16 +72,18 @@ def main(sample, dryrun, stats):
                 f.pos = pos
                 if not dryrun:
                     db.save(f, True)
-            
+                if verbose:
+                    print "{}\t{}\t{}".format(f.password, f.word, f.pos)
+
             if counter % 100000 == 0:
-                print "{} passwords processed. {}% completed...".format(counter, (float(counter)/total)*100 )
+                print "{} passwords processed. {}% completed...".format(counter, (float(counter)/total)*100)
         
         db.finish()
         
         if stats:
             print "\nFrequency distribution of results by tagger\n"
             for k, v in pos_tagger.dist.items():
-                print "{}\t{}".format(k,v)
+                print "{}\t{}".format(k, v)
     
 
 def options():
@@ -84,6 +91,7 @@ def options():
     parser.add_argument('-s', '--sample', default=None, type=int, help="sample size")
     parser.add_argument('-d', '--dryrun', action='store_true', help="no commits to the database")
     parser.add_argument('-t', '--stats', action='store_true', help="output stats in the end")
+    parser.add_argument('-v', '--verbose', action='store_true', help="output the pos tags of each password")
     
     return parser.parse_args()
  
@@ -91,7 +99,7 @@ def options():
 if __name__ == "__main__":
     opts = options()
     try:
-        main(opts.sample, opts.dryrun, opts.stats)
+        main(opts.sample, opts.dryrun, opts.stats, opts.verbose)
     except:
         e = sys.exc_info()[0]
         traceback.print_exc()

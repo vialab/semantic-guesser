@@ -22,6 +22,7 @@ import traceback
 from nltk.probability import FreqDist, ConditionalFreqDist
 from timer import Timer
 import re
+import argparse
 
 #-----------------------------------------
 # Initializing module variables
@@ -103,18 +104,21 @@ def generalize(synset):
 def is_leaf(synset):
     return not bool(synset.hyponyms())
 
+
 def refine_gap(segment):
     return DictionaryTag.map[segment.dictset_id] + str(len(segment.word))
+
 
 def classify(segment):
 
     if DictionaryTag.is_gap(segment.dictset_id):
         tag = refine_gap(segment)
-    elif segment.pos in ['NP', None] and segment.dictset_id in DictionaryTag.map:
+    elif segment.pos in ['np', 'np1', 'np2', None] and segment.dictset_id in DictionaryTag.map:
         tag = DictionaryTag.map[segment.dictset_id]
     else:
         synset = semantics.synset(segment.word, segment.pos)
-        if synset is not None:
+        # only tries to generalize verbs and nouns
+        if synset is not None and synset.pos in ['v', 'n']:
             # TODO: sometimes generalize is returning None. #fixit 
             tag = '{}_{}'.format(segment.pos, generalize(synset)) 
         else:
@@ -147,6 +151,12 @@ def sample(db):
 
 
 def expand_gaps(segments):
+    """
+    If the password has segments of the type "MIXED_ALL" or "MIXED_NUM_SC",
+    break them into "alpha", "digit" and "symbol" segments.
+    This function provides more resolution in the treatment of non-word segments.
+    This should be done in the parsing phase, so this is more of a quick fix.
+    """
     temp = []
     
     for s in segments:
@@ -156,8 +166,12 @@ def expand_gaps(segments):
             temp.append(s)
     
     return temp
-             
+
+
 def segment_gaps(pwd):
+    """
+    Segments a string into alpha, digit and "symbol" fragments.
+    """
     regex = r'\d+|[a-zA-Z]+|[^a-zA-Z0-9]+'
     segments = re.findall(regex, pwd)
     segmented = []
@@ -175,7 +189,7 @@ def segment_gaps(pwd):
         
 
 def main(db):
-#     tags_file = open('grammar/debug.txt', 'w+')
+    tags_file = open('grammar/debug.txt', 'w+')
     
     patterns_dist = FreqDist()  # distribution of patterns
     segments_dist = ConditionalFreqDist()  # distribution of segments, grouped by semantic tag
@@ -184,8 +198,8 @@ def main(db):
     
     while db.hasNext():
         segments = db.nextPwd()
-#         password = ''.join([s.word for s in segments])
-        tags     = [] 
+        password = ''.join([s.word for s in segments])
+        tags = []
 
         segments = expand_gaps(segments)
         
@@ -198,9 +212,9 @@ def main(db):
         
         patterns_dist.inc(pattern)
         
-        # outputs the classification results for debug purposes
-#         for i in range(len(segments)):
-#             tags_file.write("{}\t{}\t{}\t{}\n".format(password, segments[i].word, tags[i], pattern))
+        # outputs the classification results for debugging purposes
+        for i in range(len(segments)):
+            tags_file.write("{}\t{}\t{}\t{}\n".format(password, segments[i].word, tags[i], pattern))
 
         counter += 1
         if counter % 100000 == 0:
@@ -217,17 +231,25 @@ def main(db):
     for tag in segments_dist.keys():
         total = segments_dist[tag].N()
         with open('grammar/seg_dist/'+tag+'.txt', 'w+') as f:
-            for k, v  in segments_dist[tag].items():
+            for k, v in segments_dist[tag].items():
                 f.write("{}\t{}\n".format(k, float(v)/total))
 
+
+def options():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--sample', default=None, type=int, help="Sample size")
+    parser.add_argument('-d', '--dryrun', action='store_true', help="Does not override the grammar folder. "
+                                                                    "Enables the verbose mode.")
+
+    return parser.parse_args()
 
 
 # TODO: Option for online version (calculation of everything on the fly) and from db
 if __name__ == '__main__':
     try:
         with Timer('grammar generation'):
-#             db = PwdDb(sample=1000, random=True)
-            db = PwdDb()
+            db = PwdDb(sample=10000, random=True)
+            # db = PwdDb()
             try:
                 main(db)
 #                sample(db)
@@ -238,5 +260,3 @@ if __name__ == '__main__':
         e = sys.exc_info()[0]
         traceback.print_exc()
         sys.exit(1)
-    
-    

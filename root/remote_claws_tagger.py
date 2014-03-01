@@ -2,14 +2,13 @@
 
 import mechanize
 import cookielib
-import urllib
-import logging
-import sys
 from bs4 import BeautifulSoup
 from nltk.corpus import brown
 import cPickle as pickle
+import re
 
 CLAWS_WORD_LIMIT = 100000
+
 
 def browser():
     br = mechanize.Browser()
@@ -26,16 +25,35 @@ def browser():
     
     return br
 
+
 def parse(page):
     soup = BeautifulSoup(page)
     pre = soup.find('pre')
-    tagged_text = pre.string
+    raw_tagged_text = pre.string
 
-    tagged_sents = tagged_text.rstrip().lstrip().splitlines()  # ["i am fine", "you are fine"]
-    tagged_sents = [ s.split(' ') for s in tagged_sents]
-    tagged_sents = [ [tuple(word.split('_')) for word in s] for s in tagged_sents ]
+    # result comes "line-wrapped". Need to approximately recover the sentence structure.
+    raw_tagged_text = re.sub(r'([^(._.)]) \n', r'\1 ', raw_tagged_text)
+
+    raw_tagged_sents = raw_tagged_text.rstrip().lstrip().splitlines()  # ["i_MC1 am_RA fine_JJ ._.",
+                                                                       # "you_PPY are_VBR fine_JJ ._."]
+
+    sentences = []
+
+    for s in raw_tagged_sents:
+        sentence = []  # a well-formatted sentence
+        for pair in s.rstrip().split(' '):  # ['i_MC1', 'am_RA', 'fine_JJ', '._.']
+            try:
+                word, pos = tuple(pair.split('_'))
+            except ValueError:
+                continue
+            sentence.append((word, pos.lower()))
+        sentences.append(sentence)
+
+    # raw_tagged_sents = [s.rstrip().split(' ') for s in raw_tagged_sents]
+    # raw_tagged_sents = [[tuple(word.split('_')) for word in s] for s in raw_tagged_sents]
     
-    return tagged_sents
+    return sentences
+
 
 def tagtext(browser, text):
     browser.open('http://ucrel.lancs.ac.uk/claws/trial.html')
@@ -55,6 +73,7 @@ def tagtext(browser, text):
     
     return parse(response.read())
 
+
 def tag(sents):
     br = browser()
     
@@ -69,7 +88,7 @@ def tag(sents):
             buffer = ''
             word_count = 0
 
-        buffer += ' '.join(l) + '\n'
+        buffer += ' '.join(l) + ' \n'
         word_count += len(l)
      
     tagged_sents += tagtext(br, buffer)   
@@ -78,10 +97,9 @@ def tag(sents):
 
 
 # test
-brown_sents = brown.tagged_sents()
-brown_claws_tagged = tag([ [ t[0] for t in s]  for s in brown_sents])
-pickle.dump(brown_claws_tagged, open('/home/rafa/Desktop/brown_clawstags.pickle', 'w+'))
+#brown_sents = brown.tagged_sents()
+brown_sents = brown.sents()
+#brown_claws_tagged = tag([ [ t[0] for t in s]  for s in brown_sents])
+brown_claws_tagged = tag(brown_sents)
+pickle.dump(brown_claws_tagged, open('pickles/brown_clawstags.pickle', 'w+'))
 
-
-# tag('textual data rocks can you believe it?')
-# print tag(['textual data rocks can you believe it?'.split(' ')])

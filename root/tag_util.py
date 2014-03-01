@@ -1,10 +1,5 @@
 from nltk.tag import brill
 from nltk.probability import FreqDist, ConditionalFreqDist
-from nltk.tag.sequential import SequentialBackoffTagger, TrigramTagger,\
-    BigramTagger, UnigramTagger, DefaultTagger
-from root.taggers import COCATagger, NamesTagger, WordNetTagger
-from nltk.corpus import brown
-from nltk.model import NgramModel
 
 
 def backoff_tagger(train_sents, tagger_classes, backoff=None):
@@ -12,6 +7,7 @@ def backoff_tagger(train_sents, tagger_classes, backoff=None):
         backoff = cls(train_sents, backoff=backoff)
     
     return backoff
+
 
 def word_tag_model(words, tagged_words, limit=200):
     fd = FreqDist(words)
@@ -21,10 +17,11 @@ def word_tag_model(words, tagged_words, limit=200):
 
 patterns = [
     (r'^\d+$', 'CD'),
-    (r'.*ing$', 'VBG'), # gerunds, i.e. wondering
-    (r'.*ment$', 'NN'), # i.e. wonderment
-    (r'.*ful$', 'JJ') # i.e. wonderful
+    (r'.*ing$', 'VBG'),  # gerunds, i.e. wondering
+    (r'.*ment$', 'NN'),  # i.e. wonderment
+    (r'.*ful$', 'JJ')    # i.e. wonderful
 ]
+
 
 def train_brill_tagger(initial_tagger, train_sents, **kwargs):
     sym_bounds = [(1,1), (2,2), (1,2), (1,3)]
