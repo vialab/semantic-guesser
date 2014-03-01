@@ -6,6 +6,7 @@ from tagset_conversion import TagsetConverter
 from sentiwordnet import SentiWordNetCorpusReader, SentiSynset
 from nltk.corpus import wordnet as wn
 from nltk.stem import PorterStemmer
+import database
 from sets import Set
 
 class QuadgramTagger(NgramTagger):
@@ -16,53 +17,56 @@ class WordNetTagger(SequentialBackoffTagger):
     '''
     >>> wt = WordNetTagger()
     >>> wt.tag(['food', 'is', 'great'])
-    [('food', 'NN'), ('is', 'VB'), ('great', 'JJ')]
+    [('food', 'nn'), ('is', 'vv0'), ('great', 'jj')]
     '''
     def __init__(self, *args, **kwargs):
         SequentialBackoffTagger.__init__(self, *args, **kwargs)
-        
+
+        # maps wordnet tags to claws7 tags
         self.wordnet_tag_map = {
-            'n': 'NN',
-            's': 'JJ',
-            'a': 'JJ',
-            'r': 'RB',
-            'v': 'VB'
+            'n': 'nn',
+            's': 'jj',
+            'a': 'jj',
+            'r': 'rr',
+            'v': 'vv0'
         }
     
     def choose_tag(self, tokens, index, history):
         word = tokens[index]
-        if word is None :
+        if word is None:
             return None
         fd = FreqDist()
         
         for synset in wordnet.synsets(word):
             fd.inc(synset.pos)
-        try :
+        try:
             return self.wordnet_tag_map.get(fd.max())
-        except : # in case fd is empty
+        except:  # in case fd is empty
             return None
 
+
 class NamesTagger(SequentialBackoffTagger):
-    '''
-    >>> nt = NamesTagger()
-    >>> nt.tag(['Jacob'])
-    [('Jacob', 'NNP')]
-    '''
+    """
+        >>> nt = NamesTagger()
+        >>> nt.tag(['Jacob'])
+        [('Jacob', 'np')]
+    """
     def __init__(self, *args, **kwargs):
         SequentialBackoffTagger.__init__(self, *args, **kwargs)
-        self.name_set = set([n.lower() for n in names.words()])
-    
+        self.name_set = set(database.names())
+
     def choose_tag(self, tokens, index, history):
     
         word = tokens[index]
         
-        if word is None :
+        if word is None:
             return None
         
         if word.lower() in self.name_set:
-            return 'NP'
+            return 'np'
         else:
             return None
+
 
 class COCATagger(SequentialBackoffTagger):
     def __init__(self, *args, **kwargs):
@@ -74,36 +78,25 @@ class COCATagger(SequentialBackoffTagger):
             word = row[1]
             pos  = row[2]
             self.insertPair(word, pos, freq)
-            
-        self.tag_converter = TagsetConverter()
-    
+
     def insertPair(self, word, pos, freq):
         """ Appends a (pos,freq) tuple in the end of the list
         corresponding to a word. Since they're ranked in coca file
         it should result in an ordered list by frequency """
         map_ = self.tag_map
-        if ( word not in map_):    map_[word] = [(pos, freq)]
-        else: map_[word].append((pos,freq))
-            
+        if (word not in map_):
+            map_[word] = [(pos, freq)]
+        else:
+            map_[word].append((pos,freq))
             
     def choose_tag(self, tokens, index, history):
         word = tokens[index]
         if word in self.tag_map: 
             posfreq = self.tag_map[word][0]
-            return self.tag_converter.claws7ToBrown(posfreq[0])
+            #return self.tag_converter.claws7ToBrown(posfreq[0])
+            return posfreq[0]
         else:
             return None
-    
-    def getFrequency(self, word, tag):
-        pos_freq_pairs = self.tag_map[word]
-        for pair in pos_freq_pairs:
-            if len(tag)==1:
-                pos = self.tag_converter.brownToWordNet(pair[0])
-            else:
-                pos = pair[0]
-            if (pos==tag):
-                return pair[1]
-        return None
                 
                 
 class SentiWordnetTagger():

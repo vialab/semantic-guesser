@@ -1,4 +1,6 @@
 """
+Provides a class to read and write passwords and their attributes to the database,
+and functions to retrieve other information from the db, such as dictionary words.
 Created on Feb 24, 2012
 
 @author: Rafa
@@ -8,6 +10,20 @@ import MySQLdb.cursors
 import threading
 import query
 import random
+
+
+def connection():
+    return MySQLdb.connect(host="localhost",  # your host, usually localhost
+                 user="rafa",  # your username
+                 passwd="teamopasswords",  # your password
+                 db="passwords",
+                 cursorclass=MySQLdb.cursors.SSDictCursor)  # stores result in the server. records as dict
+
+
+def names():
+    cursor = connection().cursor()
+    cursor.execute(query.names)
+    return [row['dict_text'] for row in cursor.fetchall()]
 
 
 class PwdDb():
@@ -40,7 +56,7 @@ class PwdDb():
         self._init_save_cursor()
     
     def _init_read_cursor(self, offset, limit, random):
-        self.conn_read = self.connection()
+        self.conn_read = connection()
         self.readcursor = self.conn_read.cursor()
         
         # getting number of 'sets' (or segments) 
@@ -86,16 +102,10 @@ class PwdDb():
         return c.fetchone()['max']
 
     def _init_save_cursor(self):
-        self.conn_save = self.connection()
+        self.conn_save = connection()
         self.savecursor = self.conn_save.cursor()
         
-    def connection(self):
-        return MySQLdb.connect(host="localhost",  # your host, usually localhost
-                     user="root",  # your username
-                     passwd="root",  # your password
-                     db="passwords",
-                     cursorclass=MySQLdb.cursors.SSDictCursor)  # stores result in the server. records as dict
-    
+
     def nextPwd(self):
         if self.row is None:
             return None
@@ -121,13 +131,14 @@ class PwdDb():
     def save(self, wo, cache=False):
         if cache:
             self.savebuffer.append((wo.pos, wo.senti, wo.synsets, wo.id))
-            if len(self.save_buffer) >= self.cachelimit:
+            if len(self.savebuffer) >= self.savebuffer_size:
                 self.flush_save()
         else:
             self.savecursor.execute("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;", (wo.pos, wo.senti, wo.synsets, wo.id))
 
 #    def flush_save(self):
-#        print "updating {} records on the database...".format(len(self.savsave_buffer#        u = Updater("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;",
+#        print "updating {} records on the database...".format(len(self.savsave_buffer#
+#    u = Updater("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;",
 # self.savesave_bufferf.cachelimit, self.conn_save, self.savecursor)
 #        u.start()
     
@@ -205,4 +216,4 @@ class Fragment():
 #db.finish()
 #db = PwdDb()
 
-
+#print names()
