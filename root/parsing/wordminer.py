@@ -497,9 +497,9 @@ def processGaps(db, resultSet, password):
   
         
 def mineLine(db, password, dictionary, freqInfo):
-    '''Breaks a password in pieces, which can be words (present in the dictionaries) or sequences of
+    """Breaks a password in pieces, which can be words (present in the dictionaries) or sequences of
        numbers, symbols and characters that do not constitute a word.
-    '''
+    """
     
     # classifies password
     dynDictionaryID = tagChunk(password) 
@@ -507,7 +507,8 @@ def mineLine(db, password, dictionary, freqInfo):
     # if contains only numbers and/or symbols, or contains only one character, 
     # insert it into the dyn. dictionary and don't try to parse
     if (dynDictionaryID != MIXED_ALL_DICT_ID and dynDictionaryID != CHAR_DICT_ID) \
-        or (password.strip(password[0]) == '') :     
+        or (password.strip(password[0]) == ''):
+
         addToDynamicDictionary(db, dynDictionaryID, password)
         # Just return the password as-is; there is no word to be found.
         resultSet = ([[(password, 0, len(password))]], len(password))
