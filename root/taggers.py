@@ -75,8 +75,8 @@ class COCATagger(SequentialBackoffTagger):
         self.tag_map = dict()
         for row in coca_list:
             freq = int(row[0])
-            word = row[1]
-            pos  = row[2]
+            word = row[1].strip()
+            pos  = row[2].strip()
             self.insertPair(word, pos, freq)
 
     def insertPair(self, word, pos, freq):
