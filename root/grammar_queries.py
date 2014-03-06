@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Script to retrieve information from the grammar.
 """
@@ -9,6 +11,115 @@ from nltk.corpus import wordnet as wn
 from Queue import Queue
 import rank_rules
 import re
+import os
+
+RULES_FILE = os.path.join(".", "grammar", "rules.txt")
+CATEGORIES_FILE = os.path.join(".", "grammar", "categories.txt")
+GRAMMAR_FOLDER = os.path.join(".", "grammar")
+TERMINALS_FOLDER = os.path.join(GRAMMAR_FOLDER, "seg_dist")
+
+# captures synsets inside grammar categories that also have POS tag
+# e.g., nn1_s.ball.n.01
+GRAMMAR_SYNSET_REGEX = r'^[a-zA-Z0-9-]+\_(?:s\.)*([a-z_-]+\.[a-z]\.\d+)'
+# matches a synset name, e.g. animal.n.01
+SYNSET_REGEX = r'[a-z_-]+\.[a-z]\.\d+'
+
+
+# class SemanticTag:
+#     def __init__(self, synset_name):
+#         self.synset_name = synset_name
+
+class Tag:
+    def __init__(self, tag):
+        self.tag = tag
+
+    def __str__(self):
+        return self.tag
+
+    def __repr__(self):
+        return self.tag
+
+    def __eq__(self, other):
+        return self.tag == other.tag
+
+
+class WildCardTag:
+    def __init__(self):
+        self.tag = '*'
+
+    @staticmethod
+    def check(s):
+        return s == '*'
+
+    def __eq__(self, other):
+        return True
+
+
+class SynsetTag(Tag):
+    regex = r'[a-z_-]+\.[a-z]\.\d+'
+
+    def __init__(self, tag):
+        self.tag = tag
+        self.synset_name = re.findall(SynsetTag.regex, tag)[0]
+
+    @staticmethod
+    def check(s):
+        return bool(re.match(SynsetTag.regex, s))
+
+
+class POSSynsetTag(SynsetTag):
+    regex = r'^([a-zA-Z0-9-]+)_(?:s\.)*([a-z_-]+\.[a-z]\.\d+)'
+
+    def __init__(self, tag):
+        matches = re.findall(POSSynsetTag.regex, tag)
+        self.tag = tag
+        self.pos = matches[0][0]
+        self.synset_name = matches[0][1]
+
+    @staticmethod
+    def check(s):
+        return bool(re.match(POSSynsetTag.regex, s))
+
+
+class POSTag(Tag):
+    def __init__(self, tag):
+        self.tag = tag
+
+
+class CustomSemanticTag(Tag):
+
+    regexes = [r'^number\d+$', r'^char\d+$', r'^special\d+$', r'^surname$', r'^[fm]name$', r'^country$', r'^city$']
+
+    def __init__(self, tag):
+        self.tag = tag
+
+    @staticmethod
+    def check(s):
+        for r in CustomSemanticTag.regexes:
+            if re.findall(r, s):
+                return True
+
+        return False
+
+
+def parse_rule(rule):
+    regex = r'\(([^()]+)\)'
+
+    segments = re.findall(regex, rule)
+    tags = []
+    for s in segments:
+        if POSSynsetTag.check(s):
+            tags.append(POSSynsetTag(s))
+        elif SynsetTag.check(s):
+            tags.append(SynsetTag(s))
+        elif CustomSemanticTag.check(s):
+            tags.append(CustomSemanticTag(s))
+        elif WildCardTag.check(s):
+            tags.append(WildCardTag())
+        else:
+            tags.append(POSTag(s))
+
+    return tags
 
 
 def descendants(s):
@@ -25,7 +136,58 @@ def descendants(s):
         for c in t.hyponyms():
             q.put(c)
 
-    return result[1:]
+    return result[1:] if len(result) > 0 else []
+
+
+def extract_synset(s):
+    """Given a category with other symbols in addition to synset names,
+    return the synset names if they exist, otherwise None.
+    s - a category like nn1 or nn1_s.ball.n.01
+    return the synset name, like ball.n.01
+    """
+    matches = re.findall(GRAMMAR_SYNSET_REGEX, s)
+    return None if not matches else matches[0]
+
+
+def is_synset(s):
+    return bool(re.match(SYNSET_REGEX, s))
+
+
+def descend(p):
+    """Given a pattern p, expands the synsets into all their descendants.
+    p - a list of categories, like [nn1, nn1_animal.n.01, pp]
+    return a 2d list of categories like [nn1, [butterfly.n.01, monkey.n.01...], pp]
+    """
+    result = []
+    for c in p:
+        if is_synset(c):
+            result.append(descendants(wn.synset(c)))
+        else:
+            # if c does not match a synset, it might have a synset in it (e.g., nn1_animal.n.01)
+            matches = re.findall(GRAMMAR_SYNSET_REGEX, c)
+            if matches:
+                result.append(descendants(c))
+            else:
+                # there is not synset in c (e.g., POS tag), then just preserve it
+                result.append(c)
+
+    return result
+
+
+#TODO: Update the documentation
+def descend_tags(p):
+    """Given a pattern p, expands the synsets into all their descendants.
+    p - a list of categories, like [nn1, nn1_animal.n.01, pp]
+    return a 2d list of categories like [nn1, [butterfly.n.01, monkey.n.01...], pp]
+    """
+    result = []
+    for c in p:
+        if isinstance(c, SynsetTag) or isinstance(c, POSSynsetTag):
+            result.append([d.name for d in descendants(wn.synset(c.synset_name))])
+        else:
+            result.append(c.tag)
+
+    return result
 
 
 def load_categories():
@@ -49,7 +211,7 @@ def group(s, categories):
     targets += [s]  # add s itself to the list of targets
 
     # matches synsets names, like NN_s.ball.n.01
-    regex = r'^[a-zA-Z-]+\_(?:s\.)*([a-z_-]+\.[a-z]\.\d+)'
+    regex = GRAMMAR_SYNSET_REGEX
 
     # stores all occurrences of s or descendants of s and their probs, for aggregation later.
     matches_table = []
@@ -65,6 +227,58 @@ def group(s, categories):
                 matches_table.append((cat, prob))
 
     return matches_table
+
+
+def cli_match(p):
+    """ Prints matches of a pattern in the grammar.
+    p - string of the form (pp1)(love.n.01)(pp2)
+    """
+    matches = match_pattern(p)
+    for rule, prob in matches:
+        print "{}\t{}".format(rule, prob)
+
+
+def match_pattern(p):
+    """ Finds matches of a pattern in the grammar.
+    p - string of the form (pp1)(love.n.01)(pp2)
+    return a list of tuples of the form (pattern, probability)
+    """
+    p1 = parse_rule(p)  # p1 is a list of tags
+    p1_descendants = descend_tags(p1)
+
+    matches = []
+
+    # p1 is the input pattern (reference), p2 is the pattern read from file (test)
+    # each iteration looks for a match
+    with open(RULES_FILE) as f:
+        for l in f:
+            fields = l.rstrip().split()
+            p2 = fields[0]
+            p2 = parse_rule(p2)  # p2 is a list of tags
+
+            if len(p2) != len(p1):
+                continue
+
+            # compares reference with test category by category
+            match = True
+            for i in range(len(p1)):
+                a = p1[i]
+                a_desc = p1_descendants[i]
+                b = p2[i]
+
+                if a == b:
+                    continue
+                elif isinstance(a, SynsetTag) and isinstance(b, SynsetTag):
+                    if b.synset_name == a.synset_name or b.synset_name in a_desc:
+                        continue
+
+                match = False
+                break
+
+            if match:
+                matches.append(fields)
+
+    return matches
 
 
 def cli_descendants(s):
@@ -86,7 +300,11 @@ def cli_group(s, nocache):
         print "{}\t{}".format(synset, prob)
         total_prob += prob
 
-    print "{}\n{}\t{}".format('-'*40, s, total_prob)
+    print "{}\n{}\t{}".format('-' * 40, s, total_prob)
+
+
+def cli_terminals(c):
+    terminal_files = [f for f in os.listdir(GRAMMAR_FOLDER) if os.path.isfile(os.path.join(GRAMMAR_FOLDER, f))]
 
 
 def options():
@@ -105,13 +323,37 @@ def options():
                                                                            " from scratch (takes time); otherwise, "
                                                                            " reads from the file categories.txt")
 
+    # parser for the command pattern
+    parser_match = subparsers.add_parser("match", help="Print matches of a pattern in the grammar.")
+    parser_match.add_argument("pattern", type=str, help="Patterns should follow the format '(tag1)(tag2)...'"
+                                                        "For example: (pp1)(love.n.01)(*)")
+
+    # parser for the command pattern
+    parser_terminals = subparsers.add_parser("terminals", help="Prints all terminal strings deriving from the category"
+                                                               " informed.")
+    parser_terminals.add_argument("category", type=str, help="A semantic or POS tag present in the grammar.")
+
     return parser.parse_args()
 
 
+def test():
+
+    # print parse_rule("(mname)(nn1_s.team.n.01)(char1)")
+    print cli_match("(nn1_s.rock.n.01)(ppy)")
+    #print extract_synset("nn1_password.n.01")
+
+
 if __name__ == "__main__":
-    opts = options()
-    if opts.function == "descendants":
-        cli_descendants(opts.synset)
-    elif opts.function == "group":
-        cli_group(opts.synset, opts.nocache)
-        # TODO: Continue writing the cli_group function.
+    # test()
+    try:
+        opts = options()
+        if opts.function == "descendants":
+            cli_descendants(opts.synset)
+        elif opts.function == "group":
+            cli_group(opts.synset, opts.nocache)
+        elif opts.function == "match":
+            cli_match(opts.pattern)
+        elif opts.function == "terminals":
+            cli_terminals(opts.category)
+    except IOError:
+        pass
