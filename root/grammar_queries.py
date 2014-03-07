@@ -3,6 +3,7 @@
 """
 Script to retrieve information from the grammar.
 """
+import multiprocessing
 
 __author__ = 'rafa'
 
@@ -12,6 +13,7 @@ from Queue import Queue
 import rank_rules
 import re
 import os
+import math
 
 RULES_FILE = os.path.join(".", "grammar", "rules.txt")
 CATEGORIES_FILE = os.path.join(".", "grammar", "categories.txt")
@@ -243,16 +245,12 @@ def match_pattern(p):
     p - string of the form (pp1)(love.n.01)(pp2)
     return a list of tuples of the form (pattern, probability)
     """
-    p1 = parse_rule(p)  # p1 is a list of tags
-    p1_descendants = descend_tags(p1)
 
-    matches = []
+    def worker(rows, out_queue):
+        output = []
 
-    # p1 is the input pattern (reference), p2 is the pattern read from file (test)
-    # each iteration looks for a match
-    with open(RULES_FILE) as f:
-        for l in f:
-            fields = l.rstrip().split()
+        for r in rows:
+            fields = r.rstrip().split()
             p2 = fields[0]
             p2 = parse_rule(p2)  # p2 is a list of tags
 
@@ -276,9 +274,41 @@ def match_pattern(p):
                 break
 
             if match:
-                matches.append(fields)
+                output.append(tuple(fields))
 
-    return matches
+        out_queue.put(output)
+        return
+
+    p1 = parse_rule(p)  # p1 is a list of tags
+    p1_descendants = descend_tags(p1)
+
+    lines = []
+
+    # p1 is the input pattern (reference), p2 is the pattern read from file (test)
+    # each iteration looks for a match
+    with open(RULES_FILE) as f:
+        for line in f:
+            lines.append(line)
+
+    output_queue = multiprocessing.Queue()
+    n_processes = 8
+
+    chunksize = int(math.ceil(len(lines)/float(n_processes)))
+
+    procs = []
+    for k in range(n_processes):
+        p = multiprocessing.Process(target=worker, args=(lines[k*chunksize:(k+1)*chunksize], output_queue))
+        procs.append(p)
+        p.start()
+
+    result_array = []
+    for k in range(n_processes):
+        result_array += output_queue.get()
+
+    for p in procs:
+        p.join()
+
+    return result_array
 
 
 def cli_descendants(s):
@@ -337,9 +367,9 @@ def options():
 
 
 def test():
-
+    pass
     # print parse_rule("(mname)(nn1_s.team.n.01)(char1)")
-    print cli_match("(nn1_s.rock.n.01)(ppy)")
+    # print cli_match("(nn1_s.rock.n.01)(ppy)")
     #print extract_synset("nn1_password.n.01")
 
 
