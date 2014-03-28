@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 This script generates a context-free grammar
 that captures the semantic patterns of a list of
@@ -189,7 +191,7 @@ def segment_gaps(pwd):
         
 
 def main(db):
-    tags_file = open('grammar/debug.txt', 'w+')
+    # tags_file = open('grammar/debug.txt', 'w+')
     
     patterns_dist = FreqDist()  # distribution of patterns
     segments_dist = ConditionalFreqDist()  # distribution of segments, grouped by semantic tag
@@ -213,8 +215,8 @@ def main(db):
         patterns_dist.inc(pattern)
         
         # outputs the classification results for debugging purposes
-        for i in range(len(segments)):
-            tags_file.write("{}\t{}\t{}\t{}\n".format(password, segments[i].word, tags[i], pattern))
+        # for i in range(len(segments)):
+        #     tags_file.write("{}\t{}\t{}\t{}\n".format(password, segments[i].word, tags[i], pattern))
 
         counter += 1
         if counter % 100000 == 0:
@@ -248,8 +250,8 @@ def options():
 if __name__ == '__main__':
     try:
         with Timer('grammar generation'):
-            db = PwdDb(sample=10000, random=True)
-            # db = PwdDb()
+            #db = PwdDb(sample=10000, random=True)
+            db = PwdDb()
             try:
                 main(db)
 #                sample(db)
