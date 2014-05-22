@@ -2,10 +2,12 @@
 #Dependencies
 
 [Oursql](https://launchpad.net/oursql)
+
 [NLTK](http://www.nltk.org/). After installing it, you should also [install the following data packages](http://www.nltk.org/data.html):
-    * Brown Corpus
-    * Wordnet
-    * Word Lists
+
+  * Brown Corpus
+  * Wordnet
+  * Word Lists
 
 #Before you start (data dependencies)
 
@@ -36,6 +38,7 @@ coming soon
 
 # Grammar generation
 
+coming soon
 
 #How to compile guessmaker?
 
