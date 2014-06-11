@@ -16,7 +16,9 @@ results/cut/
 grammar/
 root/pickles/
 
-.pyc
+*.pyc
+*.*~
+
 
 *.o
 *.so
