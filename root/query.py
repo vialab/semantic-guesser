@@ -3,12 +3,13 @@
 names = "SELECT dict_text FROM dictionary where dictset_id = 20 or dictset_id = 30;"
 
 
-def segments(bounds=None, pass_ids=None):
+def segments(pwset_id, bounds=None, pass_ids=None):
     """ Returns all the segments.
 
+    pwset_id - the id of the password set to be gathered
     bounds - list of the form [offset, size]
     pass_ids - list of password ids whose segments will be fetched.
-    If passed, bounds are ignored.
+        If passed, bounds are ignored.
 
     """
 
@@ -18,13 +19,13 @@ def segments(bounds=None, pass_ids=None):
         "FROM set_contains LEFT JOIN sets ON set_contains.set_id = sets.set_id " + \
         "LEFT JOIN dictionary ON set_contains.dict_id = dictionary.dict_id "
 
-    # include this to retrieve case sensitive password text.
-    # after changing the parser to save case sensitive string in
-    # sets.pass_text, we can abandon this line
-    q += "LEFT JOIN passwords on sets.pass_id = passwords.pass_id "
+    # included this to retrieve case sensitive password text (pass_text).
+    # it is also useful for filtering by pwset_id
+    q += "LEFT JOIN passwords on sets.pass_id = passwords.pass_id " + \
+        "WHERE passwords.pwset_id = {}".format(pwset_id)
 
     if pass_ids:
-        return q + "WHERE sets.pass_id in ({})".format(str(pass_ids)[1:-1])
+        return q + "AND sets.pass_id in ({})".format(str(pass_ids)[1:-1])
 
     if bounds:
         return q + "LIMIT {} OFFSET {}".format(bounds[1], bounds[0])
@@ -32,7 +33,21 @@ def segments(bounds=None, pass_ids=None):
         return q
 
 
+def n_sets(pwset_id):
+    """ Retrieves the number of sets (segmentations) associated with a certain group
+    of passwords.
+
+    pwset_id - the id of the target group of passwords
+    """
+
+    return "SELECT COUNT(*) as count FROM sets LEFT JOIN passwords on sets.pass_id = passwords.pass_id " \
+           "WHERE passwords.pwset_id = {}".format(pwset_id)
 
 
-def max_pass_id():
-    return "SELECT MAX(pass_id) as max FROM sets"
+def extent_parsed(pwset_id):
+    """ Returns the SQL string to query the minimum and maximum pass_id (that have been parsed)
+        from a group of passwords (determined by pwset_id). If no passwords have been parsed
+        from the group, this query will return empty.
+    """
+    return "SELECT MAX(pass_id) as max, MIN(pass_id) as min FROM sets LEFT JOIN passwords on sets.pass_id = passwords.pass_id " \
+            "WHERE passwords.pwset_id = {}".format(pwset_id)

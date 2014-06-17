@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from database import PwdDb
+import database 
 from nltk.tag.sequential import DefaultTagger, BigramTagger, TrigramTagger, SequentialBackoffTagger
 from nltk.probability import FreqDist
 from taggers import COCATagger, NamesTagger, WordNetTagger
@@ -43,7 +43,17 @@ class BackoffTagger(SequentialBackoffTagger):
         return tag 
 
 
-def main(sample, dryrun, stats, verbose):
+#TODO: Isolate the POS tagging code in this function
+def POStag(password, tagger):
+    """ Part-of-speech tag a single password.
+    Sets the POS attribute of the Fragments.
+    password: a list of Fragment objects  
+    """
+    pass
+    
+
+
+def main(db, dryrun, stats, verbose):
     """ Tags the dataset by POS and sentiment at
         the same time """    
     
@@ -53,7 +63,6 @@ def main(sample, dryrun, stats, verbose):
     counter = 0
     
     with Timer("POS tagging"):
-        db = PwdDb(sample=sample)
         total = db.sets_size
         
         print "Connected to database, tagging..."
@@ -88,36 +97,40 @@ def main(sample, dryrun, stats, verbose):
 
 def options():
     parser = argparse.ArgumentParser()
+    parser.add_argument('password_set', default=1, type=int, help='the id of the collection of passwords to be processed')
+
     parser.add_argument('-s', '--sample', default=None, type=int, help="sample size")
     parser.add_argument('-d', '--dryrun', action='store_true', help="no commits to the database")
     parser.add_argument('-t', '--stats', action='store_true', help="output stats in the end")
     parser.add_argument('-v', '--verbose', action='store_true', help="output the pos tags of each password")
-    
+
+    # db_group = parser.add_argument_group('Database Connection Arguments')
+    # db_group.add_argument('--user', type=str, default='root', help="db username for authentication")
+    # db_group.add_argument('--pwd',  type=str, default='', help="db pwd for authentication")
+    # db_group.add_argument('--host', type=str, default='localhost', help="db host")
+    # db_group.add_argument('--port', type=int, default=3306, help="db port")
+
     return parser.parse_args()
  
  
 if __name__ == "__main__":
     opts = options()
+
     try:
-        main(opts.sample, opts.dryrun, opts.stats, opts.verbose)
+        db = database.PwdDb(opts.password_set, sample=opts.sample)
+        main(db, opts.dryrun, opts.stats, opts.verbose)
     except:
         e = sys.exc_info()[0]
         traceback.print_exc()
         sys.exit(1)
 
-
-
-
-
-    
     # tests
 #     t = getTagger()
 #     print t.tag(['fat','boy','1'])
 #     print t.tag(['fat','boy'])
 #     print nltk.pos_tag(['all', 'yours'])
-#     print nltk.pos_tag(['fuck','you', 'all'])
+#     print nltk.pos_tag(['screw','you', 'all'])
 #     print nltk.pos_tag(['all','that', 'counts'])
-#     print nltk.pos_tag(['all','day'])
 #     print nltk.pos_tag(['all','day'])
 #     print nltk.pos_tag(['all','the', 'cake'])
 #     print nltk.pos_tag(['all', 'alone'])

@@ -1,4 +1,4 @@
-from testWordMiner import *
+from wordminer import *
 import sys
 import time
 

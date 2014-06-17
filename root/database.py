@@ -10,14 +10,15 @@ import MySQLdb.cursors
 import threading
 import query
 import random
-
+import util
 
 def connection():
-    return MySQLdb.connect(host="localhost",  # your host, usually localhost
-                 user="rafa",  # your username
-                 passwd="teamopasswords",  # your password
-                 db="passwords",
-                 cursorclass=MySQLdb.cursors.SSDictCursor)  # stores result in the server. records as dict
+    credentials = util.dbcredentials()
+    return MySQLdb.connect(host = credentials["host"],  # your host, usually localhost
+                 user = credentials["user"],   # your username
+                 passwd = credentials["password"],  # your password
+                 db = "passwords",
+                 cursorclass = MySQLdb.cursors.SSDictCursor)  # stores result in the server. records as dict
 
 
 def names():
@@ -41,7 +42,7 @@ class PwdDb():
       
     """
     
-    def __init__(self, sample=None, random=False, save_cachesize=100000, offset=0):
+    def __init__(self, pwset_id, sample=None, random=False, save_cachesize=100000, offset=0):
         self.savebuffer_size = save_cachesize
         self.readbuffer_size = 100000
 
@@ -52,24 +53,28 @@ class PwdDb():
         self.savebuffer  = []
          
         # different connections for reading and saving
-        self._init_read_cursor(offset, sample, random)
+        self._init_read_cursor(pwset_id, offset, sample, random)
         self._init_save_cursor()
     
-    def _init_read_cursor(self, offset, limit, random):
+    def _init_read_cursor(self, pwset_id, offset, limit, random):
         self.conn_read = connection()
         self.readcursor = self.conn_read.cursor()
         
         # getting number of 'sets' (or segments) 
-        self.readcursor.execute("SELECT * FROM sets ORDER BY set_id DESC LIMIT 1;")
-        self.sets_size = self.readcursor.fetchone()["set_id"]
+        self.readcursor.execute(query.n_sets(pwset_id))
+        self.sets_size = self.readcursor.fetchone()["count"]
         self.readcursor.close()
 
         self.readcursor = self.conn_read.cursor()
         
         bounds = [offset, limit] if limit else None
-        random_ids = self.random_ids(0, self.max_pass_id(), limit) if random else None
+
+        random_ids = None
+        if random:
+            extent = self.id_extent_parsed(pwset_id) # min and max pass_id to sample from
+            random_ids = self.random_ids(extent[0], extent[0], limit)
         
-        self.readcursor.execute(query.segments(bounds, random_ids))
+        self.readcursor.execute(query.segments(pwset_id, bounds, random_ids))
 
         # fetching the first password
         self.fill_buffer()
@@ -96,10 +101,19 @@ class PwdDb():
     def random_ids(self, min, max, size):
         return random.sample(range(min, max), size)
 
-    def max_pass_id(self):
+    def id_extent_parsed(self, pwset_id):
+        """ Returns the minimum and maximum pass_id (that have been parsed)
+        from a group of passwords (determined by pwset_id). If no passwords have been parsed
+        from the group, this will return (None, None).
+
+        returns a tuple for the form (min, max)
+        """
         c = self.conn_read.cursor()
-        c.execute(query.max_pass_id())
-        return c.fetchone()['max']
+        c.execute(query.extent_parsed(pwset_id))
+        first_record = c.fetchone()
+        max = first_record['max']
+        min = first_record['min']
+        return min, max
 
     def _init_save_cursor(self):
         self.conn_save = connection()

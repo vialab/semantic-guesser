@@ -46,7 +46,7 @@ toEscape = ['\\', '\'', ' ']
 def loadNgrams(dbe):
     # unigrams
     with dbe.cursor() as cursor:
-        query = 'SELECT word,MAX(freq) FROM passwords.COCA_wordlist group by word'
+        query = 'SELECT word, MAX(freq) FROM passwords.COCA_wordlist group by word'
         cursor.execute(query, )
         for word, freq in cursor:
             ngrams[word] = freq
@@ -228,13 +228,13 @@ def getDictionary(sqleng, dictset_ids):
             ## THIS PRIORITIZES DICTIONARIES.
             ## assumption: the dictionaries are in priority order (in the dictset_ids list)
             for dict_text, dict_id in res:
-                try: # previously, it was making dict_text.lower(). I just removed the lower() part to preserve the case [Rafael]
+                try: 
                     tmp = dictionary[dict_text]
                 except:
                     # TODO: This change is experimental. *Apparently*, we don't need dict_text in the tuple,
                     # but the guessability code needs dictset_id  
 #                     dictionary[dict_text] = (dict_text, dict_id)
-                    dictionary[dict_text] = (x, dict_id)
+                    dictionary[dict_text.lower()] = (x, dict_id)
     print("dictionary length:",len(dictionary))
     return dictionary
     

@@ -9,7 +9,9 @@
   * Wordnet
   * Word Lists
 
-#Before you start (data dependencies)
+#Usage
+
+##Before you start (data dependencies)
 
 Before you begin using the parsing and classification code, a MySQL database must be set up and the required data included.
 
@@ -22,24 +24,44 @@ The above commands will create the database schema and insert the lexicon. If yo
 
 Note that this will add the RY passwords with the password_set ID 1, so be careful if you already have data in the passwords table.
 
-#Parsing
+##Authentication
+
+Make sure you modify the file root/db_credentials.conf with your credentials.
+
+##Parsing
 wordminer.py connects to a database containing the passwords and dictionaries to perform password segmentation. The results are saved into the database.
+For example, to parse a group of passwords whose ID in the database is 1:
 
     cd parsing/
-    python wordminer.py
+    python wordminer.py 1
 
-For options,
+For more options:
 
     python wordminer.py --help
 
-# Classification
+## Classification
 
-coming soon
+Before generating the grammar. You need to run the scripts for POS tagging and semantic classification.
+Assuming you're targeting the group of passwords 1:
 
-# Grammar generation
+    cd root/
+    python pos_tagger.py 1
 
-coming soon
+## Grammar generation
 
-#How to compile guessmaker?
+    cd root/
+    python grammar.py 1
 
-g++ -std=c++0x guessmaker.cpp cpp-argparse/OptionParser.cpp -o guessmaker
+The grammar files will be saved in a subdirectory of grammar/ identified by the ID of the corresponding password list.
+
+## Generating guesses
+
+Compile guessmaker with:
+
+    cd root/
+    make all
+    ./guessmaker -s 1
+     
+For more options:
+
+    ./guessmaker --help

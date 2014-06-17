@@ -1,4 +1,4 @@
-"""This script finds the WordNet uneven cut appropiate for
+"""This script finds the WordNet uneven cut appropriate for
 the frequencies computed from the passwords. 
 
 Created on 2013-03-29

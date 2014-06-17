@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+if __name__ == '__main__' and __package__ is None:
+    import os
+    from os import sys
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from argparse import ArgumentParser
 from custom_exceptions import AllowedTimeExceededError
 from cache import *
@@ -11,6 +16,8 @@ import oursql
 import re
 import time
 import timer
+import util
+
 
 # the ids should be in priority order
 # names (20, 30, 40) take precedence over cities (60) and countries (50) 
@@ -18,6 +25,11 @@ dict_sets = [10, 20, 30, 40, 60, 50, 80, 90]
 # sys.argv = ['testWordMiner.py', '-d', [10, 60, 50, 20, 30, 40, 80, 90], '-p', '1']
 
 ENABLE_CHAR_CHUNKS = True
+
+# database Authentication Parameters
+#USER = ""
+#PASSWORD = ""
+
 
 def fileLength(fname, fcode='utf-8'):
     '''Finds the line count of a file using a loop.'''
@@ -30,8 +42,9 @@ def fileLength(fname, fcode='utf-8'):
 
 def connectToDb():
     '''Contains the connection string to the database, and returns the connection object.'''
-    return oursql.connect(host='localhost', user='root', passwd='root', db='passwords',
-                          raise_on_warnings=False, charset='utf8', use_unicode=True, port=3306)
+    cred = util.dbcredentials()
+    return oursql.connect(host=cred["host"], user=cred["user"], passwd=cred["password"], db='passwords',
+                          raise_on_warnings=False, charset='utf8', use_unicode=True, port=int(cred["port"]))
     # return oursql.connect(unix_socket='/var/lib/mysql/mysql.sock', user='root',
     # passwd='vialab', db='newtest', charset='utf8', use_unicode=True)
     
@@ -356,16 +369,17 @@ def lastPassword():
     return id
 
 
-def clearResults(dbe):
-#     query = """truncate table sets;
-# ALTER TABLE sets AUTO_INCREMENT=1;
-# truncate table set_contains;
-# ALTER TABLE set_contains AUTO_INCREMENT=1;"""
+def clearResults(dbe, pwset_id):
     with dbe.cursor() as cursor:
-        cursor.execute("TRUNCATE table sets;")
-        cursor.execute("ALTER TABLE sets AUTO_INCREMENT=1;")
-        cursor.execute("TRUNCATE table set_contains;")
-        cursor.execute("ALTER TABLE set_contains AUTO_INCREMENT=1;")
+#        cursor.execute("TRUNCATE table set_contains;")
+        cursor.execute("DELETE a FROM set_contains a INNER JOIN sets b on a.set_id = b.set_id \
+             INNER JOIN passwords c on b.pass_id = c.pass_id and pwset_id = {};".format(pwset_id))
+#        cursor.execute("ALTER TABLE set_contains AUTO_INCREMENT=1;")
+
+#        cursor.execute("TRUNCATE table sets;")
+        cursor.execute("DELETE a FROM sets a INNER JOIN passwords b on a.pass_id = b.pass_id \
+            and pwset_id = {};".format(pwset_id))
+ #       cursor.execute("ALTER TABLE sets AUTO_INCREMENT=1;")
         
 
 def currentdir():
@@ -573,7 +587,7 @@ def sqlMine(dbe, options, dictSetIds):
     
     if options.reset:
         print "clearing results..."
-        clearResults(dbe)
+        clearResults(dbe, options.password_set)
     
     print "caching frequency information"
     freqInfo = freqReadCache(dbe)
@@ -583,7 +597,7 @@ def sqlMine(dbe, options, dictSetIds):
         loadNgrams(dbe)
     
     print "creating read cache..."
-    rbuff = pwReadCache(dbe, 1, 100000, offset)
+    rbuff = pwReadCache(dbe, options.password_set, 100000, offset)
     
     if options.erase:
         print 'resetting dynamic dictionaries...'
@@ -603,6 +617,11 @@ def sqlMine(dbe, options, dictSetIds):
     wbuff = WriteBuffer(dbe, dictionary, 100000)
     for p in rbuff:
         pwcount += 1
+
+        if options.sample is not None and pwcount >= options.sample:
+            wbuff._flush()
+            break
+
         if len(p[1]) == 0: 
             continue  # skipping empty password
         if p[1].strip(" ") == '': 
@@ -632,29 +651,39 @@ def sqlMine(dbe, options, dictSetIds):
 
         lastResult = (currPass, res)
 
-        if options.sample is not None and pwcount >= options.sample:
-            wbuff._flush()
-            break     
-
+    wbuff._flush()  # flush the rest
     print("Elapsed wall time: {:.1f}s".format(time.time() - currTime))
     print ("pwcount=", pwcount, "rbuff._count=", rbuff._count)
 
 
 def main(opts):
     """I'm main."""
-    global dict_sets
+#    global dict_sets, USER, PASSWORD
+
+#    USER = opts.user
+#    PASSWORD = opts.pwd
+
     db = connectToDb()
     sqlMine(db, opts, dict_sets)
 
 
 def cli_options():
     parser = argparse.ArgumentParser()
+    parser.add_argument('password_set', default=1, type=int, help='the id of the collection of passwords to be processed')
+
     parser.add_argument('-e', '--erase', action='store_true', help='erase dynamic dictionaries')
     parser.add_argument('-r', '--reset', action='store_true', help='reset results (truncates tables set and set_contains)')
+
+    #db_group = parser.add_argument_group('Database Connection Arguments')
+    #db_group.add_argument('--user', type=str, default='root', help="db username for authentication")
+    #db_group.add_argument('--pwd',  type=str, default='', help="db pwd for authentication")
+    #db_group.add_argument('--host', type=str, default='localhost', help="db host")
+    #db_group.add_argument('--port', type=int, default=3306, help="db port")
+
     g = parser.add_mutually_exclusive_group()
-    g.add_argument('-o', '--offset', type=int, default=0, help='skips processing n first passwords')
+    g.add_argument('-o', '--offset', type=int, default=0, help='skips processing N first passwords')
     g.add_argument('-c', '--cont', action='store_true', help='continue from the point it stopped previously')
-    parser.add_argument('-p', '--password_set', default=1, type=int, help='the id of the collection of passwords to be processed')
+
     parser.add_argument('-s', '--sample', default=None, type=int, help='runs the algorithm for a limited sample')
     
     return parser.parse_args()

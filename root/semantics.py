@@ -6,7 +6,7 @@ containing the frequency in the sample, in JSON format.
 @author: Rafa
 """
 
-from database import PwdDb
+import database
 from tagset_conversion import TagsetConverter
 from nltk.corpus import wordnet as wn
 from tree.default_tree import DefaultTree 
@@ -47,7 +47,7 @@ def synset(word, pos):
     return synsets[0] if len(synsets) > 0 else None
 
 
-def populate(tree, samplesize):
+def populate(tree, samplesize, pwset_id):
     """ Given a POS-specific tree representation
     of WordNet (an instance of WordNetTree), updates the
     frequency of each node according to its occurrence
@@ -57,7 +57,7 @@ def populate(tree, samplesize):
 
     """
 
-    db = PwdDb(sample=samplesize)
+    db = database.PwdDb(pwset_id, sample=samplesize)
 
     while db.hasNext():
         fragments = db.nextPwd()  # list of Fragment
@@ -77,7 +77,7 @@ def populate(tree, samplesize):
     return tree
 
 
-def load_semantictree(pos, samplesize=None):
+def load_semantictree(pos, pwset_id, samplesize=None):
     """ Returns a tree representation of WordNet (an
     instance of WordNetTree) for a certain part-of-speech
     with the frequency of the nodes conforming to their
@@ -90,7 +90,7 @@ def load_semantictree(pos, samplesize=None):
     sys.setrecursionlimit(10000)
 
     dir = os.path.dirname(os.path.abspath(__file__))
-    fname = "pickles/tree-{}-{}.pickle".format(pos, samplesize)
+    fname = "pickles/tree-{}-{}-{}.pickle".format(pos, pwset_id, samplesize)
     path = os.path.join(dir, fname)
 
     try:
@@ -100,16 +100,14 @@ def load_semantictree(pos, samplesize=None):
         return tree
     except:
         tree = WordNetTree(pos)
-        populate(tree, samplesize)
+        populate(tree, samplesize, pwset_id)
         print 'no pickling. loaded tree from scratch'
         f = open(path, 'w+')
         pickle.dump(tree, f)  # dumps tree to make the job faster next time
     return tree
 
 
-def main(pos, size, file_):
-    
-    db = PwdDb(size=size)
+def main(db, pos, file_):
     
     tree = DefaultTree()
     treeFile = open(file_, 'wb')
@@ -155,11 +153,31 @@ def main(pos, size, file_):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Performs semantic classification on a sample and outputs its synsets "
                                                  "tree in JSON, containing frequency info.")
+    parser.add_argument('password_set', type=int, help='the id of the collection of passwords to be processed')
+
     parser.add_argument('pos', help='part-of-speech of the semantic tree. n (noun) or v (verb)')
     parser.add_argument('file', help='complete path of the output file')
     parser.add_argument('-s', '--size', type=int, default=None,
                         help='size of the sample from which the words should be gotten.')
-    
+
+    db_group = parser.add_argument_group('Database Connection Arguments')    
+    db_group.add_argument('--user', type=str, default='root', help="db username for authentication")
+    db_group.add_argument('--pwd',  type=str, default='', help="db pwd for authentication")
+    db_group.add_argument('--host', type=str, default='localhost', help="db host")
+    db_group.add_argument('--port', type=int, default=3306, help="db port")
+                                                                                                         
     args = parser.parse_args()
     
-    main(args.pos, args.size, args.file)
+    database.USER = args.user
+    database.PWD  = args.pwd
+    database.HOST = args.host
+
+    db = database.PwdDb(size=args.size)
+
+    main(db, args.pos, args.file)
+
+
+
+
+
+

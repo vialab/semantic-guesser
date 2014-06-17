@@ -1,6 +1,18 @@
 
 import os
 
+def dbcredentials():
+    f = open(abspath('db_credentials.conf'))
+
+    credentials = dict()
+
+    for line in f:
+        key, value = line.split(':')
+        credentials[key.strip()] = value.strip()
+
+    return credentials
+
+
 def abspath(path):
     """ Returns the absolute path for a file relative of the
     location from which the module was loaded (usually root).

@@ -16,7 +16,7 @@ from database import Fragment
 
 __author__ = 'rafa'
 
-from database import PwdDb
+import database
 import semantics
 from cut import wagner
 import sys
@@ -25,26 +25,35 @@ from nltk.probability import FreqDist, ConditionalFreqDist
 from timer import Timer
 import re
 import argparse
+import shutil
+import os
 
 #-----------------------------------------
 # Initializing module variables
 #-----------------------------------------
 
-nouns_tree = semantics.load_semantictree('n')
-verbs_tree = semantics.load_semantictree('v')
+nouns_tree = None
+verbs_tree = None
+node_index = None
 
-cut = wagner.findcut(nouns_tree, 5000)
-for c in cut: c.cut = True
+def select_treecut(pwset_id):
+    global nouns_tree, verbs_tree, node_index
 
-cut = wagner.findcut(verbs_tree, 5000)
-for c in cut: c.cut = True
-
-flat = nouns_tree.flat() + verbs_tree.flat()
-
-node_index = dict()
-for node in flat:
-    if node.key not in node_index:
-        node_index[node.key] = node 
+    nouns_tree = semantics.load_semantictree('n', pwset_id)
+    verbs_tree = semantics.load_semantictree('v', pwset_id)
+    
+    cut = wagner.findcut(nouns_tree, 5000)
+    for c in cut: c.cut = True
+    
+    cut = wagner.findcut(verbs_tree, 5000)
+    for c in cut: c.cut = True
+    
+    flat = nouns_tree.flat() + verbs_tree.flat()
+    
+    node_index = dict()
+    for node in flat:
+        if node.key not in node_index:
+            node_index[node.key] = node 
 
 #-------------------------------------------
 
@@ -190,7 +199,7 @@ def segment_gaps(pwd):
     return segmented    
         
 
-def main(db):
+def main(db, pwset_id):
     # tags_file = open('grammar/debug.txt', 'w+')
     
     patterns_dist = FreqDist()  # distribution of patterns
@@ -223,37 +232,60 @@ def main(db):
             print "{} passwords processed so far ({:.2%})... ".format(counter, float(counter)/db.sets_size)
          
 #     tags_file.close()
-        
-    with open('grammar/rules.txt', 'w+') as f:
+
+    pwset_id = str(pwset_id)
+    
+    # remove previous grammar
+    try:
+        shutil.rmtree(os.path.join('grammar', pwset_id))
+    except OSError: # in case the above folder does not exist 
+        pass
+    
+    # recreate the folders empty
+    os.makedirs(os.path.join('grammar', pwset_id, 'nonterminals'))
+
+    with open(os.path.join('grammar', pwset_id, 'rules.txt'), 'w+') as f:
         total = patterns_dist.N()
-#         items = sorted(items, key=lambda x: x[1], reverse=True)
         for pattern, freq in patterns_dist.items():
             f.write('{}\t{}\n'.format(pattern, float(freq)/total))
     
     for tag in segments_dist.keys():
         total = segments_dist[tag].N()
-        with open('grammar/seg_dist/'+tag+'.txt', 'w+') as f:
+        with open(os.path.join('grammar', pwset_id, 'nonterminals', tag+'.txt'), 'w+') as f:
             for k, v in segments_dist[tag].items():
                 f.write("{}\t{}\n".format(k, float(v)/total))
 
 
 def options():
     parser = argparse.ArgumentParser()
+    
+    parser.add_argument('password_set', default=1, type=int, help='the id of the collection of passwords to be processed')
+
     parser.add_argument('-s', '--sample', default=None, type=int, help="Sample size")
     parser.add_argument('-d', '--dryrun', action='store_true', help="Does not override the grammar folder. "
                                                                     "Enables the verbose mode.")
+
+    # db_group = parser.add_argument_group('Database Connection Arguments')
+    # db_group.add_argument('--user', type=str, default='root', help="db username for authentication")
+    # db_group.add_argument('--pwd',  type=str, default='', help="db pwd for authentication")
+    # db_group.add_argument('--host', type=str, default='localhost', help="db host")
+    # db_group.add_argument('--port', type=int, default=3306, help="db port")
 
     return parser.parse_args()
 
 
 # TODO: Option for online version (calculation of everything on the fly) and from db
 if __name__ == '__main__':
+    opts = options()
+    
+    select_treecut(opts.password_set)
+
     try:
         with Timer('grammar generation'):
             #db = PwdDb(sample=10000, random=True)
-            db = PwdDb()
+            db = database.PwdDb(opts.password_set, sample=opts.sample)
             try:
-                main(db)
+                main(db, opts.password_set)
 #                sample(db)
             except KeyboardInterrupt:
                 db.finish()

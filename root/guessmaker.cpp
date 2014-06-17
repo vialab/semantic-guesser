@@ -171,10 +171,15 @@ std::vector<std::string> decode_guess_mangled(const Guess &guess){
     return guesses;
 }
 
-void load_grammar(){
-    std::ifstream fs("grammar/rules.txt");
+void load_grammar(int pwset_id){
+
+    std::stringstream ss;
+    ss << "grammar/" <<  pwset_id << "/rules.txt";
+
+    std::string rules_path = ss.str();
+    std::ifstream fs(rules_path);
     std::string line;
-    
+   
     while (std::getline(fs, line)){
         std::vector<std::string> fields = split(line, '\t');
         Rule rule;
@@ -183,12 +188,22 @@ void load_grammar(){
         rules.push_back(rule);
     }
     fs.close();
+    
+    ss.str("");
+    ss.clear();
+    ss << "grammar/" << pwset_id << "/nonterminals";
 
-    DIR *dir = opendir("grammar/seg_dist");
+    std::string nonterminals_path = ss.str();
+    DIR *dir = opendir(nonterminals_path.c_str());
     struct dirent *ent;
 
     while ((ent = readdir(dir)) != NULL){
-        std::string path("grammar/seg_dist/" + std::string(ent->d_name));
+        ss.str("");
+        ss.clear();
+        ss << "./grammar/" << pwset_id << "/nonterminals/" << std::string(ent->d_name);
+                
+ 
+        std::string path = ss.str();
         std::ifstream fs(path);
         
         std::vector<Terminal> terminals;
@@ -359,7 +374,9 @@ int run(bool mangle, double limit, int min_length, double min_prob){
 }
 
 optparse::Values options(int argc, char *argv[]){    
-    OptionParser parser = OptionParser().description("just an example");
+    OptionParser parser = OptionParser().description("Generates guesses from a PCFG");
+    
+    parser.add_option("-s", "--password_set").type("int");
 
     parser.add_option("-m", "--mangle").help("enables mangling rules").action("store_true");
     parser.add_option("-n", "--limit").type("double").help("limits the number of guesses generated")
@@ -372,15 +389,12 @@ optparse::Values options(int argc, char *argv[]){
 }
 
 int main(int argc, char *argv[]) {
-
-    optparse::Values opts = options(argc, argv);
+     optparse::Values opts = options(argc, argv);
     
-    load_grammar();
+    load_grammar((int)opts.get("password_set"));
 //    double *bounds = prob_bounds();
 //    cout << bounds[0] << '\t' << bounds[1] << '\n';
-    
     return run((bool)opts.get("mangle"), (double) opts.get("limit"), (int)opts.get("length"), (double)opts.get("prob"));
-    
 
 }
 
