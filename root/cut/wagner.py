@@ -12,11 +12,11 @@ import math
 
 
 def compute_dl(cut, sample_size, c):
-    pdl = li_abe.compute_pdl(cut, sample_size)  # parameters description length
-    dl  = li_abe.compute_dl(cut, sample_size)   # data description length
+    pdl  = li_abe.compute_pdl(cut, sample_size)   # parameters description length
+    ddl  = li_abe.compute_ddl(cut, sample_size)   # data description length
     weighting_factor = c * (math.log(sample_size, 2) / sample_size)
     
-    return pdl + weighting_factor*dl 
+    return pdl + weighting_factor*ddl 
 
 
 if __name__ == '__main__':
