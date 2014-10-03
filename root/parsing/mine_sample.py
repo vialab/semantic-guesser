@@ -1,8 +1,13 @@
+if __name__ == '__main__' and __package__ is None:
+    import os
+    from os import sys
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from wordminer import *
 import sys
 import time
 
-PWDS = ['crazy23duck91']
+PWDS = ['weeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee']
 
 def minePwds(pwds):
     db = connectToDb()

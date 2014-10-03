@@ -575,6 +575,7 @@ def generateCandidates(wordList, password):
         except AllowedTimeExceededError, e:
             print str(e)
             print "SetCover failed for the following password: {}".format(password)
+            candidates = list()
             break
             
     return candidates
@@ -630,12 +631,18 @@ def sqlMine(dbe, options, dictSetIds):
         pass_id = p[0]
         currPass = p[1]
         
+        if options.verbose:
+            print "Processing ({}) '{}'... ".format(pwcount, currPass),
+
         # assuming the pwds come ordered, optimize for repeated occurrences
         if currPass == lastResult[0]:
             res = lastResult[1] 
         else:
             res = mineLine(dbe, currPass, dictionary, freqInfo)
-            
+        
+        if options.verbose:
+            print "[Done]"
+
         # store results
         if len(res) > 0:
             flush = wbuff.addCommit(pass_id, res)
@@ -670,7 +677,7 @@ def main(opts):
 def cli_options():
     parser = argparse.ArgumentParser()
     parser.add_argument('password_set', default=1, type=int, help='the id of the collection of passwords to be processed')
-
+    parser.add_argument('-v','--verbose', action='store_true', help='prints every password processed')
     parser.add_argument('-e', '--erase', action='store_true', help='erase dynamic dictionaries')
     parser.add_argument('-r', '--reset', action='store_true', help='reset results (truncates tables set and set_contains)')
 
