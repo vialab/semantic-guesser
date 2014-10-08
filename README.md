@@ -1,5 +1,6 @@
+#Semantic Guesser
 
-#Dependencies
+##Dependencies
 
 [Oursql](https://launchpad.net/oursql)
 
@@ -9,9 +10,9 @@
   * Wordnet
   * Word Lists
 
-#Usage
+##Usage
 
-##Before you start (data dependencies)
+###Before you start (data dependencies)
 
 Before you begin using the parsing and classification code, a MySQL database must be set up and the required data included.
 
@@ -24,11 +25,11 @@ The above commands will create the database schema and insert the lexicon. If yo
 
 Note that this will add the RY passwords with the password_set ID 1, so be careful if you already have data in the passwords table.
 
-##Authentication
+###Authentication
 
 Make sure you modify the file root/db_credentials.conf with your credentials.
 
-##Parsing
+###Parsing
 wordminer.py connects to a database containing the passwords and dictionaries to perform password segmentation. The results are saved into the database.
 For example, to parse a group of passwords whose ID in the database is 1:
 
@@ -39,7 +40,7 @@ For more options:
 
     python wordminer.py --help
 
-## Classification
+### Classification
 
 Before generating the grammar. You need to run the scripts for POS tagging and semantic classification.
 Assuming you're targeting the group of passwords 1:
@@ -47,14 +48,14 @@ Assuming you're targeting the group of passwords 1:
     cd root/
     python pos_tagger.py 1
 
-## Grammar generation
+### Grammar generation
 
     cd root/
     python grammar.py 1
 
 The grammar files will be saved in a subdirectory of grammar/ identified by the ID of the corresponding password list.
 
-## Generating guesses
+### Generating guesses
 
 Compile guessmaker with:
 
@@ -65,3 +66,18 @@ Compile guessmaker with:
 For more options:
 
     ./guessmaker --help
+
+## Publications
+
+Veras, Rafael, Christopher Collins, and Julie Thorpe. "On the semantic patterns of passwords and their security impact." Network and Distributed System Security Symposium (NDSS’14). 2014. [Link] (http://thorpe.hrl.uoit.ca/documents/On_the_Semantic_Patterns_of_Passwords_and_their_Security_Impact_NDSS2014.pdf)
+
+## Credits
+
+Rafael Veras, Julie Thorpe and Christopher Collins
+[Vialab][vialab] - [University of Ontario Institute of Technology][uoit]
+
+
+[vialab]: http://vialab.science.uoit.ca
+[uoit]:   http://uoit.ca
+
+
