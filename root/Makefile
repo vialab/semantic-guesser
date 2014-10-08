@@ -5,7 +5,7 @@ all: $(SOURCES)
 	g++ $(PARAMS)  $(SOURCES) -o guessmaker
 	
 clean:
-	rm guessmaker
+	rm -f guessmaker
  
  
  
