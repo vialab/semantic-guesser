@@ -14,9 +14,9 @@ from argparse import ArgumentParser
 DEFAULT_FILE = '../results/cut/cut.txt'
 
 
-def main(pos, cutter, cut_file, samplesize, tree_file, threshold):
+def main(pwsetid, pos, cutter, cut_file, samplesize, tree_file, threshold):
     
-    tree = semantics.load_semantictree(pos, samplesize)
+    tree = semantics.load_semantictree(pos, pwsetid, samplesize)
     cut_ = cutter.findcut(tree)
     tree.trim(threshold)  # trimming the 0 frequency nodes by default!!!
 
@@ -36,6 +36,7 @@ def main(pos, cutter, cut_file, samplesize, tree_file, threshold):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('pos', help='part-of-speech')
+    parser.add_argument('pwsetid', help='ID of the password set')
     parser.add_argument('-f', '--file', help='directory path for the output file')
     parser.add_argument('-s', '--samplesize', type=int, help='if this argument is not '
                                                              'passed, runs over the entire database')
@@ -58,8 +59,8 @@ if __name__ == '__main__':
         cutter = cut.wagner
 
     # forming the cut and tree file names
-    cut_filepath = "cut-{}-{}".format(args.pos, args.algorithm)
-    tree_filepath = "tree-{}".format(args.pos)
+    cut_filepath = "cut-{}-{}-{}".format(args.pwsetid, args.pos, args.algorithm)
+    tree_filepath = "tree-{}-{}".format(args.pwsetid, args.pos)
 
     if args.algorithm == 'wagner':
         cut_filepath += '-{}'.format(args.weighting)
@@ -78,4 +79,4 @@ if __name__ == '__main__':
     cut_filepath = args.file + cut_filepath + '.txt'
     tree_filepath = args.tree + tree_filepath + '.json' if args.tree else None
 
-    main(args.pos, cutter, cut_filepath, args.samplesize, tree_filepath, args.threshold)
+    main(args.pwsetid, args.pos, cutter, cut_filepath, args.samplesize, tree_filepath, args.threshold)

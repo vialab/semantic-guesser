@@ -53,6 +53,8 @@ def POStag(password, tagger):
     
 
 
+
+
 def main(db, dryrun, stats, verbose):
     """ Tags the dataset by POS and sentiment at
         the same time """    
@@ -67,14 +69,23 @@ def main(db, dryrun, stats, verbose):
         
         print "Connected to database, tagging..."
         
+        lastpw = None        
+        
         while db.hasNext():
-            pwd = db.nextPwd()  # list of segments
+            pwd = db.nextPwd()  # list of Fragment
+            pwd_str = pwd[0].password
+
             counter += 1
+                
             # filters segments that are not dictionary words
             pwd = [f for f in pwd if f.dictset_id <= 90]
             
-            # extracts to a list of strings and tags them
-            pos_tagged = pos_tagger.tag([f.word for f in pwd])
+            # only recalculate POS if this password is diff than previous
+            if pwd_str != lastpw:
+            
+                # extracts to a list of strings and tags them
+                pos_tagged = pos_tagger.tag([f.word for f in pwd])
+
             
             for i, f in enumerate(pwd):
                 pos = pos_tagged[i][1]  # Brown pos tag
@@ -83,7 +94,9 @@ def main(db, dryrun, stats, verbose):
                     db.save(f, True)
                 if verbose:
                     print "{}\t{}\t{}".format(f.password, f.word, f.pos)
-
+            
+            lastpw = pwd_str
+    
             if counter % 100000 == 0:
                 print "{} passwords processed. {}% completed...".format(counter, (float(counter)/total)*100)
         
@@ -117,7 +130,7 @@ if __name__ == "__main__":
     opts = options()
 
     try:
-        db = database.PwdDb(opts.password_set, sample=opts.sample)
+        db = database.PwdDb(opts.password_set, sample=opts.sample, save_cachesize=500000)
         main(db, opts.dryrun, opts.stats, opts.verbose)
     except:
         e = sys.exc_info()[0]

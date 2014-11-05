@@ -57,7 +57,10 @@ def pdl(len_cut, s_length):
     """
     k = len_cut - 1
     # We can use k or k+1. See Appendix A of Li and Abe (1998)
+    
+
     return k * math.log(s_length, 2) / 2
+
 
 
 def compute_ddl(cut, sample_size):
