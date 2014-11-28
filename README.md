@@ -1,5 +1,12 @@
 #Semantic Guesser
 
+##Todo
+
+1) Modify remote_claws_tagger.py to create the pickles subdirectory if it is not already created
+
+2) Modify the pos_tagger.py script to call remote_claws_tagger.py if claws tagger has not been run (the pickles folder is empty / non-existant)
+
+
 ##Dependencies
 
 [Oursql](https://launchpad.net/oursql)
@@ -9,6 +16,12 @@
   * Brown Corpus
   * Wordnet
   * Word Lists
+
+[BeautifulSoup4](http://www.crummy.com/software/BeautifulSoup/)
+     Install with "pip install beautifulsoup4"
+
+[Mechanize](https://pypi.python.org/pypi/mechanize/0.2.5)
+     Install with "pip install mechanize"
 
 ##Usage
 
@@ -24,6 +37,14 @@ The above commands will create the database schema and insert the lexicon. If yo
     mysql -u user -p < root/db/rockyou.sql
 
 Note that this will add the RY passwords with the password_set ID 1, so be careful if you already have data in the passwords table.
+
+We need to tag the Brown Corpus with claws tagger. Claws Tagger has a website that allows you to submit one word and it returns the tag of that word. However, you cannot submit bulk words to that website, so this script will query the website, wait for a response and then send another query. Before running the script, the pickles directory must be created in the root directory:
+
+    mkdir pickles
+
+Then the script must be run (ensure all data dependencies listed above are installed first and the pickles directory has been created):
+
+    python remote_claws_tagger.py
 
 ###Authentication
 
@@ -79,5 +100,4 @@ Rafael Veras, Julie Thorpe and Christopher Collins
 
 [vialab]: http://vialab.science.uoit.ca
 [uoit]:   http://uoit.ca
-
 
