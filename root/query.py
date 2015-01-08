@@ -13,24 +13,22 @@ def segments(pwset_id, bounds=None, pass_ids=None):
 
     """
 
-    q = "SELECT sets.set_id AS set_id, " + \
-        "set_contains.id AS set_contains_id, dict_text, dictset_id, " + \
-        "pos, sentiment, synset, category, dictset_id, pass_text, s_index, e_index " + \
-        "FROM set_contains LEFT JOIN sets ON set_contains.set_id = sets.set_id " + \
-        "LEFT JOIN dictionary ON set_contains.dict_id = dictionary.dict_id "
-
-    # included this to retrieve case sensitive password text (pass_text).
-    # it is also useful for filtering by pwset_id
-    q += "LEFT JOIN passwords on sets.pass_id = passwords.pass_id " + \
-        "WHERE passwords.pwset_id = {}".format(pwset_id)
+    q = "SELECT sets.set_id AS set_id, "\
+        "set_contains.id AS set_contains_id, dict_text, dictset_id, "\
+        "pos, sentiment, synset, category, dictset_id, pass_text, s_index, e_index "\
+        "FROM passwords "\
+        "JOIN sets on sets.pass_id = passwords.pass_id "\
+        "JOIN set_contains ON set_contains.set_id = sets.set_id "\
+        "JOIN dictionary ON set_contains.dict_id = dictionary.dict_id "\
+        "WHERE passwords.pwset_id = {} ".format(pwset_id)
 
     if pass_ids:
-        return q + "AND sets.pass_id in ({})".format(str(pass_ids)[1:-1])
-
-    if bounds:
-        return q + "LIMIT {} OFFSET {}".format(bounds[1], bounds[0])
-    else:
-        return q
+        q = q + "AND sets.pass_id in ({}) ".format(str(pass_ids)[1:-1])
+    elif bounds:
+        q = q + "LIMIT {} OFFSET {} ".format(bounds[1], bounds[0])
+    
+#    print q
+    return q
 
 
 def n_sets(pwset_id):
