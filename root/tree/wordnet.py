@@ -112,7 +112,7 @@ class WordNetTree(DefaultTree):
         
         # if not leaf, insert a child representing the sense 
         if len(hyponyms) > 0:
-            node.insert('s.'+synset.name)
+            node.insert('s.'+str(synset.name))
         
         for h in hyponyms:
             self.__append_synset(h, node)
