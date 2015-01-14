@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """This script finds the WordNet uneven cut appropriate for
 the frequencies computed from the passwords. 
 
@@ -37,7 +39,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('pos', help='part-of-speech')
     parser.add_argument('pwsetid', help='ID of the password set')
-    parser.add_argument('-f', '--file', help='directory path for the output file')
+    parser.add_argument('file', help='directory path for the output file')
     parser.add_argument('-s', '--samplesize', type=int, help='if this argument is not '
                                                              'passed, runs over the entire database')
     parser.add_argument('-t', '--tree', help='if a directory path is provided,'
