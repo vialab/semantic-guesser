@@ -37,8 +37,7 @@ class BackoffTagger(SequentialBackoffTagger):
         for tagger in self._taggers:
             tag = tagger.choose_tag(tokens, index, history)
             if tag is not None:  
-                #self.dist.inc(tagger.__class__.__name__)
-		self.dist[tagger.__class__.__name__] += 1
+                self.dist.inc(tagger.__class__.__name__)
 #                  print tokens[index], history, tagger.__class__.__name__, tag
                 break
         return tag 
