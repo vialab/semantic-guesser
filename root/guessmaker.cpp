@@ -154,29 +154,29 @@ std::vector<std::string> decode_guess_mangled(const Guess &guess){
 
     std::vector<std::string> guesses;
 
-    std::string lower = mangle_guess(guess, tags, "lower", gap_map);
-    std::string upper = mangle_guess(guess, tags, "upper", gap_map);
-    std::string camel = mangle_guess(guess, tags, "title", gap_map);
+    guesses.push_back(mangle_guess(guess, tags, "lower", gap_map));
+    guesses.push_back(mangle_guess(guess, tags, "upper", gap_map));
+    guesses.push_back(mangle_guess(guess, tags, "title", gap_map));
 
-    guesses.push_back(lower);
-    guesses.push_back(upper);
-    if (camel !=  upper)
-        guesses.push_back(camel);
-  
-    std::string title(lower);
-    title[0] = toupper(title[0]);
-    if (title != camel)
-        guesses.push_back(title);
-    
+    // if at least two tags are not gap, including the first
+    // makes a title guess, since the previous block will only make camel case
+    // e.g., alice2go -> Alice2go.
+    if (std::count(gap_map.begin(), gap_map.end(), false) > 1 && !gap_map[0]){
+        std::string temp(guesses[0]);
+        std::transform(temp.begin(), temp.end(), temp.begin(), ::tolower);
+        temp[0] = toupper(temp[0]);
+        guesses.push_back(temp);
+    }
 
     return guesses;
 }
 
-void load_grammar(int pwset_id, std::string &grammar_folder ){
-    if (grammar_folder == "")
-        grammar_folder = "grammar/" +  std::to_string(pwset_id) + "/";
+void load_grammar(int pwset_id){
 
-    std::string rules_path = grammar_folder + "rules.txt";
+    std::stringstream ss;
+    ss << "grammar/" <<  pwset_id << "/rules.txt";
+
+    std::string rules_path = ss.str();
     std::ifstream fs(rules_path);
     std::string line;
    
@@ -189,15 +189,23 @@ void load_grammar(int pwset_id, std::string &grammar_folder ){
     }
     fs.close();
     
-    std::string nonterminals_path = grammar_folder + "nonterminals/";
+    ss.str("");
+    ss.clear();
+    ss << "grammar/" << pwset_id << "/nonterminals";
+
+    std::string nonterminals_path = ss.str();
     DIR *dir = opendir(nonterminals_path.c_str());
     struct dirent *ent;
 
     while ((ent = readdir(dir)) != NULL){
-        std::string path = nonterminals_path + std::string(ent->d_name);
+        ss.str("");
+        ss.clear();
+        ss << "./grammar/" << pwset_id << "/nonterminals/" << std::string(ent->d_name);
+                
+ 
+        std::string path = ss.str();
         std::ifstream fs(path);
         
-
         std::vector<Terminal> terminals;
 
         while (std::getline(fs, line)){
@@ -316,9 +324,9 @@ int run(bool mangle, double limit, int min_length, double min_prob){
                 cerr << "queue size: "   << (int)queue.size() << "\n";
             }
 
-            cout << guess_string << "\t" ; // output guess
+            cout << guess_string << "\n"; // output guess
             //cout << curr_guess.p << "\n"; // output probability
-            cout << curr_guess.rule->str << "\n"; //output rule
+            //cout << curr_guess.rule << "\n"; //output rule
 
 
             // exit when reach the limit of guesses
@@ -377,21 +385,13 @@ optparse::Values options(int argc, char *argv[]){
                                 .set_default(0);
     parser.add_option("-p", "--prob").type("double").help("sets a minimum guess probability threshold").set_default(0);
     
-    parser.add_option("-g", "--grammar").set_default("").help("location of the grammar");    
     return parser.parse_args(argc, argv);
 }
 
 int main(int argc, char *argv[]) {
-    optparse::Values opts = options(argc, argv);
-    std::string grammar_path = opts["grammar"];
-    if (grammar_path != ""){
-        if (grammar_path.back() != '/'){
-            grammar_path.append("/");
-        }
-    }
-        
+     optparse::Values opts = options(argc, argv);
     
-    load_grammar((int)opts.get("password_set"), grammar_path);
+    load_grammar((int)opts.get("password_set"));
 //    double *bounds = prob_bounds();
 //    cout << bounds[0] << '\t' << bounds[1] << '\n';
     return run((bool)opts.get("mangle"), (double) opts.get("limit"), (int)opts.get("length"), (double)opts.get("prob"));

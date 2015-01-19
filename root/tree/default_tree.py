@@ -15,7 +15,6 @@ class DefaultTreeNode (TreeNode):
     def __init__(self, key):
         self.leftchild    = None
         self.rightsibling = None
-        self.parent       = None
         self.key          = key
         self.value        = 0
         self._entropy     = 0
@@ -28,15 +27,7 @@ class DefaultTreeNode (TreeNode):
         for c in self.children():
             s += c.print_nested(indent_level + 1)
         return s
-    
-    
-    def increment_value(self, delta, cumulative=True):
-        x = self
-        while x:
-            x.value += delta
-            x = x.parent if cumulative else None
-
-    
+        
     def children(self):
         children = list()
         c = self.leftchild  # c is the current child
@@ -92,7 +83,6 @@ class DefaultTreeNode (TreeNode):
         In both cases, returns the child.
         """
         newchild = self.create_node(key) if key is not None else node
-        newchild.parent = self
         
         if self.leftchild is None:
             self.leftchild = newchild
@@ -170,8 +160,8 @@ class DefaultTree (Tree):
         
     def insert(self, path, freq=1):
         """Insert a subtree.
-        Since the tree is cumulative, increments the value of all 
-        nodes in the path.
+        Increments the value of the last node (leaf in this path), 
+        regardless it will be a leaf in this tree.
         
         Args:
             path: a list of keys, from root to leaf, e.g.:
@@ -188,32 +178,7 @@ class DefaultTree (Tree):
         
         # increments the count of the leaf
         currNode.value += freq
-    
-    def hashtable(self):
-        """ Returns a hashtable containing all nodes in the tree,
-        accessible by key.
-        Each  key points to a list  of nodes, since there  can be
-        more than one node with the same key in the tree.
-        """
-        ht = {}
-
-        # Breadth-First Search
-        queue = deque()
-        queue.append(self.root)
-
-        while len(queue) > 0:
-            node = queue.popleft()
-            
-            if node.key in ht:
-                ht[node.key].append(node)
-            else:
-                ht[node.key] = [node]
-
-            for child in node.children():
-                queue.append(child)
-
-        return ht
-
+        
     def flat(self):
         """ Non-recursive depth search.
         Adds every visited node to a list and returns it.

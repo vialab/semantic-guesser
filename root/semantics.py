@@ -11,7 +11,6 @@ from tagset_conversion import TagsetConverter
 from nltk.corpus import wordnet as wn
 from tree.default_tree import DefaultTree 
 from tree.wordnet import WordNetTree
-from timer import Timer
 import cPickle as pickle
 import argparse
 import os
@@ -38,7 +37,7 @@ def synset(word, pos):
     if pos is None:
         return None
 
-    wn_pos = tag_converter.clawsToWordNet(pos)
+    wn_pos = tag_converter.brownToWordNet(pos)
 
     if wn_pos is None:
         return None
@@ -58,19 +57,11 @@ def populate(tree, samplesize, pwset_id):
 
     """
 
-    with Timer("Loading records from db"):
-        db = database.PwdDb(pwset_id, sample=samplesize)
+    db = database.PwdDb(pwset_id, sample=samplesize)
 
-    tree_hashtable = tree.hashtable()
-    synset_dist    = {}
-
-    i = 0;
     while db.hasNext():
-        i += 1
-        if i % 1000000 == 0:
-            print "{} passwords have been read...".format(i)
         fragments = db.nextPwd()  # list of Fragment
-#
+
         for f in fragments:
             # we don't want dynamic dict. entries
             if f.is_gap():
@@ -81,57 +72,9 @@ def populate(tree, samplesize, pwset_id):
 
             # check if the synset returned has the pos we want
             if synset_ is not None and synset_.pos == tree.pos:
-                if synset_ not in synset_dist:
-                    synset_dist[synset_] = 1
-                else:
-                    synset_dist[synset_] += 1
-    
-    print "All passwords read."
-
-    with Timer("Updating tree"):
-        #tree.increment_synset(synset_)
-        for syn, count in synset_dist.items():
-            increment_synset_count(tree, syn, tree_hashtable, count)
+                tree.insert_synset(synset_)
 
     return tree
-
-def increment_synset_count(tree, synset, hashtable, count=1):
-    """ Given  a  WordNetTree, increases the  count  (frequency)
-    of a  synset  and propagate  it  through its ancestors. This
-    method is more efficient than WordNetTree.increment_synset()
-    as it uses WordNetTree.hashtable() to avoid searching.
-    
-    It's different  from increment_node() in that it  increments
-    the counts of ALL nodes  matching a key. In fact, it divides 
-    the count by the number of nodes matching the key.
-    
-    increment_node() resolves  ambiguity using the ancestor path
-    received as argument.
-    """
-    # unfortunately, WordNetTree.load() is not guaranteed to build
-    # the entire WordNet tree. The reason is that it starts at root
-    # adding the descendants retrieved from synset.hyponyms(). For some
-    # odd reason that method not always returns all hyponyms. For
-    # example, portugal.n.01 is not retrieved as a hyponym of 
-    # european_country.n.01, but if we call
-    #   wn.synsets('portugal')[0].hypernym_paths()
-    # european-country.n.01 appears as its ancestor.
-    # so what we do is check if the number of hypernym paths
-    # of a node is the same as the # of nodes in the tree, if
-    # it's higher, than we use tree.increment_synset, which is slow
-    # but takes care of adding the missing nodes.
-
-    paths = synset.hypernym_paths()
-    
-    key = synset.name if not synset.hyponyms() else 's.' + synset.name
-
-    if key in hashtable and len(hashtable[key]) == len(paths):
-        count = float(count) / len(paths)
-        nodes = hashtable[key]
-        for n in nodes:
-            n.increment_value(count, True)
-    else:
-        tree.increment_synset(synset, count)    
 
 
 def load_semantictree(pos, pwset_id, samplesize=None):
@@ -156,51 +99,12 @@ def load_semantictree(pos, pwset_id, samplesize=None):
         print 'successfuly pickled tree'
         return tree
     except:
-        with Timer("WordNetTree loading"):
-            tree = WordNetTree(pos)
-        with Timer("WordNetTree population"):
-            populate(tree, samplesize, pwset_id)
+        tree = WordNetTree(pos)
+        populate(tree, samplesize, pwset_id)
         print 'no pickling. loaded tree from scratch'
         f = open(path, 'w+')
         pickle.dump(tree, f)  # dumps tree to make the job faster next time
     return tree
-
-
-def increment_node(hashtable, key, ancestors):
-    """ Efficiently increments the count of a node in a tree.
-    Args:
-        - key: key of the node whose count must be incremented.
-        - hashtable: dictionary mapping  keys to all nodes of a 
-        tree. See DefaultTree.hashtable()
-        - ancestors: a list of the keys of the ancestors of the 
-        node, for  disambiguation, in case the tree has several 
-        nodes associated with a single key. Root is first.
-    """
-
-    nodes = hashtable[key]
-    if not nodes:
-        return False
-
-    for n in nodes:
-        n_ancestors = []
-        # check if every ancestor matches
-        # every a should be equals to b
-        fullmatch = True
-        b = n
-        for a in reversed(ancestors):
-            b = b.parent            
-            if not b or a.key != b.key:
-                fullmatch = False
-                break
-            n_ancestors.append(b)                
-
-        if fullmatch:
-            n.value += 1
-            for b in n_ancestors: b.value += 1
-            return True
-
-    return False
-
 
 
 def main(db, pos, file_):
@@ -220,16 +124,14 @@ def main(db, pos, file_):
                 continue
             pos_tagged_total += 1
 
-            wn_pos = tag_converter.clawsToWordNet(w.pos)  # assumes the pwds are pos-tagged using CLAWS tags
+            wn_pos = tag_converter.brownToWordNet(w.pos)  # assumes the pwds are pos-tagged using Brown tags
             if wn_pos == pos:
                 target_total += 1
-            else:
-                continue
                 
             synset_ = synset(w.word, w.pos)  # best effort to get a synset matching the fragment's pos
             
-            # if we were able to find a synset, append it to the tree
-            if synset_ is not None:
+            # check if the synset returned has the pos we want
+            if synset_ is not None and synset_.pos == pos:
                 in_wordnet_total += 1
                 paths = synset_.hypernym_paths()
                 for path in paths:
