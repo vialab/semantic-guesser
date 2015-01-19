@@ -16,7 +16,6 @@ import cPickle as pickle
 import argparse
 import os
 import sys
-import dill
 
 tag_converter = TagsetConverter()
 
