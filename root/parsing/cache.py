@@ -35,7 +35,7 @@ class pwReadCache(object):
         # no more using ids for delimiting the results window, due to the ORDER BY clause
         print 'retrieving passwords from db. offset: {} quantity: {} ...'.format(self._lowBounds, self._size) 
         query = '''SELECT pass_id, pass_text FROM passwords WHERE pwset_id = ?
-                ORDER BY pass_text LIMIT ? OFFSET ?'''
+                LIMIT ? OFFSET ?'''
 #       query = '''SELECT pass_id, pass_text FROM passwords WHERE pwset_id = ?
 #               ORDER BY pass_id LIMIT ? OFFSET ?'''
         self._tuplelist = list()
