@@ -32,7 +32,7 @@ Before you begin using the parsing and classification code, a MySQL database mus
     mysql -u user -p < root/db/passwords_schema.sql
     mysql -u user -p < root/db/lexicon.sql
 
-The above commands will create the database schema and insert the lexicon. If you would like to have the RockYou passwords on the db, download it [here](https://www.dropbox.com/s/euew2yikglyqpv2/sql.tar.gz) and insert it in the database:
+The above commands will create the database schema and insert the lexicon. If you would like to have the RockYou passwords on the db, download it [here](https://www.dropbox.com/s/bnxmxdvrkkz5lra/rockyou_ordered.sql.tar.gz) and insert it in the database:
 
     mysql -u user -p < root/db/rockyou.sql
 
@@ -48,10 +48,14 @@ Then the script must be run (ensure all data dependencies listed above are insta
 
 ###Authentication
 
-Make sure you modify the file root/db_credentials.conf with your credentials.
+Make sure you modify the file root/db_credentials.conf with your MYSQL credentials.
 
 ###Parsing
 wordminer.py connects to a database containing the passwords and dictionaries to perform password segmentation. The results are saved into the database.
+
+**Important Note**
+For performance reasons, make sure the passwords table is ordered by pass_text before running wordminer.py. Wordminer works in chunks of 100'000 words, and used to take 1+ days to run. The passwords table contains ~32'000'000 records, and each time 100'000 were fetched, the entire table was ordered by pass_text. As a result, preordering the table will speed up queries tremendously (only takes ~7 hours now on a high powered computer). If the RockYou passwords were loaded from the file provided above, they are already sorted.  
+
 For example, to parse a group of passwords whose ID in the database is 1:
 
     cd parsing/
