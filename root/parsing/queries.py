@@ -229,7 +229,7 @@ def getDictionary(sqleng, dictset_ids):
             ## assumption: the dictionaries are in priority order (in the dictset_ids list)
             for dict_text, dict_id in res:
                 try: 
-                    tmp = dictionary[dict_text]
+                    tmp = dictionary[dict_text.lower()]
                 except:
                     # TODO: This change is experimental. *Apparently*, we don't need dict_text in the tuple,
                     # but the guessability code needs dictset_id  
