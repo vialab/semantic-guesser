@@ -122,13 +122,12 @@ def retWordLists(x, currWord, remWords):
 
 # tie-breaking based on frequency of word (tries to find the candidate
 # with the least odd word).
-def getFreqBasedWinner(candidatesList):
+def getFreqBasedWinner(db, candidatesList):
     listOfFreq = []
     minF = []
     k = 0
     
     if (len(candidatesList) > 1):
-        db = connectToDb()
         for x in candidatesList:
             for xword in x[0][0]:
                 f = getFreq(db, xword[0])
@@ -219,15 +218,14 @@ def getBestBigramTrigramScore_r(db, x, numWords, freqInfo, dictionary):
     
                         
 
-GRAMCOVTHRESHOLD = 0.66
-def getBigramTrigramBasedWinner(candidateList, freqInfo, dictionary):
+def getBigramTrigramBasedWinner(db, candidateList, freqInfo, dictionary):
     
     bestList = []
     if (len(candidateList) == 1):
         bestList = candidateList
     else:
         highestScore = 0.0
-        db = connectToDb()
+        # db = connectToDb()
         score = float(0)
         
         for x in candidateList:
@@ -248,7 +246,7 @@ def getBigramTrigramBasedWinner(candidateList, freqInfo, dictionary):
     return bestList
 
 
-def bestCandidate(password, candidates, freqInfo, dictionary):
+def bestCandidate(db, password, candidates, freqInfo, dictionary):
     ''' Receives a list of candidate segmentations and selects the best
         based on the following criteria:
         1. Coverage
@@ -287,11 +285,11 @@ def bestCandidate(password, candidates, freqInfo, dictionary):
     
     # Run the core tie-breaker. Try to get the best result based on
     # whether it exists in bigram/trigram lists.
-    maxCovList = getBigramTrigramBasedWinner(candidates, freqInfo, dictionary)
+    maxCovList = getBigramTrigramBasedWinner(db, candidates, freqInfo, dictionary)
 
     # finally, if we still have a tie, try to get the winning
     # result based on the oddest single word frequencies
-    maxCovList = getFreqBasedWinner(maxCovList)
+    maxCovList = getFreqBasedWinner(db, maxCovList)
 
     return maxCovList
 
@@ -537,7 +535,7 @@ def mineLine(db, password, dictionary, freqInfo):
 
         candidates = generateCandidates(words, password)
 #         print candidates
-        resultSet = bestCandidate(password, candidates, freqInfo, dictionary)
+        resultSet = bestCandidate(db, password, candidates, freqInfo, dictionary)
 #         print resultSet
 
         # add the trashy fragments in the database    
@@ -615,7 +613,7 @@ def sqlMine(dbe, options, dictSetIds):
 
     lastResult = (None, None)  # (password, result)
 
-    wbuff = WriteBuffer(dbe, dictionary, 100000)
+    wbuff = WriteBuffer(dbe, dictionary, 30000)
     for p in rbuff:
         pwcount += 1
 

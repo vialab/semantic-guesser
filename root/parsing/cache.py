@@ -1,5 +1,7 @@
 import oursql
 from queries import *
+import sys
+import time
 
 class pwReadCache(object):
     '''A class to cache/buffer the SQL reads from the database, to speed up the process.'''
@@ -32,10 +34,12 @@ class pwReadCache(object):
     def _refill(self):
         '''Refills the internal cache of tuples.'''
  
-        # no more using ids for delimiting the results window, due to the ORDER BY clause
+        # Edit 1: no more using ids for delimiting the results window, due to the ORDER BY clause
+        # Edit 2: no more using ORDER BY. Assumes the passwords are sorted in the db.
         print 'retrieving passwords from db. offset: {} quantity: {} ...'.format(self._lowBounds, self._size) 
-        query = '''SELECT pass_id, pass_text FROM passwords WHERE pwset_id = ?
-                ORDER BY pass_text LIMIT ? OFFSET ?'''
+        query = '''SELECT pass_id, pass_text FROM passwords WHERE pwset_id = ? \
+                #ORDER BY pass_text 
+                LIMIT ? OFFSET ?'''
 #       query = '''SELECT pass_id, pass_text FROM passwords WHERE pwset_id = ?
 #               ORDER BY pass_id LIMIT ? OFFSET ?'''
         self._tuplelist = list()
@@ -70,17 +74,13 @@ class WriteBuffer(object):
             self._last_id = self._last_id[0]
         if self._last_id is None:
             self._last_id = 0 #this is a protection against when the output db (sets) is empty.
-    
-#     def __del__(self):
-#         '''This is called when the object is trying to be deleted, to ensure that it's buffer is written out to disk.'''
-#         if self._count > 0:
-#             print("Del called, flushing write buffer.")
-#             self._flush()
-    
+
+
     def _flush(self):
         '''The function that coordinates the commit of the internal data store to the sql store.'''
+        t0 = time.time()
         query1 = '''INSERT INTO sets (pass_id, set_pw) VALUES (?,?);'''
-        query2 = '''SELECT (set_id) FROM sets WHERE set_id > ?;'''
+        query2 = '''SELECT max(set_id) FROM sets;'''
         query3 = '''INSERT INTO set_contains (set_id, dict_id, s_index, e_index) VALUES (?,?,?,?)'''
         # example:
         # (15, ([[('too', 0, 3), ('hot', 3, 6)], [('too', 0, 3), ('ott', 4, 7)]], 6))
@@ -94,16 +94,12 @@ class WriteBuffer(object):
             cur.executemany(query1, stage1) #commit the stage1
             cur.execute("COMMIT;", plain_query=True)
             print("Stage 1 Commit Complete.")
-            cur.execute(query2, (self._last_id,)) #retrieve all the newly created result IDd
-            set_ids = [x[0] for x in cur.fetchall()] #buffer them locally.
-            self._last_id = max(set_ids) #reset the last_id field to the max of the returned ones.
-            #pair and create the stage2 commit.
-            set_ids = sorted(set_ids)
-            print("sorted the set_ids")
-            if len(set_ids) != len(stage1):
-                raise ValueError('something dun broke.')
-        #with self._db.cursor() as cur:
-            stage2 = self._genStage2(set_ids)
+            cur.execute(query2) #retrieve the last set_id added
+
+            self._last_id = cur.fetchone()[0] #reset the last_id field
+
+            stage2 = self._genStage2(self._last_id - len(stage1) + 1)
+
             print("Stage 2 Commit Starting.")
             cur.executemany(query3, stage2)
             cur.execute("COMMIT;", plain_query=True)
@@ -113,6 +109,8 @@ class WriteBuffer(object):
             cur.execute("SET foreign_key_checks = 1;", plain_query=True)
             self._data = list()
         self._count = 0
+        t1 = time.time()
+        print "Flush took {}.".format(t1-t0)
 
                 
     def _genStage1(self):
@@ -125,31 +123,30 @@ class WriteBuffer(object):
                 stage1.append((pass_id, self._genSetPW(rset))) #smooshes the results into a tuple.
         return stage1
     
-    def _genStage2(self, setIDs):
+    def _genStage2(self, startingID):
         '''Generates the package of data for stage2 commit into db.'''
-        stage2 = list()
-        stage2o = list()
-
         #-- refresh dictionary (for dynamic entries)
 #        self._dictionary = reloadDynamicDictionary( self._db, self._dictionary)
-        
+        stage2 = []
+
+        currID = startingID
+
         for result in self._data:
             result = result[1][0]
-            for rset in result:
-                stage2.append(rset)
-        for (x,y) in zip(setIDs, stage2):
-            for p in y: # y is the list of fragments of a password
-                # p is a tuple like (fragment, start_index, end_index)
-                try :
-                    stage2o.append((x, self._dictionary[p[0]][1], p[1], p[2]))
-                except KeyError, e: # if key fragment not found in memory, go to db
-                    try :
-                        entry = dictIDbyWord(self._db, [p[0]])
-                        stage2o.append((x, entry[p[0]], p[1], p[2]))
-                    except :
-                        print p[0]
-                        print entry
-        return stage2o
+            for rset in result: # rset is the list of fragments of a password                
+                for word, sIndex, eIndex in rset: 
+                    try:
+                        stage2.append((currID, self._dictionary[word][1], sIndex, eIndex))
+                    except KeyError, e: # if key fragment not found in memory, go to db
+                        try:
+                            entry = dictIDbyWord(self._db, [word])
+                            stage2.append((currID, entry[word], sIndex, eIndex))
+                        except:
+                            print "Word {} not found in memory and db...".format(word)
+                            print entry
+                currID += 1
+
+        return stage2
     
     def _genSetPW(self, tups):
         '''Simply gets the password for the set from the list of words.'''
