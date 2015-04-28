@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unordered_map> 
 #include <dirent.h>
+#include <string.h>
 #include <queue>
 #include <regex>
 #include <iterator>
@@ -261,8 +262,148 @@ bool operator<( const Guess& a, const Guess& b ) {
     return probability(a) < probability(b);
 }
 
+/**
+ * Check if, of all possible parents of child, the informed
+ * parent is the one with the lowest probability.
+ * The pseudocode for this function can be found in Appendix
+ * B of Weir's PhD thesis.
+ */
+bool is_lowest_probability_parent(Guess &child, Guess &parent, std::vector<std::string> &tags, double parent_p, int pivot){
+	Rule rule = *parent.rule;
 
-int run(bool mangle, double limit, int min_length, double min_prob){
+	for (int i = 0; i < tags.size(); i++){
+		if (i == pivot)
+			continue;
+
+		std::string tag = tags[i];
+
+		// generate a parent for this guess by decrementing the pointer to its ith terminal
+		std::vector<std::vector<Terminal>::iterator> other_parent(child.terminals);
+		// check if decrementing the pointer will send it off valid bounds
+		// if so, skip this terminal
+		if (other_parent[i] == tag_dicts[tag].begin())
+			continue;
+		--other_parent[i];
+
+		double other_parent_p = probability(rule.p, other_parent);
+
+		// decide if other parent will take care of the child
+		if (other_parent_p < parent_p)
+			return false;
+		else if (other_parent_p == parent_p) {
+			if (i > pivot) // location of the pivot is used to break ties
+				return false;
+		}
+	}
+	return true;
+}
+
+int run_deadbeat(bool mangle, double limit, int min_length, double min_prob, bool verbose){
+
+    priority_queue<Guess, vector<Guess>, less<vector<Guess>::value_type>> queue;
+
+    // Initialize queue with the most probable guess of each rule
+    for (std::vector<Rule>::iterator it = rules.begin(); it != rules.end(); ++it){
+    	Rule * rule = &(*it);
+
+        std::vector<std::string> tags = unpack(rule->str);
+
+        std::vector<std::vector<Terminal>::iterator> terminals;
+        for (int i=0; i<tags.size(); i++){
+            terminals.push_back(tag_dicts[tags[i]].begin());
+        }
+
+        Guess g;
+        g.terminals = terminals;
+        g.pivot = 0;
+        g.rule = rule;
+
+        // only enqueue guesses with probability higher than threshold
+        if (probability(g) >= min_prob)
+        	queue.push(g);
+    }
+
+    long long nguesses = 0;
+    Guess curr_guess;
+    std::string guess_string;
+
+    // Generate (output) guesses in highest probability order
+    while (!queue.empty()){
+        curr_guess = queue.top();
+        double curr_guess_p = probability(curr_guess);
+        queue.pop();
+
+
+        std::vector<std::string> guesses;
+        if (mangle)
+            guesses = decode_guess_mangled(curr_guess);
+        else
+            guesses = decode_guess(curr_guess);
+
+        for (int i=0; i<guesses.size(); i++){
+        	guess_string = guesses[i];
+            // TODO: if we want to make things faster, should not generate the
+            // unwanted guesses in the first place.
+            if (guess_string.length() < min_length)
+                continue;
+
+            nguesses++;
+
+            if (nguesses % 1000000 == 0){ // output status line
+                cerr << "# of guesses: " << nguesses          << "\n";
+                cerr << "queue size: "   << (int)queue.size() << "\n";
+            }
+
+            cout << guess_string << "\t" ; // output guess
+            if (verbose){
+            	cout << curr_guess_p << "\t"; // output probability
+            	cout << curr_guess.rule->str; //output rule
+            }
+            cout << "\n";
+
+
+            // exit when reach the limit of guesses
+            if (nguesses == limit){
+            	cerr << "Last guess: (" << guess_string << ", " << curr_guess_p << ")\n";
+            	cerr << nguesses << " guesses generated\n";
+            	return 0;
+            }
+        }
+
+        std::vector<std::string> tags = unpack(curr_guess.rule->str);
+        // enqueue lower probability guesses from the same rule of curr_guess
+        for (int i = 0; i < tags.size(); i++ ){
+            std::string tag = tags[i];
+
+            std::vector<std::vector<Terminal>::iterator> new_terminals(curr_guess.terminals);
+            ++new_terminals[i];
+
+            if (new_terminals[i] != tag_dicts[tag].end()){
+
+                double child_p = probability((*curr_guess.rule).p, new_terminals);
+
+                // do not enqueue guesses with probability lower than threshold
+                if (child_p < min_prob) continue;
+
+                Guess child;
+                child.terminals = new_terminals;
+                child.pivot     = i;
+                child.rule      = curr_guess.rule;
+
+                if (is_lowest_probability_parent(child, curr_guess, tags, curr_guess_p, i))
+                	queue.push(child);
+            }
+        }
+    }
+
+    cerr << "Last guess: (" << guess_string << ", " << probability(curr_guess) << ")\n";
+    cerr << nguesses << " guesses generated\n";
+
+    return 0;
+}
+
+
+int run_next(bool mangle, double limit, int min_length, double min_prob, bool verbose){
 
     priority_queue<Guess, vector<Guess>, less<vector<Guess>::value_type>> queue;
 
@@ -317,8 +458,11 @@ int run(bool mangle, double limit, int min_length, double min_prob){
             }
 
             cout << guess_string << "\t" ; // output guess
-            //cout << curr_guess.p << "\n"; // output probability
-            cout << curr_guess.rule->str << "\n"; //output rule
+            if (verbose){
+            	cout << probability(curr_guess) << "\t"; // output probability
+            	cout << curr_guess.rule->str; //output rule
+            }
+            cout << "\n";
 
 
             // exit when reach the limit of guesses
@@ -353,8 +497,6 @@ int run(bool mangle, double limit, int min_length, double min_prob){
                 
 
                 queue.push(g);
-
-
             }
         }
     }
@@ -377,7 +519,10 @@ optparse::Values options(int argc, char *argv[]){
                                 .set_default(0);
     parser.add_option("-p", "--prob").type("double").help("sets a minimum guess probability threshold").set_default(0);
     
-    parser.add_option("-g", "--grammar").set_default("").help("location of the grammar");    
+    parser.add_option("-g", "--grammar").set_default("").help("location of the grammar");
+    parser.add_option("-v", "--verbose").action("store_true");
+    char const* const algorithms[] = { "next", "deadbeat"};
+    parser.add_option("-a", "--algorithm").choices(&algorithms[0], &algorithms[2]).help("Either 'next' or 'deadbeat'");
     return parser.parse_args(argc, argv);
 }
 
@@ -390,11 +535,19 @@ int main(int argc, char *argv[]) {
         }
     }
         
+    const char* algo = (const char*) opts.get("algorithm");
     
+
     load_grammar((int)opts.get("password_set"), grammar_path);
 //    double *bounds = prob_bounds();
 //    cout << bounds[0] << '\t' << bounds[1] << '\n';
-    return run((bool)opts.get("mangle"), (double) opts.get("limit"), (int)opts.get("length"), (double)opts.get("prob"));
+
+    if (strcmp(algo, "next") == 0)
+    	return run_next((bool)opts.get("mangle"), (double) opts.get("limit"), (int)opts.get("length"),
+    	    		(double)opts.get("prob"), (bool)opts.get("verbose"));
+    else
+    	return run_deadbeat((bool)opts.get("mangle"), (double) opts.get("limit"), (int)opts.get("length"),
+    		(double)opts.get("prob"), (bool)opts.get("verbose"));
 
 }
 
