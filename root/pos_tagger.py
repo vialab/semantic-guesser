@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 import database 
-from nltk.tag.sequential import DefaultTagger, BigramTagger, TrigramTagger, SequentialBackoffTagger
+from nltk.tag.sequential import DefaultTagger, BigramTagger, TrigramTagger,\
+SequentialBackoffTagger
 from nltk.probability import FreqDist
 from taggers import COCATagger, NamesTagger, WordNetTagger
 import cPickle as pickle
@@ -38,7 +39,7 @@ class BackoffTagger(SequentialBackoffTagger):
             tag = tagger.choose_tag(tokens, index, history)
             if tag is not None:  
                 #self.dist.inc(tagger.__class__.__name__)
-		self.dist[tagger.__class__.__name__] += 1
+                self.dist[tagger.__class__.__name__] += 1
 #                  print tokens[index], history, tagger.__class__.__name__, tag
                 break
         return tag 
@@ -99,7 +100,8 @@ def main(db, dryrun, stats, verbose):
             lastpw = pwd_str
     
             if counter % 100000 == 0:
-                print "{} passwords processed. {}% completed...".format(counter, (float(counter)/total)*100)
+                print "{} passwords processed. {}% completed..."\
+                .format(counter, (float(counter)/total)*100)
         
         db.finish()
         
@@ -111,18 +113,16 @@ def main(db, dryrun, stats, verbose):
 
 def options():
     parser = argparse.ArgumentParser()
-    parser.add_argument('password_set', default=1, type=int, help='the id of the collection of passwords to be processed')
-
-    parser.add_argument('-s', '--sample', default=None, type=int, help="sample size")
-    parser.add_argument('-d', '--dryrun', action='store_true', help="no commits to the database")
-    parser.add_argument('-t', '--stats', action='store_true', help="output stats in the end")
-    parser.add_argument('-v', '--verbose', action='store_true', help="output the pos tags of each password")
-
-    # db_group = parser.add_argument_group('Database Connection Arguments')
-    # db_group.add_argument('--user', type=str, default='root', help="db username for authentication")
-    # db_group.add_argument('--pwd',  type=str, default='', help="db pwd for authentication")
-    # db_group.add_argument('--host', type=str, default='localhost', help="db host")
-    # db_group.add_argument('--port', type=int, default=3306, help="db port")
+    parser.add_argument('password_set', default=1, type=int, \
+        help='the id of the collection of passwords to be processed')
+    parser.add_argument('-s', '--sample', default=None, type=int, \
+        help="sample size")
+    parser.add_argument('-d', '--dryrun', action='store_true', \
+        help="no commits to the database")
+    parser.add_argument('-t', '--stats', action='store_true', \
+        help="output stats in the end")
+    parser.add_argument('-v', '--verbose', action='store_true', \
+        help="output the pos tags of each password")
 
     return parser.parse_args()
  
