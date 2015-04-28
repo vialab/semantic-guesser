@@ -2,12 +2,14 @@
 Specialized Tree and TreeNode for WordNet.
    
 Created on 2013-03-25
+
 @author: rafa
+
 """
 
 from nltk.corpus import wordnet as wn 
 from default_tree import DefaultTree, DefaultTreeNode
-from collections import deque
+
 
 class WordNetTreeNode(DefaultTreeNode):
     
@@ -93,60 +95,29 @@ class WordNetTree(DefaultTree):
         
         for synset in roots:
             self.__append_synset(synset, self.root)
-
-
-    def __append_synset(self, synset, root):
-        """Appends the whole  subtree rooted at a  synset to a  root. 
-        Visits all descendant synsets in a DFS fashion (iteratively), 
-        creating a WordNetTreeNode for each synset.
-        If the synset is not a leaf, creates a child representing its 
-        sense, with 's.' as a prefix, e.g.,
+        
+    def __append_synset(self, synset, parent):
+        """Recursive method to a append a synset (and all its children) to a parent. 
+        Given a parent node, creates a node for the informed synset 
+        and inserts it as a child.
+        If the synset is not a leaf, creates its first child representing
+        its sense, with 's.' as a prefix, e.g.,
             person.n.01
                 s.person.n.01
                 .
                 .
-        The measure above preserves the constraint that leaves should
-        represent senses and internal nodes should represent classes.
         """
-        stack = deque()
-        stack.append((synset, root))
-
-        while len(stack):
-            syn, parent = stack.pop()
-            syn_node = parent.insert(syn.name)
-
-            hyponyms = syn.hyponyms()
-            
-            # if not leaf, insert a child representing the sense 
-            if len(hyponyms) > 0:
-                syn_node.insert('s.'+syn.name)
-            
-            for hypo in syn.hyponyms():
-                stack.append((hypo, syn_node))
-
+        node = parent.insert(synset.name)
+        hyponyms = synset.hyponyms()
         
-#    def __append_synset(self, synset, parent):
-#        """Recursive method to a append synset (and all its children) to a parent. 
-#        Given a parent node, creates a node for the informed synset 
-#        and inserts it as a child.
-#        If the synset is not a leaf, creates its first child representing
-#        its sense, with 's.' as a prefix, e.g.,
-#            person.n.01
-#                s.person.n.01
-#                .
-#                .
-#        """
-#        node = parent.insert(synset.name)
-#        hyponyms = synset.hyponyms()
-#        
-#        # if not leaf, insert a child representing the sense 
-#        if len(hyponyms) > 0:
-#            node.insert('s.'+synset.name)
-#        
-#        for h in hyponyms:
-#            self.__append_synset(h, node)
+        # if not leaf, insert a child representing the sense 
+        if len(hyponyms) > 0:
+            node.insert('s.'+synset.name)
+        
+        for h in hyponyms:
+            self.__append_synset(h, node)
             
-    def increment_synset(self, synset, freq=1):
+    def insert_synset(self, synset, freq=1):
         paths = synset.hypernym_paths()
         
         if len(paths) > 1:
