@@ -16,7 +16,6 @@ import cPickle as pickle
 import argparse
 import os
 import sys
-import dill
 
 tag_converter = TagsetConverter()
 
@@ -49,21 +48,28 @@ def synset(word, pos):
     return synsets[0] if len(synsets) > 0 else None
 
 
-def populate(tree, samplesize, pwset_id):
-    """ Given a POS-specific tree representation
-    of WordNet (an instance of WordNetTree), updates the
-    frequency of each node according to its occurrence
-    in a sample of the passwords.
+def populate(samplesize, pwset_id, nountree=None, verbtree=None):
+    """ Given POS-specific tree representations of WordNet (verb, noun or both), 
+    updates the  frequency of each node  according to its occurrence in a sample 
+    of the passwords.
 
+    nountree   - instance of WordNetTree, optional
+    verbtree   - instance of WordNetTree, optional
     samplesize - if None, reads the entire database
-
+    pwset_id   - id of the collection of passwords to be loaded
     """
+    if not nountree and not verbtree:
+        return
 
     with Timer("Loading records from db"):
         db = database.PwdDb(pwset_id, sample=samplesize)
 
-    tree_hashtable = tree.hashtable()
-    synset_dist    = {}
+    nountree_hashtable = nountree.hashtable() if nountree else None
+    verbtree_hashtable = verbtree.hashtable() if verbtree else None
+    noun_synset_dist   = {}
+    verb_synset_dist   = {}
+
+    inc = lambda dist, key: 1 if key not in dist else dist[key] + 1
 
     i = 0;
     while db.hasNext():
@@ -81,20 +87,20 @@ def populate(tree, samplesize, pwset_id):
             synset_ = synset(f.word, f.pos)
 
             # check if the synset returned has the pos we want
-            if synset_ is not None and synset_.pos == tree.pos:
-                if synset_ not in synset_dist:
-                    synset_dist[synset_] = 1
-                else:
-                    synset_dist[synset_] += 1
-    
+            if synset_ is not None:
+                if synset_.pos == 'n' and nountree:
+                    noun_synset_dist[synset_] = inc(noun_synset_dist, synset_)
+                elif synset_.pos == 'v' and verbtree:
+                    verb_synset_dist[synset_] = inc(verb_synset_dist, synset_)
+                        
     print "All passwords read."
 
     with Timer("Updating tree"):
-        #tree.increment_synset(synset_)
-        for syn, count in synset_dist.items():
-            increment_synset_count(tree, syn, tree_hashtable, count)
+        for syn, count in noun_synset_dist.items():
+            increment_synset_count(nountree, syn, nountree_hashtable, count)
+        for syn, count in verb_synset_dist.items():
+            increment_synset_count(verbtree, syn, verbtree_hashtable, count)
 
-    return tree
 
 def increment_synset_count(tree, synset, hashtable, count=1):
     """ Given  a  WordNetTree, increases the  count  (frequency)
@@ -104,8 +110,7 @@ def increment_synset_count(tree, synset, hashtable, count=1):
     
     It's different  from increment_node() in that it  increments
     the counts of ALL nodes  matching a key. In fact, it divides 
-    the count by the number of nodes matching the key.
-    
+    the count by the number of nodes matching the key.  
     increment_node() resolves  ambiguity using the ancestor path
     received as argument.
     """
@@ -117,8 +122,8 @@ def increment_synset_count(tree, synset, hashtable, count=1):
     # european_country.n.01, but if we call
     #   wn.synsets('portugal')[0].hypernym_paths()
     # european-country.n.01 appears as its ancestor.
-    # so what we do is check if the number of hypernym paths
-    # of a node is the same as the # of nodes in the tree, if
+    # so we check if the number of hypernym paths of a node is the same 
+    # as the # of nodes in the tree, if
     # it's higher, than we use tree.increment_synset, which is slow
     # but takes care of adding the missing nodes.
 
@@ -135,11 +140,44 @@ def increment_synset_count(tree, synset, hashtable, count=1):
         tree.increment_synset(synset, count)    
 
 
+def load_semantictrees(pwset_id, samplesize=None):
+    """Returns two tree representations of WordNet (an instance of WordNetTree)
+    for verbs and nouns, respectively, with the frequency of the nodes (senses)
+    conforming to their occurrence in the passwords.
+
+    samplesize - if None, reads the entire database
+
+    """
+
+    sys.setrecursionlimit(10000)
+
+    dir      = os.path.dirname(os.path.abspath(__file__))
+    filepath = "pickles/tree-{}-{}-{}.pickle"
+    noun_tree_path = os.path.join(dir, filepath.format('n', pwset_id, samplesize))
+    verb_tree_path = os.path.join(dir, filepath.format('v', pwset_id, samplesize))
+
+    try:
+        nountree = pickle.load(open(noun_tree_path))
+        verbtree = pickle.load(open(verb_tree_path))
+        print 'successfuly pickled tree'
+    except:
+        with Timer("WordNet trees loading"):
+            nountree = WordNetTree('n')
+            verbtree = WordNetTree('v')
+        with Timer("WordNetTree population"):
+            populate(samplesize, pwset_id, nountree, verbtree)
+        print 'no pickling. loaded tree from scratch'
+        # dumps tree to make the job faster next time
+        pickle.dump(nountree, open(noun_tree_path, 'w+'))
+        pickle.dump(verbtree, open(verb_tree_path, 'w+'))
+    
+    return (nountree, verbtree)
+
+
 def load_semantictree(pos, pwset_id, samplesize=None):
-    """ Returns a tree representation of WordNet (an
-    instance of WordNetTree) for a certain part-of-speech
-    with the frequency of the nodes conforming to their
-    occurrence in the passwords.
+    """ Returns a tree representation of  WordNet (an instance of WordNetTree) 
+    for a certain part-of-speech with the frequency of the nodes conforming to 
+    their occurrence in the passwords.
 
     samplesize - if None, reads the entire database
 

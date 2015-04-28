@@ -36,16 +36,21 @@ nouns_tree = None
 verbs_tree = None
 node_index = None
 
-def select_treecut(pwset_id):
+
+def select_treecut(pwset_id, abstraction_level):
+    """ Load the noun and verb trees and calculates the their respective tree 
+    cuts.  Stores  them in the module  variables, nouns_tree, verbs_tree  and
+    node_index.  node_index points to the nodes in the tree.
+    """
+
     global nouns_tree, verbs_tree, node_index
 
-    nouns_tree = semantics.load_semantictree('n', pwset_id)
-    verbs_tree = semantics.load_semantictree('v', pwset_id)
+    nouns_tree, verbs_tree = semantics.load_semantictrees(pwset_id)
     
-    cut = wagner.findcut(nouns_tree, 5000)
+    cut = wagner.findcut(nouns_tree, abstraction_level)
     for c in cut: c.cut = True
     
-    cut = wagner.findcut(verbs_tree, 5000)
+    cut = wagner.findcut(verbs_tree, abstraction_level)
     for c in cut: c.cut = True
     
     flat = nouns_tree.flat() + verbs_tree.flat()
@@ -120,8 +125,47 @@ def refine_gap(segment):
     return DictionaryTag.map[segment.dictset_id] + str(len(segment.word))
 
 
-def classify(segment):
+def classify_by_pos(segment):
+    """ Classifies  the  segment into number, word, character  sequence or
+    special  character sequence.  Includes a POS tag if possible. Does not 
+    include a semantic symbol/tag.
+    If segment is a word, the tag consists in its POS tag. For numbers and 
+    character sequences, a tag of the form categoryN is  retrieved where N 
+    is  the length  of the segment.  Words with unknown pos  are tagged as 
+    'unkwn'.
+    Examples:
+        love    -> vb
+        123     -> number3
+        audh    -> char4
+        kripton -> unkwn
+        !!!     -> special3
+    """
 
+    if DictionaryTag.is_gap(segment.dictset_id):
+        tag = refine_gap(segment)
+    else:
+        tag = segment.pos if segment.pos else 'unkwn'
+
+    return tag
+
+
+def classify(segment):
+    """ Fully classify the segment. Returns a tag  possibly containing semantic
+    and  syntactic (part-of-speech) symbols.  If the segment  is a proper noun,
+    returns either month, fname, mname, surname, city or country,  as suitable.
+    For  other words, returns a  tag of  the form pos_synset,  where  pos is  a
+    part-of-speech tag and  synset is the corresponding  WordNet synset.  If no 
+    synset exists, the symbol 'None' is used.   Aside from these classes, there 
+    is also numberN, charN, and specialN, for numbers, character sequences  and 
+    sequences of  special characters,  respectively, where N denotes the length
+    of the segment.
+    Examples:
+        loved -> vvd_s.love.v.01
+        paris -> city
+        jonas -> mname
+        cindy -> fname
+        aaaaa -> char5
+    """
     if DictionaryTag.is_gap(segment.dictset_id):
         tag = refine_gap(segment)
     elif segment.pos in ['np', 'np1', 'np2', None] and segment.dictset_id in DictionaryTag.map:
@@ -197,10 +241,15 @@ def segment_gaps(pwd):
         segmented.append(f)
     
     return segmented    
-        
 
-def main(db, pwset_id):
-    # tags_file = open('grammar/debug.txt', 'w+')
+
+def print_result(password, segments, tags, pattern):
+    for i in range(len(segments)):
+        print "{}\t{}\t{}\t{}\n".format(password, segments[i].word, tags[i], pattern)
+
+
+def main(db, pwset_id, onlypos, dryrun, verbose, basepath):
+#    tags_file = open('grammar/debug.txt', 'w+')
     
     patterns_dist = FreqDist()  # distribution of patterns
     segments_dist = ConditionalFreqDist()  # distribution of segments, grouped by semantic tag
@@ -215,7 +264,7 @@ def main(db, pwset_id):
         segments = expand_gaps(segments)
         
         for s in segments:  # semantic tags
-            tag = classify(s)
+            tag = classify(s) if not onlypos else classify_by_pos(s)
             tags.append(tag)
             segments_dist[tag].inc(s.word)
             
@@ -224,8 +273,8 @@ def main(db, pwset_id):
         patterns_dist.inc(pattern)
         
         # outputs the classification results for debugging purposes
-        # for i in range(len(segments)):
-        #     tags_file.write("{}\t{}\t{}\t{}\n".format(password, segments[i].word, tags[i], pattern))
+        if verbose:
+            print_result(password, segments, tags, pattern)
 
         counter += 1
         if counter % 100000 == 0:
@@ -235,23 +284,26 @@ def main(db, pwset_id):
 
     pwset_id = str(pwset_id)
     
+    if dryrun:
+        return
+
     # remove previous grammar
     try:
-        shutil.rmtree(os.path.join('grammar', pwset_id))
+        shutil.rmtree(os.path.join(basepath, pwset_id))
     except OSError: # in case the above folder does not exist 
         pass
     
     # recreate the folders empty
-    os.makedirs(os.path.join('grammar', pwset_id, 'nonterminals'))
+    os.makedirs(os.path.join(basepath, pwset_id, 'nonterminals'))
 
-    with open(os.path.join('grammar', pwset_id, 'rules.txt'), 'w+') as f:
+    with open(os.path.join(basepath, pwset_id, 'rules.txt'), 'w+') as f:
         total = patterns_dist.N()
         for pattern, freq in patterns_dist.items():
             f.write('{}\t{}\n'.format(pattern, float(freq)/total))
     
     for tag in segments_dist.keys():
         total = segments_dist[tag].N()
-        with open(os.path.join('grammar', pwset_id, 'nonterminals', tag+'.txt'), 'w+') as f:
+        with open(os.path.join(basepath, pwset_id, 'nonterminals', tag+'.txt'), 'w+') as f:
             for k, v in segments_dist[tag].items():
                 f.write("{}\t{}\n".format(k, float(v)/total))
 
@@ -259,17 +311,22 @@ def main(db, pwset_id):
 def options():
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('password_set', default=1, type=int, help='the id of the collection of passwords to be processed')
-
-    parser.add_argument('-s', '--sample', default=None, type=int, help="Sample size")
-    parser.add_argument('-d', '--dryrun', action='store_true', help="Does not override the grammar folder. "
-                                                                    "Enables the verbose mode.")
-
-    # db_group = parser.add_argument_group('Database Connection Arguments')
-    # db_group.add_argument('--user', type=str, default='root', help="db username for authentication")
-    # db_group.add_argument('--pwd',  type=str, default='', help="db pwd for authentication")
-    # db_group.add_argument('--host', type=str, default='localhost', help="db host")
-    # db_group.add_argument('--port', type=int, default=3306, help="db port")
+    parser.add_argument('password_set', default=1, type=int, \
+        help='The id of the collection of passwords to be processed')
+    parser.add_argument('-s', '--sample', default=None, type=int, \
+        help="Sample size")
+    parser.add_argument('-d', '--dryrun', action='store_true', \
+        help="Does not override the grammar folder. ")
+    parser.add_argument('-v', '--verbose', action='store_true', \
+        help="Verbose mode")
+    parser.add_argument('--onlypos', action='store_true', \
+        help="Turn this switch if you want the grammar to have only "\
+        "POS symbols, no semantic tags (synsets)")
+    parser.add_argument('-a', '--abstraction', type=int, default=5000, \
+        help='Abstraction Level. An integer > 0, correspoding to the '\
+             'weighting factor in Wagner\'s formula')
+    parser.add_argument('-p', '--path', default='grammar', \
+        help="Path where the grammar files will be output")
 
     return parser.parse_args()
 
@@ -278,15 +335,17 @@ def options():
 if __name__ == '__main__':
     opts = options()
     
-    select_treecut(opts.password_set)
+    if not opts.onlypos:
+        select_treecut(opts.password_set, opts.abstraction)
 
     try:
         with Timer('grammar generation'):
             #db = PwdDb(sample=10000, random=True)
+            print 'Instantiating database...'
             db = database.PwdDb(opts.password_set, sample=opts.sample)
             try:
-                main(db, opts.password_set)
-#                sample(db)
+                main(db, opts.password_set, opts.onlypos, opts.dryrun, \
+                    opts.verbose, opts.path)
             except KeyboardInterrupt:
                 db.finish()
                 raise
