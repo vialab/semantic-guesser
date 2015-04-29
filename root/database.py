@@ -11,6 +11,7 @@ import threading
 import query
 import random
 import util
+from timer import Timer
 
 def connection():
     credentials = util.dbcredentials()
@@ -30,10 +31,8 @@ def names():
 class PwdDb():
     """ A few notes:
     
-    - caching is implemented for saving, not for reading
-    - as for reading, the result set is kept in the server (SSDictCursor)
-      and the rows are fetched one by one 
-    - the sample param in the constructor is important when planning to fetch only
+    - Caching is implemented for saving and reading.
+    - The sample param in the constructor is important when planning to fetch only
       a sample. The MySQLDb docs mention: "you MUST retrieve the entire result set and
       close() the cursor before additional queries can be peformed on
       the connection."
@@ -44,11 +43,11 @@ class PwdDb():
     
     def __init__(self, pwset_id, sample=None, random=False, save_cachesize=100000, offset=0):
         self.savebuffer_size = save_cachesize
-        self.readbuffer_size = 100000
+        self.readbuffer_size = 500000
 
         self.readbuffer = []
-        self.row = None  # holds the next row to be retrieved by nextPwd(), 
-        self.readpointer = -1  # always points to the last row stored in self.row 
+        self.row = None        # holds the next row to be retrieved by nextPwd(), 
+        self.readpointer = -1  # always points to the last row read from readbuffer by fetchone.
         
         self.savebuffer  = []
          
@@ -74,7 +73,9 @@ class PwdDb():
             extent = self.id_extent_parsed(pwset_id) # min and max pass_id to sample from
             random_ids = self.random_ids(extent[0], extent[0], limit)
         
+        print 'Fetching password segments...'
         self.readcursor.execute(query.segments(pwset_id, bounds, random_ids))
+        print 'Password segments fetched.'
 
         # fetching the first password
         self.fill_buffer()
@@ -90,6 +91,7 @@ class PwdDb():
             self.readpointer += 1
             return self.readbuffer[self.readpointer]
         except:
+            #print "Refilling buffer..."
             self.fill_buffer()
             if len(self.readbuffer) < 1:
                 self.readcursor.close()
@@ -128,11 +130,11 @@ class PwdDb():
         pwd = []
 
         while pwd_id == old_pwd_id:
-            wo = Fragment(self.row["set_contains_id"], self.row["dictset_id"], self.row["dict_text"],
+            f = Fragment(self.row["set_contains_id"], self.row["dictset_id"], self.row["dict_text"],
                                 self.row["pos"], self.row["sentiment"], self.row["synset"],
                                 self.row["category"], self.row["pass_text"], self.row["s_index"],
                                 self.row["e_index"])
-            pwd.append(wo)
+            pwd.append(f)
 
             self.row = self.fetchone()
             if self.row is None:
@@ -219,7 +221,16 @@ class Fragment():
         return self.dictset_id > 90
 
 
-#db = PwdDb()
+#db = PwdDb(1)
+#i = 0
+#with Timer("iterating"):
+#    while db.hasNext():
+#        i += 1
+#        if i % 1000000 == 0:
+#            print "{} passwords have been read...".format(i)
+#        db.nextPwd()
+
+
 #pos = 'a'
 #senti = None
 #synsets = None
