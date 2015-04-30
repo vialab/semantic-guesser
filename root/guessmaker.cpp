@@ -354,10 +354,10 @@ int run_deadbeat(bool mangle, double limit, int min_length, double min_prob, boo
                 cerr << "queue size: "   << (int)queue.size() << "\n";
             }
 
-            cout << guess_string << "\t" ; // output guess
+            cout << guess_string ; // output guess
             if (verbose){
-            	cout << curr_guess_p << "\t"; // output probability
-            	cout << curr_guess.rule->str; //output rule
+            	cout << "\t" << curr_guess_p; // output probability
+            	cout << "\t" << curr_guess.rule->str; //output rule
             }
             cout << "\n";
 
@@ -457,10 +457,10 @@ int run_next(bool mangle, double limit, int min_length, double min_prob, bool ve
                 cerr << "queue size: "   << (int)queue.size() << "\n";
             }
 
-            cout << guess_string << "\t" ; // output guess
+            cout << guess_string; // output guess
             if (verbose){
-            	cout << probability(curr_guess) << "\t"; // output probability
-            	cout << curr_guess.rule->str; //output rule
+            	cout << "\t" << probability(curr_guess); // output probability
+            	cout << "\t" << curr_guess.rule->str; //output rule
             }
             cout << "\n";
 
