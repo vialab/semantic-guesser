@@ -3,13 +3,12 @@
 names = "SELECT dict_text FROM dictionary where dictset_id = 20 or dictset_id = 30;"
 
 
-def segments(pwset_id, bounds=None, pass_ids=None):
+def segments(pwset_id, limit, offset, pass_ids=None, exception=None):
     """ Returns all the segments.
 
     pwset_id - the id of the password set to be gathered
     bounds - list of the form [offset, size]
     pass_ids - list of password ids whose segments will be fetched.
-        If passed, bounds are ignored.
 
     """
 
@@ -22,10 +21,16 @@ def segments(pwset_id, bounds=None, pass_ids=None):
         "JOIN dictionary ON set_contains.dict_id = dictionary.dict_id "\
         "WHERE passwords.pwset_id = {} ".format(pwset_id)
 
+    if exception:
+        q = q + "AND passwords.pass_id NOT IN {} ".format(tuple(exception))
+
     if pass_ids:
         q = q + "AND sets.pass_id in ({}) ".format(str(pass_ids)[1:-1])
-    elif bounds:
-        q = q + "LIMIT {} OFFSET {} ".format(bounds[1], bounds[0])
+    
+    if limit:
+        q = q + "LIMIT {} ".format(limit)
+    if offset:
+        q = q + "OFFSET {} ".format(offset)
     
 #    print q
     return q

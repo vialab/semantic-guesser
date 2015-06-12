@@ -21,7 +21,6 @@ def connection():
                  db = "passwords",
                  cursorclass = MySQLdb.cursors.SSDictCursor)  # stores result in the server. records as dict
 
-
 def names():
     cursor = connection().cursor()
     cursor.execute(query.names)
@@ -41,9 +40,11 @@ class PwdDb():
       
     """
     
-    def __init__(self, pwset_id, sample=None, random=False, save_cachesize=100000, offset=0):
+    def __init__(self, pwset_id, sample=None, random=False, save_cachesize=100000, \
+        offset=0, exceptions=None):
+
         self.savebuffer_size = save_cachesize
-        self.readbuffer_size = 500000
+        self.readbuffer_size = 100000
 
         self.readbuffer = []
         self.row = None        # holds the next row to be retrieved by nextPwd(), 
@@ -52,10 +53,10 @@ class PwdDb():
         self.savebuffer  = []
          
         # different connections for reading and saving
-        self._init_read_cursor(pwset_id, offset, sample, random)
+        self._init_read_cursor(pwset_id, offset, sample, random, exceptions)
         self._init_save_cursor()
     
-    def _init_read_cursor(self, pwset_id, offset, limit, random):
+    def _init_read_cursor(self, pwset_id, offset, limit, random, exceptions):
         self.conn_read = connection()
         self.readcursor = self.conn_read.cursor()
         
@@ -66,15 +67,13 @@ class PwdDb():
 
         self.readcursor = self.conn_read.cursor()
         
-        bounds = [offset, limit] if limit else None
-
         random_ids = None
         if random:
             extent = self.id_extent_parsed(pwset_id) # min and max pass_id to sample from
             random_ids = self.random_ids(extent[0], extent[0], limit)
         
         print 'Fetching password segments...'
-        self.readcursor.execute(query.segments(pwset_id, bounds, random_ids))
+        self.readcursor.execute(query.segments(pwset_id, limit, offset, random_ids, exceptions))
         print 'Password segments fetched.'
 
         # fetching the first password

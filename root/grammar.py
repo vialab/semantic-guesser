@@ -149,7 +149,7 @@ def classify_by_pos(segment):
     return tag
 
 
-def classify(segment):
+def classify_pos_semantic(segment):
     """ Fully classify the segment. Returns a tag  possibly containing semantic
     and  syntactic (part-of-speech) symbols.  If the segment  is a proper noun,
     returns either month, fname, mname, surname, city or country,  as suitable.
@@ -176,6 +176,38 @@ def classify(segment):
         if synset is not None and synset.pos in ['v', 'n']:
             # TODO: sometimes generalize is returning None. #fixit 
             tag = '{}_{}'.format(segment.pos, generalize(synset)) 
+        else:
+            tag = segment.pos
+
+    return tag
+
+
+def classify_semantic_backoff_pos(segment):
+    """ Returns a tag containing either a semantic or a syntactic (part-of-speech)
+    symbol.  If the segment is a proper noun, returns either month, fname, mname,
+    surname, city or country,  as suitable.
+    For  other words, returns a semantic tag if the word is found in Wordnet,
+    otherwise, falls back to a POS tag. Aside from these classes, there 
+    is also numberN, charN, and specialN, for numbers, character sequences  and 
+    sequences of  special characters,  respectively, where N denotes the length
+    of the segment.
+    Examples:
+        loved -> s.love.v.01
+        paris -> city
+        jonas -> mname
+        cindy -> fname
+        aaaaa -> char5
+    """
+    if DictionaryTag.is_gap(segment.dictset_id):
+        tag = refine_gap(segment)
+    elif segment.pos in ['np', 'np1', 'np2', None] and segment.dictset_id in DictionaryTag.map:
+        tag = DictionaryTag.map[segment.dictset_id]
+    else:
+        synset = semantics.synset(segment.word, segment.pos)
+        # only tries to generalize verbs and nouns
+        if synset is not None and synset.pos in ['v', 'n']:
+            # TODO: sometimes generalize is returning None. #fixit 
+            tag = generalize(synset)
         else:
             tag = segment.pos
 
@@ -245,10 +277,10 @@ def segment_gaps(pwd):
 
 def print_result(password, segments, tags, pattern):
     for i in range(len(segments)):
-        print "{}\t{}\t{}\t{}\n".format(password, segments[i].word, tags[i], pattern)
+        print "{}\t{}\t{}\t{}".format(password, segments[i].word, tags[i], pattern)
 
 
-def main(db, pwset_id, onlypos, dryrun, verbose, basepath):
+def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
 #    tags_file = open('grammar/debug.txt', 'w+')
     
     patterns_dist = FreqDist()  # distribution of patterns
@@ -264,7 +296,13 @@ def main(db, pwset_id, onlypos, dryrun, verbose, basepath):
         segments = expand_gaps(segments)
         
         for s in segments:  # semantic tags
-            tag = classify(s) if not onlypos else classify_by_pos(s)
+            if tag_type == 'pos':
+                tag = classify_by_pos(s)
+            elif tag_type == 'backoff':
+                tag = classify_semantic_backoff_pos(s)
+            else:
+                tag = classify_pos_semantic(s)
+
             tags.append(tag)
             segments_dist[tag].inc(s.word)
             
@@ -303,7 +341,7 @@ def main(db, pwset_id, onlypos, dryrun, verbose, basepath):
     
     for tag in segments_dist.keys():
         total = segments_dist[tag].N()
-        with open(os.path.join(basepath, pwset_id, 'nonterminals', tag+'.txt'), 'w+') as f:
+        with open(os.path.join(basepath, pwset_id, 'nonterminals', str(tag) + '.txt'), 'w+') as f:
             for k, v in segments_dist[tag].items():
                 f.write("{}\t{}\n".format(k, float(v)/total))
 
@@ -319,14 +357,20 @@ def options():
         help="Does not override the grammar folder. ")
     parser.add_argument('-v', '--verbose', action='store_true', \
         help="Verbose mode")
-    parser.add_argument('--onlypos', action='store_true', \
-        help="Turn this switch if you want the grammar to have only "\
-        "POS symbols, no semantic tags (synsets)")
+    parser.add_argument('-e', '--exceptions', type=argparse.FileType('r'), \
+        default=sys.stdin, help="A file containing a list of password ids \
+        to be ignored. One id per line. Depending on the size of this file \
+        you might need to increase MySQL's variable max_allowed_packet.")
+    # parser.add_argument('--onlypos', action='store_true', \
+    #     help="Turn this switch if you want the grammar to have only "\
+    #     "POS symbols, no semantic tags (synsets)")
     parser.add_argument('-a', '--abstraction', type=int, default=5000, \
         help='Abstraction Level. An integer > 0, correspoding to the '\
              'weighting factor in Wagner\'s formula')
     parser.add_argument('-p', '--path', default='grammar', \
         help="Path where the grammar files will be output")
+    parser.add_argument('--tags', default='pos_semantic', \
+        choices=['pos_semantic', 'pos', 'backoff'])
 
     return parser.parse_args()
 
@@ -335,17 +379,23 @@ def options():
 if __name__ == '__main__':
     opts = options()
     
-    if not opts.onlypos:
+    if opts.exceptions:
+        exceptions = []
+        for l in opts.exceptions:
+            exceptions.append(int(l.strip()))
+        opts.exceptions.close()
+
+    if not opts.tags == 'pos':
         select_treecut(opts.password_set, opts.abstraction)
 
     try:
         with Timer('grammar generation'):
             #db = PwdDb(sample=10000, random=True)
             print 'Instantiating database...'
-            db = database.PwdDb(opts.password_set, sample=opts.sample)
+            db = database.PwdDb(opts.password_set, sample=opts.sample, exceptions=exceptions)
             try:
-                main(db, opts.password_set, opts.onlypos, opts.dryrun, \
-                    opts.verbose, opts.path)
+                main(db, opts.password_set, opts.dryrun, \
+                    opts.verbose, opts.path, opts.tags)
             except KeyboardInterrupt:
                 db.finish()
                 raise
