@@ -213,6 +213,28 @@ def classify_semantic_backoff_pos(segment):
 
     return tag
 
+def classify_word(segment):
+    """ Most basic form of classification. Groups strings with respect to their
+    length and nature (number, word, alphabetic characters, special characters).
+    Examples:
+        loved -> word5
+        lovedparisxoxo -> word5word5char4
+        12345 -> number5
+        %$^$% -> special5
+    """
+    word   = segment.word
+    length = len(word)
+
+    if DictionaryTag.is_gap(segment.dictset_id):
+        return refine_gap(segment)
+
+    # if re.match(r'\d+', word):
+    #     return 'number' + str(length)
+    # elif re.match(r'[^a-zA-Z0-9]+', word):
+    #     return 'special' + str(length)
+    else:
+        return 'word' + str(length)
+
 
 def stringify_pattern(tags):
     return ''.join(['({})'.format(tag) for tag in tags])
@@ -300,6 +322,8 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
                 tag = classify_by_pos(s)
             elif tag_type == 'backoff':
                 tag = classify_semantic_backoff_pos(s)
+            elif tag_type == 'word':
+                tag = classify_word(s)
             else:
                 tag = classify_pos_semantic(s)
 
@@ -327,21 +351,21 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
 
     # remove previous grammar
     try:
-        shutil.rmtree(os.path.join(basepath, pwset_id))
+        shutil.rmtree(basepath)
     except OSError: # in case the above folder does not exist 
         pass
     
     # recreate the folders empty
-    os.makedirs(os.path.join(basepath, pwset_id, 'nonterminals'))
+    os.makedirs(os.path.join(basepath, 'nonterminals'))
 
-    with open(os.path.join(basepath, pwset_id, 'rules.txt'), 'w+') as f:
+    with open(os.path.join(basepath, 'rules.txt'), 'w+') as f:
         total = patterns_dist.N()
         for pattern, freq in patterns_dist.items():
             f.write('{}\t{}\n'.format(pattern, float(freq)/total))
     
     for tag in segments_dist.keys():
         total = segments_dist[tag].N()
-        with open(os.path.join(basepath, pwset_id, 'nonterminals', str(tag) + '.txt'), 'w+') as f:
+        with open(os.path.join(basepath, 'nonterminals', str(tag) + '.txt'), 'w+') as f:
             for k, v in segments_dist[tag].items():
                 f.write("{}\t{}\n".format(k, float(v)/total))
 
@@ -358,7 +382,7 @@ def options():
     parser.add_argument('-v', '--verbose', action='store_true', \
         help="Verbose mode")
     parser.add_argument('-e', '--exceptions', type=argparse.FileType('r'), \
-        default=sys.stdin, help="A file containing a list of password ids \
+        help="A file containing a list of password ids \
         to be ignored. One id per line. Depending on the size of this file \
         you might need to increase MySQL's variable max_allowed_packet.")
     # parser.add_argument('--onlypos', action='store_true', \
@@ -370,7 +394,7 @@ def options():
     parser.add_argument('-p', '--path', default='grammar', \
         help="Path where the grammar files will be output")
     parser.add_argument('--tags', default='pos_semantic', \
-        choices=['pos_semantic', 'pos', 'backoff'])
+        choices=['pos_semantic', 'pos', 'backoff', 'word'])
 
     return parser.parse_args()
 
@@ -379,8 +403,9 @@ def options():
 if __name__ == '__main__':
     opts = options()
     
-    if opts.exceptions:
-        exceptions = []
+    exceptions = []
+
+    if opts.exceptions:    
         for l in opts.exceptions:
             exceptions.append(int(l.strip()))
         opts.exceptions.close()
