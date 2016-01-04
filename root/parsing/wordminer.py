@@ -613,7 +613,7 @@ def sqlMine(dbe, options, dictSetIds):
 
     lastResult = (None, None)  # (password, result)
 
-    wbuff = WriteBuffer(dbe, dictionary, 30000)
+    wbuff = WriteBuffer(dbe, dictionary, 100000)
     for p in rbuff:
         pwcount += 1
 
