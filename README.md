@@ -9,6 +9,8 @@
 
 ##Dependencies
 
+[Python 2.7] (https://www.python.org/downloads/)
+
 [Oursql](https://launchpad.net/oursql)
 
 [NLTK](http://www.nltk.org/). After installing it, you should also [install the following data packages](http://www.nltk.org/data.html):
@@ -27,12 +29,24 @@
 
 ###Before you start (data dependencies)
 
-Before you begin using the parsing and classification code, a MySQL database must be set up and the required data included.
+Before you begin using the parsing and classification scripts, a MySQL database must be set up and the required data included. Unpack `db/sql.tar.gz` and run the following lines:
 
     mysql -u user -p < root/db/passwords_schema.sql
     mysql -u user -p < root/db/lexicon.sql
 
-The above commands will create the database schema and insert the lexicon. If you would like to have the RockYou passwords on the db, download it [here](https://www.dropbox.com/s/bnxmxdvrkkz5lra/rockyou_ordered.sql.tar.gz) and insert it in the database:
+The above commands will create the database schema and insert the lexicon. 
+
+###Adding more training data
+
+Training data in the db is organized with password sets. A password set is a collection of passwords (e.g., a password
+leak) used for training a grammar. To add a password set, you need to insert an entry into the table `password_set`. For
+example:
+
+    INSERT INTO password_set VALUES (id, name, max_pass_length);
+    
+where `id` is an unambiguous ID of your choice. Next, add all passwords to the table `passwords`, setting the value of the field `pwset_id` accordingly. 
+
+If you would like to have the RockYou passwords on the db, download [this](https://www.dropbox.com/s/bnxmxdvrkkz5lra/rockyou_ordered.sql.tar.gz) script and run it on your database:
 
     mysql -u user -p < root/db/rockyou.sql
 

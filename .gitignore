@@ -14,7 +14,6 @@ root/guessmaker
 results/*.txt
 results/cut/
 grammar/
-root/pickles/
 
 *.pyc
 *.*~
