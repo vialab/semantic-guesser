@@ -22,4 +22,5 @@ grammar/
 *.o
 *.so
 
-
+*.orig
+*.swp
