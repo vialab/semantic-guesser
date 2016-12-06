@@ -46,8 +46,6 @@ def select_treecut(pwset_id, abstraction_level):
     global nouns_tree, verbs_tree, node_index
 
     nouns_tree, verbs_tree = semantics.load_semantictrees(pwset_id)
-   
-    print nouns_tree.root.value
  
     cut = wagner.findcut(nouns_tree, abstraction_level)
     for c in cut: c.cut = True
@@ -379,14 +377,16 @@ def options():
         help='The id of the collection of passwords to be processed')
     parser.add_argument('-s', '--sample', default=None, type=int, \
         help="Sample size")
+    parser.add_argument('-r', '--random', action='store_true',
+        help="To be used with -s. Enables random sampling.")
     parser.add_argument('-d', '--dryrun', action='store_true', \
         help="Does not override the grammar folder. ")
     parser.add_argument('-v', '--verbose', action='store_true', \
         help="Verbose mode")
     parser.add_argument('-e', '--exceptions', type=argparse.FileType('r'), \
-        help="A file containing a list of password ids \
-        to be ignored. One id per line. Depending on the size of this file \
-        you might need to increase MySQL's variable max_allowed_packet.")
+        help="A file containing a list of password ids " \
+        "to be ignored. One id per line. Depending on the size of this file " \
+        "you might need to increase MySQL's variable max_allowed_packet.")
     # parser.add_argument('--onlypos', action='store_true', \
     #     help="Turn this switch if you want the grammar to have only "\
     #     "POS symbols, no semantic tags (synsets)")
@@ -419,7 +419,8 @@ if __name__ == '__main__':
         with Timer('grammar generation'):
             #db = PwdDb(sample=10000, random=True)
             print 'Instantiating database...'
-            db = database.PwdDb(opts.password_set, sample=opts.sample, exceptions=exceptions)
+            db = database.PwdDb(opts.password_set, sample=opts.sample, \
+                random=opts.random, exceptions=exceptions)
             try:
                 main(db, opts.password_set, opts.dryrun, \
                     opts.verbose, opts.path, opts.tags)

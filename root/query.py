@@ -52,5 +52,5 @@ def extent_parsed(pwset_id):
         from a group of passwords (determined by pwset_id). If no passwords have been parsed
         from the group, this query will return empty.
     """
-    return "SELECT MAX(pass_id) as max, MIN(pass_id) as min FROM sets LEFT JOIN passwords on sets.pass_id = passwords.pass_id " \
-            "WHERE passwords.pwset_id = {}".format(pwset_id)
+    return "SELECT MAX(p.pass_id) as max, MIN(p.pass_id) as min FROM sets LEFT JOIN passwords p on sets.pass_id = p.pass_id " \
+            "WHERE p.pwset_id = {}".format(pwset_id)

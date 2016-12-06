@@ -18,6 +18,7 @@ grammar/
 *.pyc
 *.*~
 
+root/db_credentials.conf
 
 *.o
 *.so

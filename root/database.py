@@ -98,7 +98,7 @@ class PwdDb():
             else:
                 self.readpointer += 1
                 return self.readbuffer[self.readpointer]
-
+   
     def random_ids(self, min, max, size):
         return random.sample(range(min, max), size)
 
