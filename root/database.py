@@ -29,7 +29,7 @@ def names():
 
 class PwdDb():
     """ A few notes:
-    
+
     - Caching is implemented for saving and reading.
     - The sample param in the constructor is important when planning to fetch only
       a sample. The MySQLDb docs mention: "you MUST retrieve the entire result set and
@@ -37,9 +37,9 @@ class PwdDb():
       the connection."
       If you don't retrieve the entire result set before calling finish(), it will take
       forever to close the connection.
-      
+
     """
-    
+
     def __init__(self, pwset_id, sample=None, random=False, save_cachesize=100000, \
         offset=0, exceptions=None):
 
@@ -47,31 +47,31 @@ class PwdDb():
         self.readbuffer_size = 100000
 
         self.readbuffer = []
-        self.row = None        # holds the next row to be retrieved by nextPwd(), 
+        self.row = None        # holds the next row to be retrieved by nextPwd(),
         self.readpointer = -1  # always points to the last row read from readbuffer by fetchone.
-        
+
         self.savebuffer  = []
-         
+
         # different connections for reading and saving
         self._init_read_cursor(pwset_id, offset, sample, random, exceptions)
         self._init_save_cursor()
-    
+
     def _init_read_cursor(self, pwset_id, offset, limit, random, exceptions):
         self.conn_read = connection()
         self.readcursor = self.conn_read.cursor()
-        
-        # getting number of 'sets' (or segments) 
+
+        # getting number of 'sets' (or segments)
         self.readcursor.execute(query.n_sets(pwset_id))
         self.sets_size = self.readcursor.fetchone()["count"]
         self.readcursor.close()
 
         self.readcursor = self.conn_read.cursor()
-        
+
         random_ids = None
         if random:
             extent = self.id_extent_parsed(pwset_id) # min and max pass_id to sample from
-            random_ids = self.random_ids(extent[0], extent[0], limit)
-        
+            random_ids = self.random_ids(extent[0], extent[1], limit)
+
         print 'Fetching password segments...'
         self.readcursor.execute(query.segments(pwset_id, limit, offset, random_ids, exceptions))
         print 'Password segments fetched.'
@@ -98,7 +98,7 @@ class PwdDb():
             else:
                 self.readpointer += 1
                 return self.readbuffer[self.readpointer]
-        
+
     def random_ids(self, min, max, size):
         return random.sample(range(min, max), size)
 
@@ -119,7 +119,7 @@ class PwdDb():
     def _init_save_cursor(self):
         self.conn_save = connection()
         self.savecursor = self.conn_save.cursor()
-        
+
 
     def nextPwd(self):
         if self.row is None:
@@ -142,7 +142,7 @@ class PwdDb():
                 pwd_id = self.row["set_id"]
 
         return pwd
-        
+
     def save(self, wo, cache=False):
         if cache:
             self.savebuffer.append((wo.pos, wo.senti, wo.synsets, wo.id))
@@ -156,21 +156,21 @@ class PwdDb():
 #    u = Updater("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;",
 # self.savesave_bufferf.cachelimit, self.conn_save, self.savecursor)
 #        u.start()
-    
+
     def flush_save (self):
-        print "updating {} records on the database...".format(len(self.savebuffer)) 
+        print "updating {} records on the database...".format(len(self.savebuffer))
         self.conn_save.ping(True) # if connection has died, ressurect it
         self.savecursor.executemany("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;", self.savebuffer)
         self.conn_save.commit()
         self.savebuffer = []
-        
+
     def saveCategory(self, wo):
         self.savecursor.execute("UPDATE set_contains set category=%s where id=%s;",
                              (wo.category, wo.id))
-        
+
     def hasNext(self):
         return self.row is not None
-    
+
     def finish(self):
         if len(self.savebuffer) > 0:
             self.flush_save()
@@ -188,16 +188,16 @@ class PwdDb():
 #         self.cachelimit = cachelimit
 #         self.conn = conn
 #         self.cursor = cursor
-# 
+#
 #     def run(self):
 #         self.cursor.executemany(self.query, self.cache[0:self.cachelimit])
 #         self.conn.commit()
 #         del self.cache[0:self.cachelimit]
-        
- 
+
+
 class Fragment():
-    
-    def __init__(self, ident, dictset_id, word, pos=None, senti=None, 
+
+    def __init__(self, ident, dictset_id, word, pos=None, senti=None,
                  synsets=None, category=None, password=None, s_index=None, e_index=None):
         self.id = ident
         self.dictset_id = dictset_id
@@ -212,7 +212,7 @@ class Fragment():
 
     def __str__(self):
         return self.word
-    
+
     def __repr__(self):
         return self.word
 
