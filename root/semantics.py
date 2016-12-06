@@ -88,9 +88,9 @@ def populate(samplesize, pwset_id, nountree=None, verbtree=None):
 
             # check if the synset returned has the pos we want
             if synset_ is not None:
-                if synset_.pos == 'n' and nountree:
+                if synset_.pos() == 'n' and nountree:
                     noun_synset_dist[synset_] = inc(noun_synset_dist, synset_)
-                elif synset_.pos == 'v' and verbtree:
+                elif synset_.pos() == 'v' and verbtree:
                     verb_synset_dist[synset_] = inc(verb_synset_dist, synset_)
                         
     print "All passwords read."
@@ -129,7 +129,7 @@ def increment_synset_count(tree, synset, hashtable, count=1):
 
     paths = synset.hypernym_paths()
     
-    key = synset.name if not synset.hyponyms() else 's.' + synset.name
+    key = synset.name() if not synset.hyponyms() else 's.' + synset.name()
 
     if key in hashtable and len(hashtable[key]) == len(paths):
         count = float(count) / len(paths)
@@ -272,7 +272,7 @@ def main(db, pos, file_):
                 in_wordnet_total += 1
                 paths = synset_.hypernym_paths()
                 for path in paths:
-                    path = [s.name for s in path]
+                    path = [s.name() for s in path]
                     path.append(w.word)
                     tree.insert(path)
                 

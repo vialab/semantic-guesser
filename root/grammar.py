@@ -46,7 +46,9 @@ def select_treecut(pwset_id, abstraction_level):
     global nouns_tree, verbs_tree, node_index
 
     nouns_tree, verbs_tree = semantics.load_semantictrees(pwset_id)
-    
+   
+    print nouns_tree.root.value
+ 
     cut = wagner.findcut(nouns_tree, abstraction_level)
     for c in cut: c.cut = True
     
@@ -96,12 +98,12 @@ class DictionaryTag:
 def generalize(synset):
     """ Generalizes a synset based on a tree cut. """
 
-    if synset.pos not in ['v', 'n']:
+    if synset.pos() not in ['v', 'n']:
         return None
 
     # an internal node is split into a node representing the class and other
     # representing the sense. The former's name starts with 's.'
-    key = synset.name if is_leaf(synset) else 's.' + synset.name
+    key = synset.name() if is_leaf(synset) else 's.' + synset.name()
     
     try:    
         node = node_index[key]
@@ -173,7 +175,7 @@ def classify_pos_semantic(segment):
     else:
         synset = semantics.synset(segment.word, segment.pos)
         # only tries to generalize verbs and nouns
-        if synset is not None and synset.pos in ['v', 'n']:
+        if synset is not None and synset.pos() in ['v', 'n']:
             # TODO: sometimes generalize is returning None. #fixit 
             tag = '{}_{}'.format(segment.pos, generalize(synset)) 
         else:
@@ -205,7 +207,7 @@ def classify_semantic_backoff_pos(segment):
     else:
         synset = semantics.synset(segment.word, segment.pos)
         # only tries to generalize verbs and nouns
-        if synset is not None and synset.pos in ['v', 'n']:
+        if synset is not None and synset.pos() in ['v', 'n']:
             # TODO: sometimes generalize is returning None. #fixit 
             tag = generalize(synset)
         else:
@@ -328,11 +330,11 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
                 tag = classify_pos_semantic(s)
 
             tags.append(tag)
-            segments_dist[tag].inc(s.word)
+            segments_dist[tag][s.word] += 1
             
         pattern = stringify_pattern(tags)
         
-        patterns_dist.inc(pattern)
+        patterns_dist[pattern] += 1
         
         # outputs the classification results for debugging purposes
         if verbose:
@@ -360,13 +362,13 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
 
     with open(os.path.join(basepath, 'rules.txt'), 'w+') as f:
         total = patterns_dist.N()
-        for pattern, freq in patterns_dist.items():
+        for pattern, freq in patterns_dist.most_common():
             f.write('{}\t{}\n'.format(pattern, float(freq)/total))
     
     for tag in segments_dist.keys():
         total = segments_dist[tag].N()
         with open(os.path.join(basepath, 'nonterminals', str(tag) + '.txt'), 'w+') as f:
-            for k, v in segments_dist[tag].items():
+            for k, v in segments_dist[tag].most_common():
                 f.write("{}\t{}\n".format(k, float(v)/total))
 
 

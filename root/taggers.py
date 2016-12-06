@@ -38,7 +38,7 @@ class WordNetTagger(SequentialBackoffTagger):
         fd = FreqDist()
         
         for synset in wordnet.synsets(word):
-            fd.inc(synset.pos)
+            fd[synset.pos] += 1
         try:
             return self.wordnet_tag_map.get(fd.max())
         except:  # in case fd is empty

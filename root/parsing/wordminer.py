@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# !/usr/bin/env python
 
 if __name__ == '__main__' and __package__ is None:
     import os
@@ -20,7 +20,7 @@ import util
 
 
 # the ids should be in priority order
-# names (20, 30, 40) take precedence over cities (60) and countries (50) 
+# names (20, 30, 40) take precedence over cities (60) and countries (50)
 dict_sets = [10, 20, 30, 40, 60, 50, 80, 90]
 # sys.argv = ['testWordMiner.py', '-d', [10, 60, 50, 20, 30, 40, 80, 90], '-p', '1']
 
@@ -47,8 +47,8 @@ def connectToDb():
                           raise_on_warnings=False, charset='utf8', use_unicode=True, port=int(cred["port"]))
     # return oursql.connect(unix_socket='/var/lib/mysql/mysql.sock', user='root',
     # passwd='vialab', db='newtest', charset='utf8', use_unicode=True)
-    
-    
+
+
 def makeSearchingDict(words):
     '''Takes an iterable words, iterates over it, dumping it into a dict of {word.lower():word,...}'''
     temp = dict()
@@ -59,7 +59,7 @@ def makeSearchingDict(words):
 
 def permuteString(word):
     '''Takes a string, outputs a list of permutations of lengths in a list.
-    
+
     Used by the miner to get strings it can look up in the hash tree
     (aka, python dict), as a speed improvement.
     '''
@@ -68,11 +68,11 @@ def permuteString(word):
         for pos in range(0, len(word) - size + 1):
             wordperm.append((word[pos:pos + size], pos, pos + size))
     return wordperm
-    
-    
+
+
 def checkResSubstr(results):
     '''Checks the results for substrings.
-    
+
     This is good for speed, and bad if you actually like correct results.
     '''
     good = set()
@@ -86,18 +86,18 @@ def checkResSubstr(results):
             good.add(results[y])
         substr = False
     return list(good)
-    
-    
+
+
 def orderSortSubsList(subslist):
     '''Expects a list of tuples conforming to (word, s_index, e_index)
-    
+
     Sorts the list according to an order believed to produce the faster running
     of the algorithm.
     '''
     # sorts first by e_index, then sorts by s_index
     temp = sorted(subslist, key=lambda x: x[2], reverse=False)
     return sorted(temp, key=lambda x: x[1])
-    
+
 
 def evalLen(wordList):
     '''Evaluates the total length of a list of words put in, in the standard processing format of this program.'''
@@ -105,8 +105,8 @@ def evalLen(wordList):
     for word in wordList:
         totlen += word[2] - word[1]
     return totlen
-    
-    
+
+
 def retWordLists(x, currWord, remWords):
     '''Somehow returns a weird list/copy of the words list. don't know why i made it exactly.'''
     tempCW = list()
@@ -126,7 +126,7 @@ def getFreqBasedWinner(db, candidatesList):
     listOfFreq = []
     minF = []
     k = 0
-    
+
     if (len(candidatesList) > 1):
         for x in candidatesList:
             for xword in x[0][0]:
@@ -146,7 +146,7 @@ def getFreqBasedWinner(db, candidatesList):
 
 def getResultWithFewestWords(candidateList):
     bestList = [candidateList[0]]
-    
+
     for x in candidateList[1:]:
         if (len(x[0][0]) > len(bestList[0][0][0])):
             continue
@@ -154,7 +154,7 @@ def getResultWithFewestWords(candidateList):
             bestList = [x]
         else:
             bestList.append(x)
-    
+
     return bestList
 
 
@@ -164,7 +164,7 @@ def getBestBigramTrigramScore_r(db, x, numWords, freqInfo, dictionary):
     tempf = 0
     score = 0
     result = 0
-    
+
     # Base cases: the word frequency is found in unigram, bigram, or trigram lists
     if (numWords == 1):
         tempf = getFreq(db, x[0][0])
@@ -172,20 +172,20 @@ def getBestBigramTrigramScore_r(db, x, numWords, freqInfo, dictionary):
         if tempf == 0 and x[0][0] in dictionary:
             tempf = 1
         setSize = freqInfo[0]
-        
+
     elif (numWords == 2):
         tempf = getBigramFreq(db, x[0][0], x[1][0])
         setSize = freqInfo[1]
-        
+
     elif (numWords == 3):
         tempf = getTrigramFreq(db, x[0][0], x[1][0], x[2][0])
-        setSize = freqInfo[2]        
+        setSize = freqInfo[2]
 
     if (tempf > 0):
         result = numWords
         score = float(tempf) / float(setSize)
 
-#    # Debugging    
+#    # Debugging
 #    for i in range(0, numWords):
 #        print x[i][0], ' ',
 #    print tempf, ' ', result, ' ', score
@@ -199,7 +199,7 @@ def getBestBigramTrigramScore_r(db, x, numWords, freqInfo, dictionary):
             resulti = 0
             tmpscore = float(0)
             tmpres = 0
-    
+
             if (numWords > i):
                 (scorei, resulti) = getBestBigramTrigramScore_r(db, x[0:i], i, freqInfo, dictionary)
                 (tmpscore, tmpres) = getBestBigramTrigramScore_r(db, x[i:numWords], numWords - i, freqInfo, dictionary)
@@ -207,19 +207,19 @@ def getBestBigramTrigramScore_r(db, x, numWords, freqInfo, dictionary):
                 # calculate the combined probability scores.
                 scorei = scorei * tmpscore
                 resulti = resulti + tmpres
-                
+
             # only update the score if this combination turned out to be better.
-            if (scorei > score): 
+            if (scorei > score):
                 (score, result) = (scorei, resulti)
-            i = i + 1    
-            
+            i = i + 1
+
     # the result portion of this return value may not be necessary.
     return (score, result)
-    
-                        
+
+
 
 def getBigramTrigramBasedWinner(db, candidateList, freqInfo, dictionary):
-    
+
     bestList = []
     if (len(candidateList) == 1):
         bestList = candidateList
@@ -227,7 +227,7 @@ def getBigramTrigramBasedWinner(db, candidateList, freqInfo, dictionary):
         highestScore = 0.0
         # db = connectToDb()
         score = float(0)
-        
+
         for x in candidateList:
             numWords = len(x[0][0])
             # note that score represents best frequency score by bigrams and trigrams
@@ -240,7 +240,7 @@ def getBigramTrigramBasedWinner(db, candidateList, freqInfo, dictionary):
                 bestList = [x]
             elif (score == highestScore):
                 bestList.append(x)
-                        
+
         if (len(bestList) == 0):
             bestList = candidateList
     return bestList
@@ -250,13 +250,13 @@ def bestCandidate(db, password, candidates, freqInfo, dictionary):
     ''' Receives a list of candidate segmentations and selects the best
         based on the following criteria:
         1. Coverage
-        2. Recursive n-gram scoring - product of frequencies of n-grams (trigram/bigram/unigram) 
+        2. Recursive n-gram scoring - product of frequencies of n-grams (trigram/bigram/unigram)
         3. Oddest single word - frequency of the least frequent word
     '''
-    
+
     if len(candidates) is 0:
         return candidates
-    
+
     temp = list()
     maxCoverage = 0
 
@@ -276,13 +276,13 @@ def bestCandidate(db, password, candidates, freqInfo, dictionary):
             temp.append(x)
 
     # Next we overwrite candidates, reformatting the entries (so all wordList are in a consistent format)
-    candidates = [] 
+    candidates = []
     for t in temp:
         for x in t[0]:
             """ Note: we're putting x in an array to maintain compatibility
             with database writing functions."""
             candidates.append(([x], t[1]))
-    
+
     # Run the core tie-breaker. Try to get the best result based on
     # whether it exists in bigram/trigram lists.
     maxCovList = getBigramTrigramBasedWinner(db, candidates, freqInfo, dictionary)
@@ -301,26 +301,26 @@ def max_freq(var):
         if y > m[1]:
             m = x, y
     return m
-    
+
 
 def setCover(currWord, remWords, passLength, sTime):
     '''Recursive algorithm to calculate the Set Cover for the words found in the password.
     Runs very slow for large numbers of input words.
-    
+
     sTime -- pass the current time. If execution takes more than 60s, raises AllowedTimeExceededError
-    
-    '''    
+
+    '''
     ALLOWED_TIME = 60  # in seconds
     if time.time()-sTime > ALLOWED_TIME :
         raise AllowedTimeExceededError("SetCover function exceeded {}s".format(ALLOWED_TIME))
-    
+
     if len(remWords) <= 1:
         if len(remWords) is 1:
             currWord.append(remWords[0])
         if len(currWord) is 1 and isinstance(currWord[0], str):
             return ([currWord], len(currWord))
         return ([currWord], evalLen(currWord))
-    
+
     maxLenSet = list()
     maxLen = 0
     length = list()
@@ -328,7 +328,7 @@ def setCover(currWord, remWords, passLength, sTime):
     for x in remWords:
         if ((passLength - maxLen) < (x[1] - currWord[-1][2])):
             break    # short circuit to stop trying once we can't make a sequence that beats maxLen
-            
+
         tempW = retWordLists(x, currWord, remWords)
         length = setCover(tempW[0], tempW[1], passLength, sTime)
 
@@ -347,8 +347,8 @@ def setCover(currWord, remWords, passLength, sTime):
 
 def possibleTailStrings(currentWord, subList):
     '''Takes e_index from the current word, and subList of the remaining words.
-    
-    Returns the a list of original tuples that are non-overlapping with the 
+
+    Returns the a list of original tuples that are non-overlapping with the
     e_index of the current word.
     '''
     # debugging
@@ -378,12 +378,12 @@ def clearResults(dbe, pwset_id):
         cursor.execute("DELETE a FROM sets a INNER JOIN passwords b on a.pass_id = b.pass_id \
             and pwset_id = {};".format(pwset_id))
  #       cursor.execute("ALTER TABLE sets AUTO_INCREMENT=1;")
-        
+
 
 def currentdir():
     return os.path.dirname(os.path.abspath(__file__))
 
-            
+
 def between(x, y, z):
     '''if x is between y and z, return true, else false'''
     if x > y and x < z:
@@ -418,22 +418,22 @@ def reduceSubwords_v0_1(pwres):
     newPwres = list()
     currentsi = pwres[0][1]
     currentei = pwres[0][2]
-    
+
     pwres = sorted(pwres, key=lambda word: word[1])
-    
+
     # fix a start index; then pick the one with the furthest end index.
     # delete all others with that start index.
     for x in pwres:
         (xw, xsi, xei) = x
         topxs = x
         currentei = xei
-        
+
         for r in pwres:
             (rw, rsi, rei) = r
             if (xsi == rsi and rei > currentei):
                 topxs = r
                 currentei = rei
-        newPwres.append(topxs)                 
+        newPwres.append(topxs)
 
     # remove duplicates
     newPwres = list(set(newPwres))
@@ -444,7 +444,7 @@ def tagChunk(s):
     if isInt(s):
         dynDictionaryID = NUM_DICT_ID
     elif isCharChunk(s):
-        dynDictionaryID = CHAR_DICT_ID    
+        dynDictionaryID = CHAR_DICT_ID
     elif isSCChunk(s):
         dynDictionaryID = SC_DICT_ID
     elif isNumAndSCChunk(s):
@@ -457,15 +457,15 @@ def tagChunk(s):
 def addInTheGapsHelper(db, retVal, i, password, lastEndIndex, nextStartIndex):
     # attention for the strip() call! space info is lost! who cares?!
     gap = password[lastEndIndex:nextStartIndex].strip()
-    
-    dynDictionaryID = tagChunk(gap) 
+
+    dynDictionaryID = tagChunk(gap)
     newLen = retVal[1]
-    
+
     if ((len(gap) > 0) and (dynDictionaryID > 0)):
         addToDynamicDictionary(db, dynDictionaryID, gap)
         retVal[0][0].insert(i, (gap, lastEndIndex, nextStartIndex))
         newLen = newLen + (nextStartIndex - lastEndIndex)
-        
+
     return (retVal[0], newLen)
 
 
@@ -484,14 +484,14 @@ def processGaps(db, resultSet, password):
         resultSet = ([[(password, 0, len(password))]], len(password))
         dynDictionaryID = tagChunk(password)
         addToDynamicDictionary(db, dynDictionaryID, password)
-    else:    
+    else:
         lastEndIndex = 0
         nextStartIndex = 0
         i = 0
         try:
             # iterates through the results. after the filtering by coverage
             # and frequency, there should be only one, though
-            for result in resultSet[0]: 
+            for result in resultSet[0]:
                 for x in result:
                     (xw, xs, xe) = x
                     nextStartIndex = xs
@@ -506,17 +506,17 @@ def processGaps(db, resultSet, password):
             print ("Warning: caught unknown error in addTheGaps -- resultSet=", resultSet, "password", password)
 
     return resultSet
-  
-        
+
+
 def mineLine(db, password, dictionary, freqInfo):
     """Breaks a password in pieces, which can be words (present in the dictionaries) or sequences of
        numbers, symbols and characters that do not constitute a word.
     """
-    
-    # classifies password
-    dynDictionaryID = tagChunk(password) 
 
-    # if contains only numbers and/or symbols, or contains only one character, 
+    # classifies password
+    dynDictionaryID = tagChunk(password)
+
+    # if contains only numbers and/or symbols, or contains only one character,
     # insert it into the dyn. dictionary and don't try to parse
     if (dynDictionaryID != MIXED_ALL_DICT_ID and dynDictionaryID != CHAR_DICT_ID) \
         or (password.strip(password[0]) == ''):
@@ -524,7 +524,7 @@ def mineLine(db, password, dictionary, freqInfo):
         addToDynamicDictionary(db, dynDictionaryID, password)
         # Just return the password as-is; there is no word to be found.
         resultSet = ([[(password, 0, len(password))]], len(password))
-        
+
     # Otherwise, try to find the best word-parsing
     else:
         permutations = permuteString(password.lower())
@@ -538,7 +538,7 @@ def mineLine(db, password, dictionary, freqInfo):
         resultSet = bestCandidate(db, password, candidates, freqInfo, dictionary)
 #         print resultSet
 
-        # add the trashy fragments in the database    
+        # add the trashy fragments in the database
         resultSet = processGaps(db, resultSet, password)
 
     return resultSet
@@ -549,9 +549,9 @@ def generateCandidates(wordList, password):
         and returns a list of candidate segmentations plus the corresponding coverage.
         For example:
         password: 'anybodyelse'
-        
+
         wordList: [('any',0,3), ('anybody',0,7), ('body', 3, 7), ('else', 7, 11)]
-        
+
         returns: [  ([[('any',0,3),('body', 3, 7),('else', 7, 11)]], 11),
                     ([[('anybody',0,6),('else', 7, 11)]], 11),
                     ([[('body', 3, 7),('else', 7, 11)]], 8)... ]
@@ -562,7 +562,7 @@ def generateCandidates(wordList, password):
     sublist = orderSortSubsList(wordList)
     if len(sublist) is 0:
         return sublist
-    
+
     # sort by start index
     sortedList = sorted(wordList, key=lambda x: x[1])
     candidates = list()
@@ -575,37 +575,37 @@ def generateCandidates(wordList, password):
             print "SetCover failed for the following password: {}".format(password)
             candidates = list()
             break
-            
+
     return candidates
 
-    
+
 def sqlMine(dbe, options, dictSetIds):
     '''Main function to mine the password set with the dictionary set.'''
-    
-    offset = lastPassword() if options.cont else options.offset 
-    
+
+    offset = lastPassword() if options.cont else options.offset
+
     if options.reset:
         print "clearing results..."
         clearResults(dbe, options.password_set)
-    
+
     print "caching frequency information"
     freqInfo = freqReadCache(dbe)
-    
+
     print "loading n-grams..."
     with timer.Timer('n-grams load'):
         loadNgrams(dbe)
-    
+
     print "creating read cache..."
     rbuff = pwReadCache(dbe, options.password_set, 100000, offset)
-    
+
     if options.erase:
         print 'resetting dynamic dictionaries...'
         resetDynamicDictionary(dbe)
-        
+
     print "reading dictionary..."
     dictionary = getDictionary(dbe, dictSetIds)
     passwordCount = rbuff._count
-    
+
     print "password file has: {:,} lines, starting miner...".format(passwordCount)
     pwcount = offset
 
@@ -621,23 +621,23 @@ def sqlMine(dbe, options, dictSetIds):
             wbuff._flush()
             break
 
-        if len(p[1]) == 0: 
+        if len(p[1]) == 0:
             continue  # skipping empty password
-        if p[1].strip(" ") == '': 
+        if p[1].strip(" ") == '':
             continue  # skipping whitespace password
-        
+
         pass_id = p[0]
         currPass = p[1]
-        
+
         if options.verbose:
             print "Processing ({}) '{}'... ".format(pwcount, currPass),
 
         # assuming the pwds come ordered, optimize for repeated occurrences
         if currPass == lastResult[0]:
-            res = lastResult[1] 
+            res = lastResult[1]
         else:
             res = mineLine(dbe, currPass, dictionary, freqInfo)
-        
+
         if options.verbose:
             print "[Done]"
 
@@ -690,9 +690,9 @@ def cli_options():
     g.add_argument('-c', '--cont', action='store_true', help='continue from the point it stopped previously')
 
     parser.add_argument('-s', '--sample', default=None, type=int, help='runs the algorithm for a limited sample')
-    
+
     return parser.parse_args()
-     
+
 if __name__ == '__main__':
     options = cli_options()
     main(options)

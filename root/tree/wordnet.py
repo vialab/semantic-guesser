@@ -113,13 +113,13 @@ class WordNetTree(DefaultTree):
 
         while len(stack):
             syn, parent = stack.pop()
-            syn_node = parent.insert(syn.name)
+            syn_node = parent.insert(syn.name())
 
             hyponyms = syn.hyponyms()
             
             # if not leaf, insert a child representing the sense 
             if len(hyponyms) > 0:
-                syn_node.insert('s.'+syn.name)
+                syn_node.insert('s.'+syn.name())
             
             for hypo in syn.hyponyms():
                 stack.append((hypo, syn_node))
@@ -154,7 +154,7 @@ class WordNetTree(DefaultTree):
         
         # multiplies the sense if has more than one parent 
         for i, path in enumerate(paths):
-            path = [s.name for s in path]
+            path = [s.name() for s in path]
             if len(synset.hyponyms()) > 0:  # internal node
                 path.append('s.' + path[-1])
             self.insert(path, freq)
