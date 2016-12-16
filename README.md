@@ -13,7 +13,7 @@
 
 [Oursql](https://launchpad.net/oursql)
 
-[NLTK](http://www.nltk.org/). After installing it, you should also [install the following data packages](http://www.nltk.org/data.html):
+[NLTK 3.0](http://www.nltk.org/). After installing it, you should also [install the following data packages](http://www.nltk.org/data.html):
 
   * Brown Corpus
   * Wordnet
@@ -114,4 +114,3 @@ Special thanks to Brent McRae, who helped fixing many bugs.
 
 [vialab]: http://vialab.science.uoit.ca
 [uoit]:   http://uoit.ca
-
