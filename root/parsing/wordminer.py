@@ -369,15 +369,13 @@ def lastPassword():
 
 def clearResults(dbe, pwset_id):
     with dbe.cursor() as cursor:
-#        cursor.execute("TRUNCATE table set_contains;")
         cursor.execute("DELETE a FROM set_contains a INNER JOIN sets b on a.set_id = b.set_id \
-             INNER JOIN passwords c on b.pass_id = c.pass_id and pwset_id = {};".format(pwset_id))
-#        cursor.execute("ALTER TABLE set_contains AUTO_INCREMENT=1;")
+             INNER JOIN passwords c on b.pass_id = c.pass_id and pwset_id = {};" \
+             .format(pwset_id), plain_query = True)
 
-#        cursor.execute("TRUNCATE table sets;")
         cursor.execute("DELETE a FROM sets a INNER JOIN passwords b on a.pass_id = b.pass_id \
-            and pwset_id = {};".format(pwset_id))
- #       cursor.execute("ALTER TABLE sets AUTO_INCREMENT=1;")
+            and pwset_id = {};".format(pwset_id), plain_query = True)
+
 
 
 def currentdir():
