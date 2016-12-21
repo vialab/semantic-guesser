@@ -17,7 +17,7 @@ toEscape = ['\\', '\'', ' ']
 # the Trie, at least in the way I implemented, is a SUPER FAILURE
 # in terms of memory consumption
 # def initializeTrie(dbe):
-# 
+#
 #     # populating our unigram trie
 #     with dbe.cursor() as cursor:
 #             query = 'SELECT word,MAX(freq) FROM passwords.COCA_wordlist group by word'
@@ -25,14 +25,14 @@ toEscape = ['\\', '\'', ' ']
 #             for word, freq in cursor:
 #                     trie.insert(word, freq)
 #             cursor.close()
-#     # then the bigram trie        
+#     # then the bigram trie
 #     with dbe.cursor() as cursor:
 #             query = 'SELECT word1, word2, freq FROM passwords.bigrams'
 #             cursor.execute(query, )
 #             for word1, word2, freq in cursor:
 #                     trie.insert(word1+' '+word2, freq)
 #             cursor.close()
-#     # then the trigram trie        
+#     # then the trigram trie
 #     with dbe.cursor() as cursor:
 #             query = 'SELECT word1, word2, word3, freq FROM passwords.trigrams'
 #             cursor.execute(query, )
@@ -47,26 +47,24 @@ def loadNgrams(dbe):
     # unigrams
     with dbe.cursor() as cursor:
         query = 'SELECT word, MAX(freq) FROM passwords.COCA_wordlist group by word'
-        cursor.execute(query, )
+        cursor.execute(query, plain_query = True)
         for word, freq in cursor:
             ngrams[word] = freq
-        cursor.close()
-    
-    # bigrams        
+
+    # bigrams
     with dbe.cursor() as cursor:
         query = 'SELECT word1, word2, freq FROM passwords.bigrams'
-        cursor.execute(query, )
+        cursor.execute(query, plain_query = True)
         for word1, word2, freq in cursor:
-                ngrams[word1+' '+word2] = freq
-        cursor.close()
-    
-    # trigrams        
+            ngrams[word1+' '+word2] = freq
+
+    # trigrams
     with dbe.cursor() as cursor:
         query = 'SELECT word1, word2, word3, freq FROM passwords.trigrams'
-        cursor.execute(query, )
+        cursor.execute(query, plain_query = True)
         for word1, word2, word3, freq in cursor:
             ngrams[word1+' '+word2+' '+word3] = freq
-        cursor.close()
+
 
 def getDataSetSize(dbe, tableName):
 
@@ -74,8 +72,7 @@ def getDataSetSize(dbe, tableName):
         query = '''SELECT count(*) FROM ''' + tableName + ''';'''
         cursor.execute(query, )
         count = cursor.fetchall()[0][0]
-        cursor.close()
-        
+
     return count
 
 def freqReadCache(dbe):
@@ -92,15 +89,13 @@ def freqReadCache(dbe):
         query = '''SELECT sum(freq) FROM trigrams;'''
         cursor.execute(query, )
         num_trigrams = cursor.fetchall()[0][0]
-        
-        cursor.close()
-        
+
     return (num_unigrams, num_bigrams, num_trigrams)
 
 def resetDynamicDictionary( dbe ):
     query = '''DELETE FROM dictionary where dictset_id >= ''' + str(NUM_DICT_ID) + ''';'''
     with dbe.cursor() as cur:
-        cur.execute(query, ())
+        cur.execute(query, plain_query=True)
 
 def reloadDynamicDictionary(dbe, oldDictionary):
     result = getDictionary(dbe, [NUM_DICT_ID, MIXED_NUM_SC_DICT_ID, SC_DICT_ID, CHAR_DICT_ID])
@@ -114,21 +109,21 @@ def reloadDynamicDictionary(dbe, oldDictionary):
 def addToDynamicDictionary(dbe, dynDictionaryID, segment):
     '''Adds a segment to the db with a certain dictset_id.
     Notice that it won't make the segment lowercase; so 'lWic' ~= 'lwic'.
-    It will, however, strip it, i.e., 'lwic  ' == 'lwic'    
+    It will, however, strip it, i.e., 'lwic  ' == 'lwic'
     '''
     # right-strip it cause MySQL doesn't consider trailing spaces
-    segment = segment.rstrip()
+    segment = segment.rstrip().encode("utf-8")
 
     query = '''INSERT INTO dictionary (dictset_id, dict_text)
-    select * from (select ''' + str(dynDictionaryID) + ''' as id,  \'''' + escape(segment, toEscape) + '''\' as text  )
+    select * from (select {0} as id, '{1}' as text)
     as tmp where not exists (select dictset_id, dict_text from dictionary where
-    dictset_id = ? and dict_text = ?);'''
+    dictset_id = {0} and dict_text = '{1}');'''.format(str(dynDictionaryID), escape(segment, toEscape))
 
     with dbe.cursor() as cur:
-        cur.execute(query, (dynDictionaryID, segment,))
+        cur.execute(query, plain_query = True)
 
 #     cur.close()  # no need for this
-    
+
     # Apparently we don't need to return the dynDictID
 #     result = dictIDbyWord(dbe, [segment], dynDictionaryID)
 #     try:
@@ -151,12 +146,12 @@ def pwIDfromText(sqleng, password, pwsetID):
 
 def dictIDbyWord(sqleng, dictwordset, dictsetID=None):
     result = dict()
-    
+
     query = '''SELECT dict_id, dict_text FROM dictionary
                 WHERE dict_text = ?'''
     if dictsetID :
         query += ''' AND dictset_id = ?;'''
-    
+
     with sqleng.cursor() as cur:
         for x in dictwordset:
             params = (x, dictsetID) if dictsetID else (x,)
@@ -164,7 +159,7 @@ def dictIDbyWord(sqleng, dictwordset, dictsetID=None):
             for dict_id, dict_text in cur:
                 result[dict_text] = dict_id
     return result
-        
+
 def partIter(iterable, const):
     '''A partial iterator, outputs the constant value with each of the iterable.'''
     pool = tuple(iterable)
@@ -185,7 +180,7 @@ def wordsFromResultSet(resultSet):
             if wordTups[0] not in words:
                 words.append(wordTups[0])
     return words
-        
+
 def storeResults(sqleng, passID, dictsetID, resultSet, dictionary):
     '''Older function used to store the results into the database, depreciated.'''
     words = wordsFromResultSet(resultSet) #gets s simple list of all words in resultSet
@@ -197,15 +192,15 @@ def storeResults(sqleng, passID, dictsetID, resultSet, dictionary):
         for wordTup in resultSet[0][x]:
             setext += wordTup[0]
         sets[x] = setext
-    
+
     print("sets:",sets)
     print("rs:",resultSet)
     print()
-    
+
     insQuery = '''INSERT INTO sets (pass_id, set_pw) VALUES ( ? , ? );'''
     linkQuery = '''INSERT INTO set_contains (set_id, dict_id, s_index, e_index) VALUES
             ( ? , ? , ? , ? );'''
-    
+
     with sqleng.cursor() as cur:
         for x in range(len(sets)):
             #this is where all the time is comming from.
@@ -214,7 +209,7 @@ def storeResults(sqleng, passID, dictsetID, resultSet, dictionary):
             cur.executemany(linkQuery, resIter(rid, resultSet[0][x], dwords)) #i hopes this is right
 
 def getDictionary(sqleng, dictset_ids):
-    
+
     query = '''SELECT dict_text, dict_id FROM dictionary WHERE dictset_id = ?
             ORDER BY dict_id asc;'''
     dictionary = dict()
@@ -228,16 +223,16 @@ def getDictionary(sqleng, dictset_ids):
             ## THIS PRIORITIZES DICTIONARIES.
             ## assumption: the dictionaries are in priority order (in the dictset_ids list)
             for dict_text, dict_id in res:
-                try: 
+                try:
                     tmp = dictionary[dict_text.lower()]
                 except:
                     # TODO: This change is experimental. *Apparently*, we don't need dict_text in the tuple,
-                    # but the guessability code needs dictset_id  
+                    # but the guessability code needs dictset_id
 #                     dictionary[dict_text] = (dict_text, dict_id)
                     dictionary[dict_text.lower()] = (x, dict_id)
     print("dictionary length:",len(dictionary))
     return dictionary
-    
+
 
 def passCount(dbe, passSetID):
     '''Not used anymore.'''
@@ -246,12 +241,12 @@ def passCount(dbe, passSetID):
         cur.execute(query, (passSetID,))
         count = cur.fetchone()[0]
     return count
-            
+
 def getFreq (dbe, word):
     return 0 if word not in ngrams else ngrams[word]
-    
+
 #     return trie.getFrequency(theWord)
-        
+
 #    query = '''SELECT MAX(freq) from COCA_wordlist WHERE word = ?'''
 #    with dbe.cursor() as cur:
 #        cur.execute(query, (theWord,))
@@ -263,7 +258,7 @@ def getFreq (dbe, word):
 def getBigramFreq (dbe, word1, word2):
     key = ' '.join([word1, word2])
     return 0 if key not in ngrams else ngrams[key]
- 
+
 #     return trie.getFrequency(word1+' '+word2)
 
 #    query = '''SELECT MAX(freq) from bigrams WHERE word1 = ? and word2 = ?'''
