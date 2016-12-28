@@ -15,11 +15,11 @@ class pwReadCache(object):
         self._lowBounds = initial
         self._highBounds = self._lowBounds + self._size
         self._pwsetID = pwsetID
-        query = '''SELECT count(*) FROM passwords WHERE pwset_id = ?'''
+        query = '''SELECT count(*) FROM passwords WHERE pwset_id = %s'''
         with self._db.cursor() as cur:
             cur.execute(query, (self._pwsetID,))
             self._count = cur.fetchone()[0] #grabs the tuple count of the table.
-        
+
     def __iter__(self):
         '''Used to allow the with construct'''
         exit = False
@@ -30,16 +30,15 @@ class pwReadCache(object):
                 yield x
             if exit is True:
                 break
-    
+
     def _refill(self):
         '''Refills the internal cache of tuples.'''
- 
+
         # Edit 1: no more using ids for delimiting the results window, due to the ORDER BY clause
         # Edit 2: no more using ORDER BY. Assumes the passwords are sorted in the db.
-        print 'retrieving passwords from db. offset: {} quantity: {} ...'.format(self._lowBounds, self._size) 
-        query = '''SELECT pass_id, pass_text FROM passwords WHERE pwset_id = ? \
-                #ORDER BY pass_text 
-                LIMIT ? OFFSET ?'''
+        print 'retrieving passwords from db. offset: {} quantity: {} ...'.format(self._lowBounds, self._size)
+        query = "SELECT pass_id, pass_text FROM passwords WHERE pwset_id = %s " \
+            "LIMIT %s OFFSET %s"
 #       query = '''SELECT pass_id, pass_text FROM passwords WHERE pwset_id = ?
 #               ORDER BY pass_id LIMIT ? OFFSET ?'''
         self._tuplelist = list()
@@ -55,7 +54,7 @@ class pwReadCache(object):
             return False
         else:
             return True # marks that there's no more in the DB
-    
+
 
 class WriteBuffer(object):
     '''A buffering class for sql writes, to speed everything up nicely.'''
@@ -69,7 +68,7 @@ class WriteBuffer(object):
         self._dictionary = dictionary
         query = '''SELECT max(set_id) FROM sets;'''
         with self._db.cursor() as cur:
-            cur.execute(query, plain_query=True)
+            cur.execute(query)
             self._last_id = cur.fetchone() #gets the last id in the results.
             self._last_id = self._last_id[0]
         if self._last_id is None:
@@ -79,20 +78,20 @@ class WriteBuffer(object):
     def _flush(self):
         '''The function that coordinates the commit of the internal data store to the sql store.'''
         t0 = time.time()
-        query1 = '''INSERT INTO sets (pass_id, set_pw) VALUES (?,?);'''
+        query1 = '''INSERT INTO sets (pass_id, set_pw) VALUES (%s, %s);'''
         query2 = '''SELECT max(set_id) FROM sets;'''
-        query3 = '''INSERT INTO set_contains (set_id, dict_id, s_index, e_index) VALUES (?,?,?,?)'''
+        query3 = '''INSERT INTO set_contains (set_id, dict_id, s_index, e_index) VALUES (%s,%s,%s,%s)'''
         # example:
         # (15, ([[('too', 0, 3), ('hot', 3, 6)], [('too', 0, 3), ('ott', 4, 7)]], 6))
         print ("in _flush function")
         with self._db.cursor() as cur:
             stage1 = self._genStage1()
-            cur.execute("SET autocommit = 0;", plain_query=True)
-            cur.execute("SET unique_checks = 0;", plain_query=True)
-            cur.execute("SET foreign_key_checks = 0;", plain_query=True)
+            cur.execute("SET autocommit = 0;")
+            cur.execute("SET unique_checks = 0;")
+            cur.execute("SET foreign_key_checks = 0;")
             print("Stage 1 Commit Starting.")
             cur.executemany(query1, stage1) #commit the stage1
-            cur.execute("COMMIT;", plain_query=True)
+            cur.execute("COMMIT;")
             print("Stage 1 Commit Complete.")
             cur.execute(query2) #retrieve the last set_id added
 
@@ -102,17 +101,17 @@ class WriteBuffer(object):
 
             print("Stage 2 Commit Starting.")
             cur.executemany(query3, stage2)
-            cur.execute("COMMIT;", plain_query=True)
+            cur.execute("COMMIT;")
             print("Stage 2 Commit Complete.")
-            cur.execute("SET autocommit = 1;", plain_query=True)
-            cur.execute("SET unique_checks = 1;", plain_query=True)
-            cur.execute("SET foreign_key_checks = 1;", plain_query=True)
+            cur.execute("SET autocommit = 1;")
+            cur.execute("SET unique_checks = 1;")
+            cur.execute("SET foreign_key_checks = 1;")
             self._data = list()
         self._count = 0
         t1 = time.time()
         print "Flush took {}.".format(t1-t0)
 
-                
+
     def _genStage1(self):
         '''Generates the package of data for the stage1 commit into the database.'''
         stage1 = list()
@@ -122,7 +121,7 @@ class WriteBuffer(object):
             for rset in result: #walks through the sets of results.
                 stage1.append((pass_id, self._genSetPW(rset))) #smooshes the results into a tuple.
         return stage1
-    
+
     def _genStage2(self, startingID):
         '''Generates the package of data for stage2 commit into db.'''
         #-- refresh dictionary (for dynamic entries)
@@ -133,8 +132,8 @@ class WriteBuffer(object):
 
         for result in self._data:
             result = result[1][0]
-            for rset in result: # rset is the list of fragments of a password                
-                for word, sIndex, eIndex in rset: 
+            for rset in result: # rset is the list of fragments of a password
+                for word, sIndex, eIndex in rset:
                     try:
                         stage2.append((currID, self._dictionary[word][1], sIndex, eIndex))
                     except KeyError, e: # if key fragment not found in memory, go to db
@@ -147,13 +146,13 @@ class WriteBuffer(object):
                 currID += 1
 
         return stage2
-    
+
     def _genSetPW(self, tups):
         '''Simply gets the password for the set from the list of words.'''
         return ''.join([x[0] for x in tups])
-    
+
     def addCommit(self, pwID, resultSet):
-        '''Adds data to the internal store to be flushed at a later time, 
+        '''Adds data to the internal store to be flushed at a later time,
         when flushCount is exceeded, or object is deleted.
         Return True if this entry triggered flushing; False otherwise.'''
         self._data.append((pwID, resultSet))

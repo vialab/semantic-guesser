@@ -5,14 +5,14 @@ if __name__ == '__main__' and __package__ is None:
     from os import sys
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from argparse import ArgumentParser
 from custom_exceptions import AllowedTimeExceededError
 from cache import *
 from queries import *
 from utils import *
 import argparse
 import os
-import oursql
+# import oursql
+import pymysql.cursors
 import re
 import time
 import timer
@@ -40,13 +40,26 @@ def fileLength(fname, fcode='utf-8'):
     return lines
 
 
+# def connectToDb():
+#     '''Contains the connection string to the database, and returns the connection object.'''
+#     cred = util.dbcredentials()
+#     return oursql.connect(host=cred["host"], user=cred["user"], passwd=cred["password"], db='passwords',
+#                           raise_on_warnings=False, charset='utf8', use_unicode=True, port=int(cred["port"]),
+#                           autoping = True)
+#     # return oursql.connect(unix_socket='/var/lib/mysql/mysql.sock', user='root',
+#     # passwd='vialab', db='newtest', charset='utf8', use_unicode=True)
+
+
 def connectToDb():
     '''Contains the connection string to the database, and returns the connection object.'''
     cred = util.dbcredentials()
-    return oursql.connect(host=cred["host"], user=cred["user"], passwd=cred["password"], db='passwords',
-                          raise_on_warnings=False, charset='utf8', use_unicode=True, port=int(cred["port"]))
-    # return oursql.connect(unix_socket='/var/lib/mysql/mysql.sock', user='root',
-    # passwd='vialab', db='newtest', charset='utf8', use_unicode=True)
+    return pymysql.connect(host=cred["host"],
+                           user=cred["user"],
+                           password=cred["password"],
+                           db='passwords',
+                           charset='utf8',
+                           use_unicode=True,
+                           port=int(cred["port"]))
 
 
 def makeSearchingDict(words):
@@ -371,10 +384,10 @@ def clearResults(dbe, pwset_id):
     with dbe.cursor() as cursor:
         cursor.execute("DELETE a FROM set_contains a INNER JOIN sets b on a.set_id = b.set_id \
              INNER JOIN passwords c on b.pass_id = c.pass_id and pwset_id = {};" \
-             .format(pwset_id), plain_query = True)
+             .format(pwset_id))
 
         cursor.execute("DELETE a FROM sets a INNER JOIN passwords b on a.pass_id = b.pass_id \
-            and pwset_id = {};".format(pwset_id), plain_query = True)
+            and pwset_id = {};".format(pwset_id))
 
 
 

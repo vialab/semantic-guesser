@@ -47,21 +47,21 @@ def loadNgrams(dbe):
     # unigrams
     with dbe.cursor() as cursor:
         query = 'SELECT word, MAX(freq) FROM passwords.COCA_wordlist group by word'
-        cursor.execute(query, plain_query = True)
+        cursor.execute(query)
         for word, freq in cursor:
             ngrams[word] = freq
 
     # bigrams
     with dbe.cursor() as cursor:
         query = 'SELECT word1, word2, freq FROM passwords.bigrams'
-        cursor.execute(query, plain_query = True)
+        cursor.execute(query)
         for word1, word2, freq in cursor:
             ngrams[word1+' '+word2] = freq
 
     # trigrams
     with dbe.cursor() as cursor:
         query = 'SELECT word1, word2, word3, freq FROM passwords.trigrams'
-        cursor.execute(query, plain_query = True)
+        cursor.execute(query)
         for word1, word2, word3, freq in cursor:
             ngrams[word1+' '+word2+' '+word3] = freq
 
@@ -95,7 +95,7 @@ def freqReadCache(dbe):
 def resetDynamicDictionary( dbe ):
     query = '''DELETE FROM dictionary where dictset_id >= ''' + str(NUM_DICT_ID) + ''';'''
     with dbe.cursor() as cur:
-        cur.execute(query, plain_query=True)
+        cur.execute(query)
 
 def reloadDynamicDictionary(dbe, oldDictionary):
     result = getDictionary(dbe, [NUM_DICT_ID, MIXED_NUM_SC_DICT_ID, SC_DICT_ID, CHAR_DICT_ID])
@@ -120,7 +120,7 @@ def addToDynamicDictionary(dbe, dynDictionaryID, segment):
     dictset_id = {0} and dict_text = '{1}');'''.format(str(dynDictionaryID), escape(segment, toEscape))
 
     with dbe.cursor() as cur:
-        cur.execute(query, plain_query = True)
+        cur.execute(query)
 
 #     cur.close()  # no need for this
 
@@ -137,7 +137,7 @@ def pwIDfromText(sqleng, password, pwsetID):
     '''Not used anymore'''
     with sqleng.cursor() as cursor:
         query = '''SELECT pass_id FROM passwords
-                WHERE pwset_id = ? AND pass_text = ?
+                WHERE pwset_id = %s AND pass_text = %s
                 LIMIT 1;'''
         cursor.execute(query, params=(pwsetID, escape(password, toEscape)))
         pwid = cursor.fetchall()[0][0]
@@ -148,9 +148,9 @@ def dictIDbyWord(sqleng, dictwordset, dictsetID=None):
     result = dict()
 
     query = '''SELECT dict_id, dict_text FROM dictionary
-                WHERE dict_text = ?'''
+                WHERE dict_text = %s'''
     if dictsetID :
-        query += ''' AND dictset_id = ?;'''
+        query += ''' AND dictset_id = %s;'''
 
     with sqleng.cursor() as cur:
         for x in dictwordset:
@@ -197,9 +197,9 @@ def storeResults(sqleng, passID, dictsetID, resultSet, dictionary):
     print("rs:",resultSet)
     print()
 
-    insQuery = '''INSERT INTO sets (pass_id, set_pw) VALUES ( ? , ? );'''
+    insQuery = '''INSERT INTO sets (pass_id, set_pw) VALUES ( %s , %s );'''
     linkQuery = '''INSERT INTO set_contains (set_id, dict_id, s_index, e_index) VALUES
-            ( ? , ? , ? , ? );'''
+            ( %s , %s , %s , %s );'''
 
     with sqleng.cursor() as cur:
         for x in range(len(sets)):
@@ -210,7 +210,7 @@ def storeResults(sqleng, passID, dictsetID, resultSet, dictionary):
 
 def getDictionary(sqleng, dictset_ids):
 
-    query = '''SELECT dict_text, dict_id FROM dictionary WHERE dictset_id = ?
+    query = '''SELECT dict_text, dict_id FROM dictionary WHERE dictset_id = %s
             ORDER BY dict_id asc;'''
     dictionary = dict()
     tmp = None # for throwing keyerrors on dicitonary
@@ -236,7 +236,7 @@ def getDictionary(sqleng, dictset_ids):
 
 def passCount(dbe, passSetID):
     '''Not used anymore.'''
-    query = '''SELECT count(*) FROM passwords WHERE pwset_id = ?'''
+    query = '''SELECT count(*) FROM passwords WHERE pwset_id = %s'''
     with dbe.cursor() as cur:
         cur.execute(query, (passSetID,))
         count = cur.fetchone()[0]
