@@ -302,14 +302,14 @@ def print_result(password, segments, tags, pattern):
         print "{}\t{}\t{}\t{}".format(password, segments[i].word, tags[i], pattern)
 
 
-def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
+def main(db, pwset_id, samplesize, dryrun, verbose, basepath, tag_type):
 #    tags_file = open('grammar/debug.txt', 'w+')
     
     patterns_dist = FreqDist()  # distribution of patterns
     segments_dist = ConditionalFreqDist()  # distribution of segments, grouped by semantic tag
     
     counter = 0
-    
+    total   = db.sets_size if not samplesize else samplesize
     while db.hasNext():
         segments = db.nextPwd()
         password = ''.join([s.word for s in segments])
@@ -340,7 +340,7 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
 
         counter += 1
         if counter % 100000 == 0:
-            print "{} passwords processed so far ({:.2%})... ".format(counter, float(counter)/db.sets_size)
+            print "{} passwords processed so far ({:.2%})... ".format(counter, float(counter)/total)
          
 #     tags_file.close()
 
@@ -419,10 +419,10 @@ if __name__ == '__main__':
         with Timer('grammar generation'):
             #db = PwdDb(sample=10000, random=True)
             print 'Instantiating database...'
-            db = database.PwdDb(opts.password_set, sample=opts.sample, \
+            db = database.PwdDb(opts.password_set, samplesize=opts.sample, \
                 random=opts.random, exceptions=exceptions)
             try:
-                main(db, opts.password_set, opts.dryrun, \
+                main(db, opts.password_set, opts.sample, opts.dryrun, \
                     opts.verbose, opts.path, opts.tags)
             except KeyboardInterrupt:
                 db.finish()

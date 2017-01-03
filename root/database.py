@@ -40,7 +40,7 @@ class PwdDb():
 
     """
 
-    def __init__(self, pwset_id, sample=None, random=False, save_cachesize=100000, \
+    def __init__(self, pwset_id, samplesize=None, random=False, save_cachesize=100000, \
         offset=0, exceptions=None):
 
         self.savebuffer_size = save_cachesize
@@ -53,10 +53,10 @@ class PwdDb():
         self.savebuffer  = []
 
         # different connections for reading and saving
-        self._init_read_cursor(pwset_id, offset, sample, random, exceptions)
+        self._init_read_cursor(pwset_id, offset, samplesize, random, exceptions)
         self._init_save_cursor()
 
-    def _init_read_cursor(self, pwset_id, offset, limit, random, exceptions):
+    def _init_read_cursor(self, pwset_id, offset, samplesize, random, exceptions):
         self.conn_read = connection()
         self.readcursor = self.conn_read.cursor()
 
@@ -70,10 +70,10 @@ class PwdDb():
         random_ids = None
         if random:
             extent = self.id_extent_parsed(pwset_id) # min and max pass_id to sample from
-            random_ids = self.random_ids(extent[0], extent[1], limit)
+            random_ids = self.random_ids(extent[0], extent[1], samplesize)
 
         print 'Fetching password segments...'
-        self.readcursor.execute(query.segments(pwset_id, limit, offset, random_ids, exceptions))
+        self.readcursor.execute(query.segments(pwset_id, None, offset, random_ids, exceptions))
         print 'Password segments fetched.'
 
         # fetching the first password

@@ -6,9 +6,12 @@ names = "SELECT dict_text FROM dictionary where dictset_id = 20 or dictset_id = 
 def segments(pwset_id, limit, offset, pass_ids=None, exception=None):
     """ Returns all the segments.
 
-    pwset_id - the id of the password set to be gathered
-    bounds - list of the form [offset, size]
-    pass_ids - list of password ids whose segments will be fetched.
+	@params:
+    pwset_id  - the id of the password set to be gathered (Int)
+    limit     - a limit on the number of records (Int)
+    offset    - number of records to skip (Int)
+    pass_ids  - list of password ids whose segments will be fetched (List(Int))
+    exception - list of password ids to be ignored (List(int))
 
     """
 
@@ -32,7 +35,7 @@ def segments(pwset_id, limit, offset, pass_ids=None, exception=None):
     if offset:
         q = q + "OFFSET {} ".format(offset)
     
-#    print q
+    #print q
     return q
 
 
