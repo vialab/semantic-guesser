@@ -17,7 +17,7 @@ def segments(pwset_id, limit, offset, pass_ids=None, exception=None, test=False)
 
     q = "SELECT sets.set_id AS set_id, "\
         "set_contains.id AS set_contains_id, dict_text, dictset_id, "\
-        "pos, sentiment, synset, category, dictset_id, pass_text, s_index, e_index "\
+        "pos, dictset_id, pass_text, s_index, e_index "\
         "FROM passwords "\
         "JOIN sets on sets.pass_id = passwords.pass_id "\
         "JOIN set_contains ON set_contains.set_id = sets.set_id "\

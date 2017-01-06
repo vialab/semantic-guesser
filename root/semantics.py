@@ -9,7 +9,7 @@ containing the frequency in the sample, in JSON format.
 import database
 from tagset_conversion import TagsetConverter
 from nltk.corpus import wordnet as wn
-from tree.default_tree import DefaultTree 
+from tree.default_tree import DefaultTree
 from tree.wordnet import WordNetTree
 from timer import Timer
 import cPickle as pickle
@@ -28,7 +28,7 @@ def synset(word, pos):
     If more than one synset is retrieved, return the first,
     which is, presumably, the most frequent.
     More on this at: http://wordnet.princeton.edu/wordnet/man/cntlist.5WN.html
-    
+
     If the fragment has no POS tag or no synset is found in
     WordNet for the POS tag, None is returned.
 
@@ -49,8 +49,8 @@ def synset(word, pos):
 
 
 def populate(samplesize, pwset_id, nountree=None, verbtree=None):
-    """ Given POS-specific tree representations of WordNet (verb, noun or both), 
-    updates the  frequency of each node  according to its occurrence in a sample 
+    """ Given POS-specific tree representations of WordNet (verb, noun or both),
+    updates the  frequency of each node  according to its occurrence in a sample
     of the passwords.
 
     nountree   - instance of WordNetTree, optional
@@ -92,7 +92,7 @@ def populate(samplesize, pwset_id, nountree=None, verbtree=None):
                     noun_synset_dist[synset_] = inc(noun_synset_dist, synset_)
                 elif synset_.pos() == 'v' and verbtree:
                     verb_synset_dist[synset_] = inc(verb_synset_dist, synset_)
-                        
+
     print "All passwords read."
 
     with Timer("Updating tree"):
@@ -107,10 +107,10 @@ def increment_synset_count(tree, synset, hashtable, count=1):
     of a  synset  and propagate  it  through its ancestors. This
     method is more efficient than WordNetTree.increment_synset()
     as it uses WordNetTree.hashtable() to avoid searching.
-    
+
     It's different  from increment_node() in that it  increments
-    the counts of ALL nodes  matching a key. In fact, it divides 
-    the count by the number of nodes matching the key.  
+    the counts of ALL nodes  matching a key. In fact, it divides
+    the count by the number of nodes matching the key.
     increment_node() resolves  ambiguity using the ancestor path
     received as argument.
     """
@@ -118,17 +118,17 @@ def increment_synset_count(tree, synset, hashtable, count=1):
     # the entire WordNet tree. The reason is that it starts at root
     # adding the descendants retrieved from synset.hyponyms(). For some
     # odd reason that method not always returns all hyponyms. For
-    # example, portugal.n.01 is not retrieved as a hyponym of 
+    # example, portugal.n.01 is not retrieved as a hyponym of
     # european_country.n.01, but if we call
     #   wn.synsets('portugal')[0].hypernym_paths()
     # european-country.n.01 appears as its ancestor.
-    # so we check if the number of hypernym paths of a node is the same 
+    # so we check if the number of hypernym paths of a node is the same
     # as the # of nodes in the tree, if
     # it's higher, than we use tree.increment_synset, which is slow
     # but takes care of adding the missing nodes.
 
     paths = synset.hypernym_paths()
-    
+
     key = synset.name() if not synset.hyponyms() else 's.' + synset.name()
 
     if key in hashtable and len(hashtable[key]) == len(paths):
@@ -137,7 +137,7 @@ def increment_synset_count(tree, synset, hashtable, count=1):
         for n in nodes:
             n.increment_value(count, True)
     else:
-        tree.increment_synset(synset, count)    
+        tree.increment_synset(synset, count)
 
 
 def load_semantictrees(pwset_id, samplesize=None):
@@ -170,13 +170,13 @@ def load_semantictrees(pwset_id, samplesize=None):
         # dumps tree to make the job faster next time
         pickle.dump(nountree, open(noun_tree_path, 'w+'))
         pickle.dump(verbtree, open(verb_tree_path, 'w+'))
-    
+
     return (nountree, verbtree)
 
 
 def load_semantictree(pos, pwset_id, samplesize=None):
-    """ Returns a tree representation of  WordNet (an instance of WordNetTree) 
-    for a certain part-of-speech with the frequency of the nodes conforming to 
+    """ Returns a tree representation of  WordNet (an instance of WordNetTree)
+    for a certain part-of-speech with the frequency of the nodes conforming to
     their occurrence in the passwords.
 
     samplesize - if None, reads the entire database
@@ -209,10 +209,10 @@ def increment_node(hashtable, key, ancestors):
     """ Efficiently increments the count of a node in a tree.
     Args:
         - key: key of the node whose count must be incremented.
-        - hashtable: dictionary mapping  keys to all nodes of a 
+        - hashtable: dictionary mapping  keys to all nodes of a
         tree. See DefaultTree.hashtable()
-        - ancestors: a list of the keys of the ancestors of the 
-        node, for  disambiguation, in case the tree has several 
+        - ancestors: a list of the keys of the ancestors of the
+        node, for  disambiguation, in case the tree has several
         nodes associated with a single key. Root is first.
     """
 
@@ -227,11 +227,11 @@ def increment_node(hashtable, key, ancestors):
         fullmatch = True
         b = n
         for a in reversed(ancestors):
-            b = b.parent            
+            b = b.parent
             if not b or a.key != b.key:
                 fullmatch = False
                 break
-            n_ancestors.append(b)                
+            n_ancestors.append(b)
 
         if fullmatch:
             n.value += 1
@@ -243,17 +243,17 @@ def increment_node(hashtable, key, ancestors):
 
 
 def main(db, pos, file_):
-    
+
     tree = DefaultTree()
     treeFile = open(file_, 'wb')
 
     pos_tagged_total = 0  # number of pos-tagged words
-    target_total     = 0  # number of words tagged as pos 
+    target_total     = 0  # number of words tagged as pos
     in_wordnet_total = 0  # number of verbs that are found in wordnet
 
     while db.hasNext():
         words = db.nextPwd()  # list of Words
-        
+
         for w in words:
             if w.pos is None:
                 continue
@@ -264,9 +264,9 @@ def main(db, pos, file_):
                 target_total += 1
             else:
                 continue
-                
+
             synset_ = synset(w.word, w.pos)  # best effort to get a synset matching the fragment's pos
-            
+
             # if we were able to find a synset, append it to the tree
             if synset_ is not None:
                 in_wordnet_total += 1
@@ -275,18 +275,18 @@ def main(db, pos, file_):
                     path = [s.name() for s in path]
                     path.append(w.word)
                     tree.insert(path)
-                
+
     tree.updateEntropy()
     treeFile.write(tree.toJSON())
 
     db.finish()
-    
+
     print '{} POS tagged words'.format(pos_tagged_total)
     print 'of which {} are {} ({}%)'.format(target_total, pos, float(target_total) * 100 / pos_tagged_total)
     print 'of which {} are found in WordNet ({}%)'.format(in_wordnet_total, float(in_wordnet_total) * 100 / target_total)
-    
+
     return 0
-    
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Performs semantic classification on a sample and outputs its synsets "
                                                  "tree in JSON, containing frequency info.")
@@ -297,14 +297,14 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--size', type=int, default=None,
                         help='size of the sample from which the words should be gotten.')
 
-    db_group = parser.add_argument_group('Database Connection Arguments')    
+    db_group = parser.add_argument_group('Database Connection Arguments')
     db_group.add_argument('--user', type=str, default='root', help="db username for authentication")
     db_group.add_argument('--pwd',  type=str, default='', help="db pwd for authentication")
     db_group.add_argument('--host', type=str, default='localhost', help="db host")
     db_group.add_argument('--port', type=int, default=3306, help="db port")
-                                                                                                         
+
     args = parser.parse_args()
-    
+
     database.USER = args.user
     database.PWD  = args.pwd
     database.HOST = args.host
@@ -312,9 +312,3 @@ if __name__ == "__main__":
     db = database.PwdDb(size=args.size)
 
     main(db, args.pos, args.file)
-
-
-
-
-
-

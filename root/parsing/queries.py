@@ -92,8 +92,10 @@ def freqReadCache(dbe):
 
     return (num_unigrams, num_bigrams, num_trigrams)
 
-def resetDynamicDictionary( dbe ):
-    query = '''DELETE FROM dictionary where dictset_id >= ''' + str(NUM_DICT_ID) + ''';'''
+def resetDynamicDictionary(dbe, pwsetID):
+    query = '''delete dictionary from dictionary join set_contains on set_contains.pwset_id = {} '''\
+        '''AND dictionary.dictset_id > {} AND dictionary.dict_id = set_contains.dict_id;'''\
+        .format(pwsetID, NUM_DICT_ID)
     with dbe.cursor() as cur:
         cur.execute(query)
 

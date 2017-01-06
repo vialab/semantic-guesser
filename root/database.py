@@ -103,7 +103,7 @@ class PwdDb():
             else:
                 self.readpointer += 1
                 return self.readbuffer[self.readpointer]
-   
+
     def random_ids(self, min, max, size):
         return random.sample(range(min, max), size)
 
@@ -134,10 +134,10 @@ class PwdDb():
         pwd = []
 
         while pwd_id == old_pwd_id:
-            f = Fragment(self.row["set_contains_id"], self.row["dictset_id"], self.row["dict_text"],
-                                self.row["pos"], self.row["sentiment"], self.row["synset"],
-                                self.row["category"], self.row["pass_text"], self.row["s_index"],
-                                self.row["e_index"])
+            f = Fragment(self.row["set_contains_id"], self.row["dictset_id"],
+                self.row["dict_text"], self.row["pos"], self.row["pass_text"],
+                self.row["s_index"], self.row["e_index"])
+
             pwd.append(f)
 
             self.row = self.fetchone()

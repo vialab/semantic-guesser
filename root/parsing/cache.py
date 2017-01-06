@@ -58,12 +58,13 @@ class pwReadCache(object):
 
 class WriteBuffer(object):
     '''A buffering class for sql writes, to speed everything up nicely.'''
-    def __init__(self, dbsql, dictionary, flushCount=10000):
+    def __init__(self, dbsql, dictionary, pwsetID, flushCount=10000):
         '''dbsql is the connection from the library. dictionary is a link to the dictionary object being used.'''
         self._db = dbsql
         if flushCount > 0: self._flushCount = flushCount
         else: raise ValueError('flush count has to be greater than 0')
         self._data = list()
+        self._pwsetID = pwsetID
         self._count = 0
         self._dictionary = dictionary
         query = '''SELECT max(set_id) FROM sets;'''
@@ -78,9 +79,11 @@ class WriteBuffer(object):
     def _flush(self):
         '''The function that coordinates the commit of the internal data store to the sql store.'''
         t0 = time.time()
-        query1 = '''INSERT INTO sets (pass_id, set_pw) VALUES (%s, %s);'''
+        query1 = '''INSERT INTO sets (pass_id, set_pw, pwset_id) VALUES (%s, %s, {});''' \
+            .format(self._pwsetID)
         query2 = '''SELECT max(set_id) FROM sets;'''
-        query3 = '''INSERT INTO set_contains (set_id, dict_id, s_index, e_index) VALUES (%s,%s,%s,%s)'''
+        query3 = '''INSERT INTO set_contains (set_id, dict_id, s_index, e_index, pwset_id)'''\
+            '''VALUES (%s,%s,%s,%s, {})'''.format(self._pwsetID)
         # example:
         # (15, ([[('too', 0, 3), ('hot', 3, 6)], [('too', 0, 3), ('ott', 4, 7)]], 6))
         print ("in _flush function")

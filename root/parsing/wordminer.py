@@ -382,13 +382,11 @@ def lastPassword():
 
 def clearResults(dbe, pwset_id):
     with dbe.cursor() as cursor:
-        cursor.execute("DELETE a FROM set_contains a INNER JOIN sets b on a.set_id = b.set_id \
-             INNER JOIN passwords c on b.pass_id = c.pass_id and pwset_id = {};" \
+        cursor.execute("DELETE FROM set_contains WHERE pwset_id = {}"
              .format(pwset_id))
 
-        cursor.execute("DELETE a FROM sets a INNER JOIN passwords b on a.pass_id = b.pass_id \
-            and pwset_id = {};".format(pwset_id))
-
+        cursor.execute("DELETE FROM sets WHERE pwset_id = {}"
+            .format(pwset_id))
 
 
 def currentdir():
@@ -611,7 +609,7 @@ def sqlMine(dbe, options, dictSetIds):
 
     if options.erase:
         print 'resetting dynamic dictionaries...'
-        resetDynamicDictionary(dbe)
+        resetDynamicDictionary(dbe, options.password_set)
 
     print "reading dictionary..."
     dictionary = getDictionary(dbe, dictSetIds)
@@ -624,7 +622,7 @@ def sqlMine(dbe, options, dictSetIds):
 
     lastResult = (None, None)  # (password, result)
 
-    wbuff = WriteBuffer(dbe, dictionary, 100000)
+    wbuff = WriteBuffer(dbe, dictionary, options.password_set, 10000)
     for p in rbuff:
         pwcount += 1
 
