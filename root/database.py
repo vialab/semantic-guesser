@@ -6,8 +6,7 @@ Created on Feb 24, 2012
 @author: Rafa
 """
 
-# import MySQLdb.cursors
-import pymysql.cursors
+import MySQLdb.cursors
 import threading
 import query
 import random
@@ -16,11 +15,11 @@ from timer import Timer
 
 def connection():
     credentials = util.dbcredentials()
-    return pymysql.connect(host = credentials["host"],  # your host, usually localhost
+    return MySQLdb.connect(host = credentials["host"],  # your host, usually localhost
                  user = credentials["user"],   # your username
                  passwd = credentials["password"],  # your password
                  db = "passwords",
-                 cursorclass = pymysql.cursors.SSDictCursor)  # stores result in the server. records as dict
+                 cursorclass = MySQLdb.cursors.SSDictCursor)  # stores result in the server. records as dict
 
 def names():
     cursor = connection().cursor()
@@ -38,15 +37,15 @@ class PwdDb():
       the connection."
       If you don't retrieve the entire result set before calling finish(), it will take
       forever to close the connection.
+
     """
 
-    def __init__(self, pwset_id, sample=None, random=False, save_cachesize=100000, \
-        offset=0, exceptions=None, test = False):
+    def __init__(self, pwset_id, samplesize=None, random=False, save_cachesize=100000, \
+        offset=0, exceptions=None):
 
         self.savebuffer_size = save_cachesize
         self.readbuffer_size = 100000
-        self.pwset_id = pwset_id
-        self.pwset_size = self.pwset_size()
+
         self.readbuffer = []
         self.row = None        # holds the next row to be retrieved by nextPwd(),
         self.readpointer = -1  # always points to the last row read from readbuffer by fetchone.
@@ -54,35 +53,32 @@ class PwdDb():
         self.savebuffer  = []
 
         # different connections for reading and saving
-        self._init_read_cursor(pwset_id, offset, sample, random, exceptions, test)
+        self._init_read_cursor(pwset_id, offset, samplesize, random, exceptions)
         self._init_save_cursor()
 
-    def _init_read_cursor(self, pwset_id, offset, limit, random, exceptions, test):
+    def _init_read_cursor(self, pwset_id, offset, samplesize, random, exceptions):
         self.conn_read = connection()
+        self.readcursor = self.conn_read.cursor()
+
+        # getting number of 'sets' (or segments)
+        self.readcursor.execute(query.n_sets(pwset_id))
+        self.sets_size = self.readcursor.fetchone()["count"]
+        self.readcursor.close()
+
         self.readcursor = self.conn_read.cursor()
 
         random_ids = None
         if random:
             extent = self.id_extent_parsed(pwset_id) # min and max pass_id to sample from
-            random_ids = self.random_ids(extent[0], extent[1], limit)
+            random_ids = self.random_ids(extent[0], extent[1], samplesize)
 
         print 'Fetching password segments...'
-        self.readcursor.execute(query.segments(pwset_id, limit, offset, random_ids, exceptions))
+        self.readcursor.execute(query.segments(pwset_id, None, offset, random_ids, exceptions))
         print 'Password segments fetched.'
 
         # fetching the first password
         self.fill_buffer()
         self.row = self.fetchone()
-
-    def pwset_size(self):
-        # getting number of 'sets' (or segments)
-        cur = connection().cursor()
-        cur.execute(query.pwset_size(self.pwset_id))
-        size = cur.fetchone()["count"]
-        cur.close()
-
-        return size
-
 
     def fill_buffer(self):
         self.readbuffer  = self.readcursor.fetchmany(self.readbuffer_size)
@@ -102,7 +98,7 @@ class PwdDb():
             else:
                 self.readpointer += 1
                 return self.readbuffer[self.readpointer]
-
+   
     def random_ids(self, min, max, size):
         return random.sample(range(min, max), size)
 
@@ -163,17 +159,9 @@ class PwdDb():
 
     def flush_save (self):
         print "updating {} records on the database...".format(len(self.savebuffer))
-
         self.conn_save.ping(True) # if connection has died, ressurect it
-
-        util.set_innodb_checks(self.savecursor, False)
-
-        self.savecursor.executemany("UPDATE set_contains set pos=%s, \
-            sentiment=%s, synset=%s where id=%s;", self.savebuffer)
+        self.savecursor.executemany("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;", self.savebuffer)
         self.conn_save.commit()
-
-        util.set_innodb_checks(self.savecursor, True)
-
         self.savebuffer = []
 
     def saveCategory(self, wo):
@@ -190,6 +178,21 @@ class PwdDb():
         self.savecursor.close()
         self.conn_save.close()
         self.conn_read.close()
+
+
+# class Updater(threading.Thread):
+#     def __init__(self, query, cache, cachelimit, conn, cursor) :
+#         threading.Thread.__init__(self)
+#         self.query = query
+#         self.cache = cache
+#         self.cachelimit = cachelimit
+#         self.conn = conn
+#         self.cursor = cursor
+#
+#     def run(self):
+#         self.cursor.executemany(self.query, self.cache[0:self.cachelimit])
+#         self.conn.commit()
+#         del self.cache[0:self.cachelimit]
 
 
 class Fragment():
