@@ -511,9 +511,9 @@ def processGaps(db, resultSet, password):
                     i = i + 1
                 if (len(password) > lastEndIndex):
                         resultSet = addInTheGapsHelper(db, resultSet, i, password, lastEndIndex, len(password))
-        except :
+        except Exception, e:
             print ("Warning: caught unknown error in addTheGaps -- resultSet=", resultSet, "password", password)
-
+            print str(e)
     return resultSet
 
 
