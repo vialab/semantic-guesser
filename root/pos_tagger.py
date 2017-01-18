@@ -132,7 +132,7 @@ if __name__ == "__main__":
     opts = options()
 
     try:
-        db = database.PwdDb(opts.password_set, sample=opts.sample, save_cachesize=100000)
+        db = database.PwdDb(opts.password_set, samplesize=opts.sample, save_cachesize=100000)
         main(db, opts.dryrun, opts.stats, opts.verbose)
     except:
         e = sys.exc_info()[0]

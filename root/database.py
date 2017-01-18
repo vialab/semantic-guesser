@@ -150,11 +150,12 @@ class PwdDb():
 
     def save(self, wo, cache=False):
         if cache:
-            self.savebuffer.append((wo.pos, wo.senti, wo.synsets, wo.id))
+            self.savebuffer.append((wo.pos, wo.id))
             if len(self.savebuffer) >= self.savebuffer_size:
                 self.flush_save()
         else:
-            self.savecursor.execute("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;", (wo.pos, wo.senti, wo.synsets, wo.id))
+            self.savecursor.execute("UPDATE set_contains set pos=%s, where id=%s;",
+                (wo.pos, wo.id))
 
 #    def flush_save(self):
 #        print "updating {} records on the database...".format(len(self.savsave_buffer#
@@ -169,8 +170,8 @@ class PwdDb():
 
         util.set_innodb_checks(self.savecursor, False)
 
-        self.savecursor.executemany("UPDATE set_contains set pos=%s, \
-            sentiment=%s, synset=%s where id=%s;", self.savebuffer)
+        self.savecursor.executemany("UPDATE set_contains set pos=%s where id=%s;",
+                                    self.savebuffer)
         self.conn_save.commit()
 
         util.set_innodb_checks(self.savecursor, True)
@@ -178,8 +179,8 @@ class PwdDb():
         self.savebuffer = []
 
     def saveCategory(self, wo):
-        self.savecursor.execute("UPDATE set_contains set category=%s where id=%s;",
-                             (wo.category, wo.id))
+        self.savecursor.execute("UPDATE set_contains set pos=%s where id=%s;",
+                             (wo.pos, wo.id))
 
     def hasNext(self):
         return self.row is not None
@@ -195,15 +196,12 @@ class PwdDb():
 
 class Fragment():
 
-    def __init__(self, ident, dictset_id, word, pos=None, senti=None,
-                 synsets=None, category=None, password=None, s_index=None, e_index=None):
+    def __init__(self, ident, dictset_id, word, pos=None,
+                password=None, s_index=None, e_index=None):
         self.id = ident
         self.dictset_id = dictset_id
         self.word = word
         self.pos = pos
-        self.senti = senti
-        self.synsets = synsets
-        self.category = category
         self.password = password
         self.s_index = s_index
         self.e_index = e_index
