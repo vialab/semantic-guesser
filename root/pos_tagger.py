@@ -20,7 +20,10 @@ class BackoffTagger(SequentialBackoffTagger):
         self.dist = FreqDist()
 
 #       train_sents = brown.tagged_sents()
-        train_sents = pickle.load(open("pickles/brown_clawstags.pickle"))
+        try:
+            train_sents = pickle.load(open("pickles/brown_clawstags.pickle"))
+        except:
+            train_sents = pickle.load(open("root/pickles/brown_clawstags.pickle"))
         # make sure all tuples are in the required format: (TAG, word)
         train_sents = [[t for t in sentence if len(t) == 2] for sentence in train_sents]
 
@@ -132,7 +135,7 @@ if __name__ == "__main__":
     opts = options()
 
     try:
-        db = database.PwdDb(opts.password_set, samplesize=opts.sample, save_cachesize=100000)
+        db = database.PwdDb(opts.password_set, samplesize=opts.sample, save_cachesize=500000)
         main(db, opts.dryrun, opts.stats, opts.verbose)
     except:
         e = sys.exc_info()[0]

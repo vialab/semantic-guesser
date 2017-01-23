@@ -71,7 +71,10 @@ class NamesTagger(SequentialBackoffTagger):
 class COCATagger(SequentialBackoffTagger):
     def __init__(self, *args, **kwargs):
         SequentialBackoffTagger.__init__(self, *args, **kwargs)
-        coca_list = csv.reader(open('../files/coca_500k.csv'), delimiter='\t')
+        try:
+            coca_list = csv.reader(open('../files/coca_500k.csv'), delimiter='\t')
+        except:
+            coca_list = csv.reader(open('files/coca_500k.csv'), delimiter='\t')
         self.tag_map = dict()
         for row in coca_list:
             freq = int(row[0])
