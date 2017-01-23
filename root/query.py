@@ -3,7 +3,7 @@
 names = "SELECT dict_text FROM dictionary where dictset_id = 20 or dictset_id = 30;"
 
 
-def segments(pwset_id, limit, offset, pass_ids=None, exception=None, test=False):
+def segments(pwset_id, limit, offset, pass_ids=None, exception=None, test=None):
     """ Returns all the segments.
 
 	@params:
@@ -17,13 +17,15 @@ def segments(pwset_id, limit, offset, pass_ids=None, exception=None, test=False)
 
     q = "SELECT sets.set_id AS set_id, "\
         "set_contains.id AS set_contains_id, dict_text, dictset_id, "\
-        "pos, dictset_id, pass_text, s_index, e_index "\
+        "pos, dictset_id, pass_text, s_index, e_index, test "\
         "FROM passwords "\
         "JOIN sets on sets.pass_id = passwords.pass_id "\
         "JOIN set_contains ON set_contains.set_id = sets.set_id "\
         "JOIN dictionary ON set_contains.dict_id = dictionary.dict_id "\
-        "WHERE passwords.pwset_id = {} AND "\
-        "passwords.test = {} ".format(pwset_id, int(test))
+        "WHERE passwords.pwset_id = {} ".format(pwset_id)
+
+    if test is not None:
+        q = q + "AND passwords.test = {} ".format(int(test))
 
     if exception:
         q = q + "AND passwords.pass_id NOT IN {} ".format(tuple(exception))

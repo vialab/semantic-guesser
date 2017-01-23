@@ -6,8 +6,8 @@ Created on Feb 24, 2012
 @author: Rafa
 """
 
-# import MySQLdb.cursors
-import pymysql.cursors
+import MySQLdb.cursors
+# import pymysql.cursors
 import threading
 import query
 import random
@@ -16,11 +16,11 @@ from timer import Timer
 
 def connection():
     credentials = util.dbcredentials()
-    return pymysql.connect(host = credentials["host"],  # your host, usually localhost
+    return MySQLdb.connect(host = credentials["host"],  # your host, usually localhost
                  user = credentials["user"],   # your username
                  passwd = credentials["password"],  # your password
                  db = "passwords",
-                 cursorclass = pymysql.cursors.SSDictCursor)  # stores result in the server. records as dict
+                 cursorclass = MySQLdb.cursors.SSDictCursor)  # stores result in the server. records as dict
 
 def names():
     cursor = connection().cursor()
@@ -30,24 +30,26 @@ def names():
 
 class PwdDb():
     """ A few notes:
-
-    - Caching is implemented for saving and reading.
-    - The sample param in the constructor is important when planning to fetch only
-      a sample. The MySQLDb docs mention: "you MUST retrieve the entire result set and
-      close() the cursor before additional queries can be peformed on
-      the connection."
-      If you don't retrieve the entire result set before calling finish(), it will take
-      forever to close the connection.
-
+    Caching is implemented for saving and reading.
+    @params:
+        test       - Optional : if None get all passwords within password set.
+                                If True of False, filter by test.
+        samplesize - Optional : Fetches a limited sample. The MySQLDb docs mention:
+                                "you MUST retrieve the entire result set and
+                                close() the cursor before additional queries can be
+                                peformed on the connection." If you don't retrieve
+                                the entire result set before calling finish(), it
+                                will take forever to close the connection.
     """
 
     def __init__(self, pwset_id, samplesize=None, random=False, save_cachesize=100000, \
-        offset=0, exceptions=None):
+        offset=0, exceptions=None, test=None):
 
         self.savebuffer_size = save_cachesize
         self.readbuffer_size = 100000
         self.pwset_id = pwset_id
         self.pwset_size = self.pwset_size()
+        self.test = test
         self.readbuffer = []
         self.row = None        # holds the next row to be retrieved by nextPwd(),
         self.readpointer = -1  # always points to the last row read from readbuffer by fetchone.
@@ -55,10 +57,10 @@ class PwdDb():
         self.savebuffer  = []
 
         # different connections for reading and saving
-        self._init_read_cursor(pwset_id, offset, samplesize, random, exceptions)
+        self._init_read_cursor(pwset_id, offset, samplesize, random, exceptions, test)
         self._init_save_cursor()
 
-    def _init_read_cursor(self, pwset_id, offset, samplesize, random, exceptions):
+    def _init_read_cursor(self, pwset_id, offset, samplesize, random, exceptions, test):
         self.conn_read = connection()
         self.readcursor = self.conn_read.cursor()
 
@@ -136,7 +138,7 @@ class PwdDb():
         while pwd_id == old_pwd_id:
             f = Fragment(self.row["set_contains_id"], self.row["dictset_id"],
                 self.row["dict_text"], self.row["pos"], self.row["pass_text"],
-                self.row["s_index"], self.row["e_index"])
+                self.row["s_index"], self.row["e_index"], self.row["test"])
 
             pwd.append(f)
 
@@ -197,7 +199,8 @@ class PwdDb():
 class Fragment():
 
     def __init__(self, ident, dictset_id, word, pos=None,
-                password=None, s_index=None, e_index=None):
+                password=None, s_index=None, e_index=None,
+                test=None):
         self.id = ident
         self.dictset_id = dictset_id
         self.word = word
@@ -205,6 +208,7 @@ class Fragment():
         self.password = password
         self.s_index = s_index
         self.e_index = e_index
+        self.test = test
 
     def __str__(self):
         return self.word
