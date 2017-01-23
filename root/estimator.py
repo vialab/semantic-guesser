@@ -5,12 +5,79 @@ from pos_tagger  import BackoffTagger
 from grammar     import classify
 from database    import Fragment
 
+class WordNetVocabulary(set):
+    def __init__(self):
+        self.postagger = BackoffTagger()
+        self.update(noun_vocab(self.postagger))
+        self.update(verb_vocab(self.postagger))
+
+
+class FreqDist(dict):
+    def __init__(self, samplespace, defaultfreq = 0):
+        super(FreqDist, self).__init__(dict().fromkeys(samplespace, defaultfreq))
+        self.defaultfreq = defaultfreq
+        self.total = defaultfreq * len(samplespace)
+
+    def inc(self, key, value = 1):
+        if key in self:
+            self[key]  += value
+            self.total += value
+        else:
+            self[key]   = self.defaultfreq + value
+            self.total += self.defaultfreq + value
+
+
+    def group_by_freq(self):
+        groups = defaultdict(lambda : [])
+        for key, value in self.iteritems():
+            groups[value].append(key)
+
+        return groups
+
+
+class Estimator(FreqDist):
+    def pmf_by_freq(self):
+        """ Probability mass function fx(x) where x is the frequency in the data.
+        It informs how much prob. mass is allocated to outcomes that were seen x
+        times in the data.
+        For example:
+            fx(0) = 0.56 means 56% of the prob. space is given to words that were
+            never seen in the data.
+        Return - dict where key is frequency and value is a float in the range [0,1]
+        """
+        pmf = defaultdict(lambda : 0)
+        for key, freq in self.iteritems():
+             pmf[freq] += self.probability(key)
+        return pmf
+
+    def probability(self, key):
+        pass
+
+        
+class MleEstimator(Estimator):
+    def __init__(self, samplespace):
+        super(MleEstimator, self).__init__(samplespace,0)
+
+    def probability(self, key):
+    	if self.total == 0:
+    	    return 0
+        return float(self[key])/self.total
+
+
+class LaplaceEstimator(Estimator):
+    def __init__(self, samplespace):
+        super(LaplaceEstimator, self).__init__(samplespace, 1)
+       
+    def probability(self, key):
+        return float(self[key])/self.total
+
+
 def lemmas(synset):
     lemmas = wn.synset(synset).lemmas()
     lemmas = [l.name() for l in lemmas]
     return lemmas
 
-def noun_universe(postagger = None):
+def noun_vocab(postagger = None):
     if not postagger:
         postagger = BackoffTagger()
 
@@ -30,7 +97,7 @@ def noun_universe(postagger = None):
 
     return nouns
 
-def verb_universe(postagger = None):
+def verb_vocab(postagger = None):
     if not postagger:
         postagger = BackoffTagger()
 
@@ -100,7 +167,7 @@ def prior_group_fdist(pos = 'n', tagtype = 'backoff', tagger = None):
     lexeme uses a rule-based algorithm (91% accuracy) when given a verb that
     isn't in it's 8,500 words dictionary.
     """
-    lemmas = verb_universe(tagger) if pos == 'v' else noun_universe(tagger)
+    lemmas = verb_vocab(tagger) if pos == 'v' else noun_vocab(tagger)
 
     group_dist = defaultdict(lambda: dict())
 
@@ -136,7 +203,7 @@ def prior_lemma_fdist(pos = 'n', tagger = None):
     """
     dist = dict()
 
-    lemmas = verb_universe(tagger) if pos == 'v' else noun_universe(tagger)
+    lemmas = verb_vocab(tagger) if pos == 'v' else noun_vocab(tagger)
 
     for lemma, postag in lemmas:
         dist[lemma] = 1

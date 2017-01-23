@@ -101,6 +101,7 @@ def mark_as_test(conn, pwset, ids):
         q = "UPDATE passwords INNER JOIN {} USING(pass_id) SET passwords.test = 1" \
             .format(tablename)
         cursor.execute(q);
+        conn.commit()
 
     except KeyboardInterrupt:
         print "\nExecution cancelled by user."
