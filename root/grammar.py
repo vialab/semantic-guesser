@@ -106,7 +106,7 @@ def generalize(synset):
     try:
         node = node_index[key]
     except KeyError:
-        sys.stderr.write("{} could not be generalized".format(key))
+        sys.stderr.write("{} could not be generalized\n".format(key))
         return None
 
     path = node.path()
@@ -121,11 +121,14 @@ def is_leaf(synset):
     return not bool(synset.hyponyms())
 
 
-def refine_gap(segment):
-    return DictionaryTag.map[segment.dictset_id] + str(len(segment.word))
+def classify_gap(segment, lowres = False):
+    if lowres:
+        return DictionaryTag.map[segment.dictset_id]
+    else:
+        return DictionaryTag.map[segment.dictset_id] + str(len(segment.word))
 
 
-def classify_by_pos(segment):
+def classify_by_pos(segment, lowres = False):
     """ Classifies  the  segment into number, word, character  sequence or
     special  character sequence.  Includes a POS tag if possible. Does not
     include a semantic symbol/tag.
@@ -142,14 +145,14 @@ def classify_by_pos(segment):
     """
 
     if DictionaryTag.is_gap(segment.dictset_id):
-        tag = refine_gap(segment)
+        tag = classify_gap(segment, lowres)
     else:
         tag = segment.pos if segment.pos else 'unkwn'
 
     return tag
 
 
-def classify_pos_semantic(segment):
+def classify_pos_semantic(segment, lowres = False):
     """ Fully classify the segment. Returns a tag  possibly containing semantic
     and  syntactic (part-of-speech) symbols.  If the segment  is a proper noun,
     returns either month, fname, mname, surname, city or country,  as suitable.
@@ -167,7 +170,7 @@ def classify_pos_semantic(segment):
         aaaaa -> char5
     """
     if DictionaryTag.is_gap(segment.dictset_id):
-        tag = refine_gap(segment)
+        tag = classify_gap(segment, lowres)
     elif segment.pos in ['np', 'np1', 'np2', None] and segment.dictset_id in DictionaryTag.map:
         tag = DictionaryTag.map[segment.dictset_id]
     else:
@@ -182,7 +185,7 @@ def classify_pos_semantic(segment):
     return tag
 
 
-def classify_semantic_backoff_pos(segment):
+def classify_semantic_backoff_pos(segment, lowres = False):
     """ Returns a tag containing either a semantic or a syntactic (part-of-speech)
     symbol.  If the segment is a proper noun, returns either month, fname, mname,
     surname, city or country,  as suitable.
@@ -199,7 +202,7 @@ def classify_semantic_backoff_pos(segment):
         aaaaa -> char5
     """
     if DictionaryTag.is_gap(segment.dictset_id):
-        tag = refine_gap(segment)
+        tag = classify_gap(segment, lowres)
     elif segment.pos in ['np', 'np1', 'np2', None] and segment.dictset_id in DictionaryTag.map:
         tag = DictionaryTag.map[segment.dictset_id]
     else:
@@ -213,7 +216,7 @@ def classify_semantic_backoff_pos(segment):
 
     return tag
 
-def classify_word(segment):
+def classify_word(segment, lowres = False):
     """ Most basic form of classification. Groups strings with respect to their
     length and nature (number, word, alphabetic characters, special characters).
     Examples:
@@ -226,7 +229,7 @@ def classify_word(segment):
     length = len(word)
 
     if DictionaryTag.is_gap(segment.dictset_id):
-        return refine_gap(segment)
+        return classify_gap(segment, lowres)
 
     # if re.match(r'\d+', word):
     #     return 'number' + str(length)
@@ -235,15 +238,15 @@ def classify_word(segment):
     else:
         return 'word' + str(length)
 
-def classify(s, tagtype):
+def classify(s, tagtype, lowres = False):
     if tagtype == 'pos':
-        tag = classify_by_pos(s)
+        tag = classify_by_pos(s, lowres)
     elif tagtype == 'backoff':
-        tag = classify_semantic_backoff_pos(s)
+        tag = classify_semantic_backoff_pos(s, lowres)
     elif tagtype == 'word':
-        tag = classify_word(s)
+        tag = classify_word(s, lowres)
     else:
-        tag = classify_pos_semantic(s)
+        tag = classify_pos_semantic(s, lowres)
 
     return tag
 
@@ -314,7 +317,7 @@ def print_result(password, segments, tags, pattern):
         print "{}\t{}\t{}\t{}".format(password, segments[i].word, tags[i], pattern)
 
 
-def main(db, pwset_id, samplesize, dryrun, verbose, basepath, tagtype):
+def main(db, pwset_id, samplesize, dryrun, verbose, basepath, tagtype, lowres):
 #    tags_file = open('grammar/debug.txt', 'w+')
 
     patterns_dist = FreqDist()  # distribution of patterns
@@ -331,7 +334,7 @@ def main(db, pwset_id, samplesize, dryrun, verbose, basepath, tagtype):
         segments = expand_gaps(segments)
 
         for s in segments:  # semantic tags
-            tag = classify(s, tagtype)
+            tag = classify(s, tagtype, lowres)
 
             tags.append(tag)
             segments_dist[tag][s.word] += 1
@@ -389,6 +392,9 @@ def options():
         help="Does not override the grammar folder. ")
     parser.add_argument('-v', '--verbose', action='store_true', \
         help="Verbose mode")
+    parser.add_argument('-l', '--lowres', action='store_true',
+        help="Toggles low resolution treatment of non-word segments. For "\
+            "example: instead of (number5) tags it as (number)")
     parser.add_argument('-e', '--exceptions', type=argparse.FileType('r'), \
         help="A file containing a list of password ids " \
         "to be ignored. One id per line. Depending on the size of this file " \
@@ -429,7 +435,7 @@ if __name__ == '__main__':
                 random=opts.random, exceptions=exceptions)
             try:
                 main(db, opts.password_set, opts.sample, opts.dryrun, \
-                    opts.verbose, opts.path, opts.tags)
+                    opts.verbose, opts.path, opts.tags, opts.lowres)
             except KeyboardInterrupt:
                 db.finish()
                 raise
