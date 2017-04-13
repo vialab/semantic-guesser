@@ -5,12 +5,12 @@ Created on 2013-03-23
 """
 
 
-class Tree:
+class Tree(object):
     def __init__(self, root):
         self.root = root
 
 
-class TreeNode:
+class TreeNode(object):
     def __init__(self, key):
         self.key = key
         self.value = 0 
@@ -31,7 +31,7 @@ class TreeNode:
         return not bool(self.children())
     
     def leaves(self):
-        """ Returns number of leaves under this node """
+        """ Returns all leaves under this node """
         pass
 
 #     def path(self, key):
