@@ -50,3 +50,6 @@ def printprogress (iteration, total, prefix = '', suffix = '', decimals = 1, bar
     if iteration == total:
         sys.stdout.write('\n')
     sys.stdout.flush()
+
+def values_sorted_by_key(dictionary):
+    return map(lambda x : x[1], sorted(dictionary.items()))

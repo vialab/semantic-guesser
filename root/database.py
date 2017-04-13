@@ -68,9 +68,10 @@ class PwdDb():
         if random:
             extent = self.id_extent_parsed(pwset_id) # min and max pass_id to sample from
             random_ids = self.random_ids(extent[0], extent[1], samplesize)
+            samplesize = None # already used to draw random ids
 
         print 'Fetching password segments...'
-        self.readcursor.execute(query.segments(pwset_id, None, offset, random_ids, exceptions))
+        self.readcursor.execute(query.segments(pwset_id, samplesize, offset, random_ids, exceptions))
         print 'Password segments fetched.'
 
         # fetching the first password
@@ -219,6 +220,47 @@ class Fragment():
     def is_gap(self):
         return self.dictset_id > 90
 
+
+def word_freqdist(pwset_id):
+    conn = connection()
+    cur  = conn.cursor()
+    query = """SELECT dictset_id, dict_text, pos, count FROM dictionary
+        RIGHT JOIN
+            (SELECT dict_id, pos, count(*) AS count FROM set_contains
+                WHERE pwset_id = {}
+                GROUP BY set_contains.dict_id, pos) sub
+        ON sub.dict_id = dictionary.dict_id;""".format(pwset_id)
+    cur.execute()
+
+
+class WordFreqIterator():
+    def __init__(self, pwset_id):
+        self.conn = connection()
+        self.cur  = self.conn.cursor()
+        self.pwset_id = pwset_id
+        query = """SELECT dictset_id, dict_text, pos, count FROM dictionary
+            RIGHT JOIN
+                (SELECT dict_id, pos, count(*) AS count FROM set_contains
+                    WHERE pwset_id = {}
+                    GROUP BY set_contains.dict_id, pos) sub
+            ON sub.dict_id = dictionary.dict_id""".format(pwset_id)
+        self.cur.execute(query)
+
+    def __iter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.cur.close()
+        self.conn.close()
+        return True
+
+
+    def next(self):
+        row = self.cur.fetchone()
+        if row is None:
+            raise StopIteration
+        else:
+            return (row['dict_text'], row['pos'], row['count'], row['dictset_id'])
 
 #db = PwdDb(1)
 #i = 0
