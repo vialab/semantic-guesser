@@ -1,8 +1,7 @@
 from nltk.corpus import wordnet as wn
-from collections import defaultdict
+from collections import defaultdict, Counter
 from pattern.en  import pluralize, lexeme
 from pos_tagger  import BackoffTagger
-from grammar     import classify
 from database    import Fragment
 
 class WordNetVocabulary(set):
@@ -13,12 +12,24 @@ class WordNetVocabulary(set):
 
 
 class FreqDist(dict):
+    """ More precisely, a multinomial frequency distribution.
+        https://en.wikipedia.org/wiki/Multinomial_distribution
+    """
+
     def __init__(self, samplespace, defaultfreq = 0):
+        """
+        @params:
+        defaultfreq - has the effect of assigning a prior frequency to all classes.
+        """
         super(FreqDist, self).__init__(dict().fromkeys(samplespace, defaultfreq))
         self.defaultfreq = defaultfreq
         self.total = defaultfreq * len(samplespace)
 
     def inc(self, key, value = 1):
+        """Increment the value of a class.
+        @params:
+        key   - string - name of the class
+        value - int    - value to add (or subtract, if negative)"""
         if key in self:
             self[key]  += value
             self.total += value
@@ -34,9 +45,7 @@ class FreqDist(dict):
 
         return groups
 
-
-class Estimator(FreqDist):
-    def pmf_by_freq(self):
+    def pmf_by_freq(self, estimator):
         """ Probability mass function fx(x) where x is the frequency in the data.
         It informs how much prob. mass is allocated to outcomes that were seen x
         times in the data.
@@ -47,29 +56,49 @@ class Estimator(FreqDist):
         """
         pmf = defaultdict(lambda : 0)
         for key, freq in self.iteritems():
-             pmf[freq] += self.probability(key)
+             pmf[freq] += estimator.probability(freq)
         return pmf
 
-    def probability(self, key):
+class Estimator(object):
+    def probability(self, f):
+        """Probability of a class with freq f."""
         pass
 
-        
 class MleEstimator(Estimator):
-    def __init__(self, samplespace):
-        super(MleEstimator, self).__init__(samplespace,0)
+    def __init__(self, n):
+        """
+        @params:
+            n - int - optional - sample size
+        """
+        self.n = n
 
-    def probability(self, key):
-    	if self.total == 0:
-    	    return 0
-        return float(self[key])/self.total
+    def probability(self, f):
+        return self._probability(f, self.n)
 
+    def _probability(self, f, n):
+        return float(f)/n
 
 class LaplaceEstimator(Estimator):
-    def __init__(self, samplespace):
-        super(LaplaceEstimator, self).__init__(samplespace, 1)
-       
-    def probability(self, key):
-        return float(self[key])/self.total
+    """
+    See https://en.wikipedia.org/wiki/Additive_smoothing
+    """
+    def __init__(self, n, k, alpha):
+        """
+        @params:
+            f - class frequency
+            n - sample size
+            k - total number of classes
+            alpha - pseudocount (prior count), usually 1 for add-one smoothing
+        """
+        self.n = n
+        self.k = k
+        self.alpha = alpha
+
+    def probability(self, f):
+        return self._probability(f, self.n, self.k, self.alpha)
+
+    def _probability(self, f, n, k, alpha):
+        return float(f + alpha)/(n + k*alpha)
 
 
 def lemmas(synset):
@@ -133,28 +162,32 @@ def verb_vocab(postagger = None):
         elif len(forms) == 5:
             forms = zip(forms, tenses5)
         else:
+            # this step can introduce errors, as getpostag isn't
+            # guaranteed to return a verb tag
             forms = [(form, getpostag(form)) for form in forms]
 
         for form, postag in forms:
+            if postag[0] == 'n': # dirty hack to avoid inconsistency introduced by tagger
+                continue
             verbs.add((form, postag))
             if "'" in form:  # remove ' (couldn't -> couldnt)
                 verbs.add((form.replace("'", ""), postag))
 
     return verbs
 
-def prior_group_fdist(pos = 'n', tagtype = 'backoff', tagger = None):
+def prior_group_fdist(treecut, pos = 'n', tagtype = 'backoff',
+    tagger = None, defaultfreq = 0):
     """
     Initializes the frequency distribution of lemmas, grouped per tag.
-    Attributes frequency 1 to each lemma, according to Laplace's Law (Rule of Succession).
-    This is equivalent to a uniform prior distribution over the lemmas.
-    See https://en.wikipedia.org/wiki/Rule_of_succession
+    Attributes frequency a default freq. to each lemma.
+    This is equivalent to assigning a uniform prior distribution over the lemmas.
 
-    Splits each lemma into all its possible inflections, and assign 1 to each,
-    for instance:
-        travel     vvi 1
-        travels    vvz 1
-        travelling vvg 1
-        travelled  vvd 1
+    Splits each lemma into all its possible inflections, and assign defaultfreq
+    to each, for instance:
+        travel     vvi
+        travels    vvz
+        travelling vvg
+        travelled  vvd
     Then classifies each lemma according to its tagtype.
 
     Returns a dictionary of the form:
@@ -167,30 +200,33 @@ def prior_group_fdist(pos = 'n', tagtype = 'backoff', tagger = None):
     lexeme uses a rule-based algorithm (91% accuracy) when given a verb that
     isn't in it's 8,500 words dictionary.
     """
+    from grammar import classify
     lemmas = verb_vocab(tagger) if pos == 'v' else noun_vocab(tagger)
 
-    group_dist = defaultdict(lambda: dict())
+    group_dist = defaultdict(lambda: Counter())
 
     for lemma, lemma_pos in lemmas:
-        tag = classify(Fragment(0, 90, lemma, pos=lemma_pos), tagtype)
-        group_dist[tag][lemma] = 1
+        tags = classify(Fragment(0, 90, lemma, pos=lemma_pos), tagtype,
+                treecut if pos == 'n' else None,
+                treecut if pos == 'v' else None)
+        for tag in tags:
+            group_dist[tag][lemma] = defaultfreq
 
     return group_dist
 
 
-def prior_lemma_fdist(pos = 'n', tagger = None):
+def prior_lemma_fdist(pos = 'n', tagger = None, defaultfreq = 0):
     """
-    Initializes the frequency distribution of lemmas, attributing frequency 1
-    to each lemma, according to Laplace's Law (Rule of Succession).
+    Initializes the frequency distribution of lemmas, attributing frequency defaultfreq
+    to each lemma.
     This is equivalent to a uniform prior distribution over the lemmas.
-    See https://en.wikipedia.org/wiki/Rule_of_succession
 
-    Splits each lemma into all its possible inflections, and assign 1 to each,
-    for instance:
-        travel     vvi 1
-        travels    vvz 1
-        travelling vvg 1
-        travelled  vvd 1
+    Splits each lemma into all its possible inflections, and assign defaultfreq
+    to each, for instance:
+        travel     vvi
+        travels    vvz
+        travelling vvg
+        travelled  vvd
 
     Returns a dictionary of the form:
         {lemma: frequency}
@@ -206,7 +242,7 @@ def prior_lemma_fdist(pos = 'n', tagger = None):
     lemmas = verb_vocab(tagger) if pos == 'v' else noun_vocab(tagger)
 
     for lemma, postag in lemmas:
-        dist[lemma] = 1
+        dist[lemma] = defaultfreq
 
     return dist
 
