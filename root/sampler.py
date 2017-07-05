@@ -108,11 +108,13 @@ def mark_as_test(conn, pwset, ids):
     finally:
         # interrupt current query with no guarantees and terminate execution
         conn.close() # close connection abruptly
-        newcursor = database.connection().cursor()
+        newconn = database.connection()
+        newcursor = newconn.cursor()
         newcursor.execute("DROP TABLE {}".format(tablename)) # drop temp table
         set_innodb_checks(newcursor, True) # cancel performance tricks
         print "Elapsed time: {} minutes.".format((time.time()-t1)/60)
-        sys.exit(0)
+        newconn.close()
+        #sys.exit(0)
 
 
 def sample_passwords(pwset, n):
