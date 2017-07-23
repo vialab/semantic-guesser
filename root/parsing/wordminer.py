@@ -605,7 +605,7 @@ def sqlMine(dbe, options, dictSetIds):
         loadNgrams(dbe)
 
     print "creating read cache..."
-    rbuff = pwReadCache(dbe, options.password_set, 100000, offset)
+    rbuff = pwReadCache(dbe, options.password_set, options.wbuffer, offset)
 
     if options.erase:
         print 'resetting dynamic dictionaries...'
@@ -622,7 +622,7 @@ def sqlMine(dbe, options, dictSetIds):
 
     lastResult = (None, None)  # (password, result)
 
-    wbuff = WriteBuffer(dbe, dictionary, options.password_set, 10000)
+    wbuff = WriteBuffer(dbe, dictionary, options.password_set, options.wbuffer)
     for p in rbuff:
         pwcount += 1
 
@@ -687,6 +687,10 @@ def cli_options():
     parser.add_argument('-v','--verbose', action='store_true', help='prints every password processed')
     parser.add_argument('-e', '--erase', action='store_true', help='erase dynamic dictionaries')
     parser.add_argument('-r', '--reset', action='store_true', help='reset results (truncates tables set and set_contains)')
+    parser.add_argument('--rbuffer', default=100000, type=int,
+        help='size of the reading buffer (frequency of reading from db)')
+    parser.add_argument('--wbuffer', default=100000, type=int,
+        help='size of the writing buffer (frequency of writing to db)')
 
     #db_group = parser.add_argument_group('Database Connection Arguments')
     #db_group.add_argument('--user', type=str, default='root', help="db username for authentication")

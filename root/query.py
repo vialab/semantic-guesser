@@ -49,8 +49,9 @@ def n_sets(pwset_id, test = False):
     pwset_id - the id of the target group of passwords
     """
 
-    return "SELECT COUNT(*) as count FROM sets LEFT JOIN passwords on sets.pass_id = passwords.pass_id " \
-           "WHERE passwords.pwset_id = {} AND test = {}".format(pwset_id, int(test))
+    return "SELECT COUNT(*) as count FROM sets " \
+        "LEFT JOIN passwords on sets.pass_id = passwords.pass_id " \
+        "WHERE passwords.pwset_id = {} AND test = {}".format(pwset_id, int(test))
 
 
 def pwset_size(pwset_id, test = None):
