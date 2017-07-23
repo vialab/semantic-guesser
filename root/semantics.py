@@ -49,15 +49,15 @@ def synset(word, pos):
     return synsets[0] if len(synsets) > 0 else None
 
 
-def populate(samplesize, pwset_id, nountree=None, verbtree=None):
+def populate(pwset_id, sample=None, nountree=None, verbtree=None):
     """ Given POS-specific tree representations of WordNet (verb, noun or both),
     updates the  frequency of each node  according to its occurrence in a sample
     of the passwords.
 
+    pwset_id   - id of the collection of passwords to be loaded
+    sample     - a list of password ids or None, for all passwords in pwset
     nountree   - instance of WordNetTree, optional
     verbtree   - instance of WordNetTree, optional
-    samplesize - if None, reads the entire database
-    pwset_id   - id of the collection of passwords to be loaded
     """
     if not nountree and not verbtree:
         return
@@ -65,7 +65,7 @@ def populate(samplesize, pwset_id, nountree=None, verbtree=None):
     nountree_hashtable = nountree.index if nountree else None
     verbtree_hashtable = verbtree.index if verbtree else None
 
-    for word, pos, count, dictset_id in database.WordFreqIterator(1):
+    for word, pos, count, dictset_id in database.WordFreqIterator(1, sample):
 
         # we don't want dynamic dictionary entries
         if dictset_id > 100:
@@ -125,23 +125,26 @@ def increment_synset_count(tree, synset, hashtable, count=1):
         tree.increment_synset(synset, count, cumulative=False)
 
 
-def load_semantictrees(pwset_id, samplesize=None):
+def load_semantictrees(pwset_id, sample=None, nocache=False):
     """Returns two tree representations of WordNet (an instance of WordNetTree)
     for verbs and nouns, respectively, with the frequency of the nodes (senses)
     conforming to their occurrence in the passwords.
 
-    samplesize - if None, reads the entire database
-
+    pwset_id - id of the password set
+    sample   - a list of password ids or None, for all passwords in pwset
+    nocache  - prevents from loading cached trees
     """
 
     sys.setrecursionlimit(10000)
 
     dir      = os.path.dirname(os.path.abspath(__file__))
-    filepath = "pickles/tree-{}-{}-{}.pickle"
-    noun_tree_path = os.path.join(dir, filepath.format('n', pwset_id, samplesize))
-    verb_tree_path = os.path.join(dir, filepath.format('v', pwset_id, samplesize))
+    filepath = "pickles/tree-{}-{}.pickle"
+    noun_tree_path = os.path.join(dir, filepath.format('n', pwset_id))
+    verb_tree_path = os.path.join(dir, filepath.format('v', pwset_id))
 
     try:
+        if sample or nocache: # if sample, then cache isn't relevant
+            raise Exception()
         nountree = pickle.load(open(noun_tree_path))
         verbtree = pickle.load(open(verb_tree_path))
         print 'successfuly pickled trees'
@@ -150,7 +153,7 @@ def load_semantictrees(pwset_id, samplesize=None):
             nountree = IndexedWordNetTree('n')
             verbtree = IndexedWordNetTree('v')
         with Timer("WordNetTree population"):
-            populate(samplesize, pwset_id, nountree, verbtree)
+            populate(pwset_id, sample, nountree, verbtree)
         print 'no pickling. loaded tree from scratch'
         # dumps tree to make the job faster next time
         pickle.dump(nountree, open(noun_tree_path, 'w+'))
@@ -159,22 +162,27 @@ def load_semantictrees(pwset_id, samplesize=None):
     return (nountree, verbtree)
 
 
-def load_semantictree(pos, pwset_id, samplesize=None, nocache = False):
-    """ Returns a tree representation of  WordNet (an instance of WordNetTree)
+def load_semantictree(pos, pwset_id, sample=None, nocache = False):
+    """ Returns a tree representation of WordNet (an instance of WordNetTree)
     for a certain part-of-speech with the frequency of the nodes conforming to
     their occurrence in the passwords.
 
     @params
-        samplesize - if None, reads the entire database
-        nocache - do not try to load tree from pickles
-
+    pwset_id - id of the password set
+    sample   - a list of password ids or None, for all passwords in pwset
+    nocache  - prevents from loading cached trees
     """
 
     sys.setrecursionlimit(10000)
 
-    dir = os.path.dirname(os.path.abspath(__file__))
-    fname = "pickles/tree-{}-{}-{}.pickle".format(pos, pwset_id, samplesize)
-    path = os.path.join(dir, fname)
+    dir_ = os.path.dirname(os.path.abspath(__file__))
+
+    if sample:
+        nocache = True
+
+    fname = "pickles/tree-{}-{}.pickle".format(pos, pwset_id)
+
+    path = os.path.join(dir_, fname)
 
     try:
         if nocache:
@@ -187,7 +195,10 @@ def load_semantictree(pos, pwset_id, samplesize=None, nocache = False):
         with Timer("WordNetTree loading"):
             tree = IndexedWordNetTree(pos)
         with Timer("WordNetTree population"):
-            populate(tree, samplesize, pwset_id)
+            if pos == 'n':
+                populate(pwset_id, sample, nountree=tree)
+            elif pos == 'v':
+                populate(pwset_id, sample, verbtree=tree)
         print 'no pickling. loaded tree from scratch'
         f = open(path, 'w+')
         pickle.dump(tree, f)  # dumps tree to make the job faster next time

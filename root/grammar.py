@@ -31,6 +31,7 @@ import re
 import argparse
 import shutil
 import os
+import cPickle as pickle
 
 #-----------------------------------------
 # Initializing module variables
@@ -284,9 +285,20 @@ def stringify_pattern(tags):
     return ''.join(['({})'.format(tag) for tag in tags])
 
 
-def pattern(segments, noun_treecut, verb_treecut):
-    return stringify_pattern([classify(s, noun_treecut, verb_treecut) for s in segments])
+def patterns(segments, tagtype, noun_treecut, verb_treecut, lowres=False):
+    segments = expand_gaps(segments)
 
+    tag_lists = [[]]  # each tag list is a pattern (e.g., ['pp', 'love', 'ppy'])
+    for s in segments:  # semantic tags
+        tags = classify(s, tagtype, noun_treecut, verb_treecut, lowres)
+        # remove duplicates (in case repeated nodes generalize to the same abstract)
+        tags = set(tags)
+        # do a full join of tag_lists with tags
+        tag_lists = [tag_list + [tag] for tag in tags for tag_list in tag_lists]
+
+    patterns = [stringify_pattern(tag_list) for tag_list in tag_lists]
+
+    return patterns
 
 def sample(db, noun_treecut, verb_treecut):
     """ I wrote this function to output data for a table
@@ -346,21 +358,14 @@ def print_result(password, segments, tags, pattern):
         print "{}\t{}\t{}\t{}".format(password, segments[i].word, tags[i], pattern)
 
 
-def main(db, pwset_id, samplesize, dryrun, verbose,
-    basepath, tagtype, lowres, abslevel, estimator):
+def get_treecuts(pwset_id, estimator, abslevel, sample=None):
     """
-    There are 2 levels of ambiguity resolution:
-        1. _sense_: the most frequent sense is selected.
-        2. _subtree_: if a sense belongs to multiple subtrees, the count is split.
+    Assign counts to nodes of noun and verb WordNet trees based on occurrence
+    in a password list, then calculate an abstract tree cut using MDL.
+    If estimator is 'laplace', then all leaves will have a prior count of 1.
+    Return a tuple like (noun_treecut, verb_treecut).
     """
-#    tags_file = open('grammar/debug.txt', 'w+')
-
-    patterns_dist  = Counter()  # distribution of patterns
-    segments_dist  = defaultdict(lambda : Counter())
-
-    # get tree and treecut
-    print "Loading WordNet trees and calculating tree cuts..."
-    noun_tree, verb_tree = semantics.load_semantictrees(pwset_id)
+    noun_tree, verb_tree = semantics.load_semantictrees(pwset_id, sample)
 
     if estimator == 'laplace':
         # increase the count of each leaf by one and propagate values to the top
@@ -374,6 +379,27 @@ def main(db, pwset_id, samplesize, dryrun, verbose,
     verb_treecut = TreeCut(verb_tree, wagner.findcut(verb_tree, abslevel))
     noun_treecut = TreeCut(noun_tree, wagner.findcut(noun_tree, abslevel))
 
+    return noun_treecut, verb_treecut
+
+
+def main(db, pwset_id, dryrun, verbose,
+    basepath, tagtype, lowres, abslevel, estimator):
+    """
+    There are 2 levels of ambiguity resolution:
+        1. _sense_: the most frequent sense is selected.
+        2. _subtree_: if a sense belongs to multiple subtrees, the count is split.
+    """
+#    tags_file = open('grammar/debug.txt', 'w+')
+
+    patterns_dist  = Counter()  # distribution of patterns
+    segments_dist  = defaultdict(lambda : Counter())
+
+    # get tree and treecut
+    print "Loading WordNet trees and calculating tree cuts..."
+
+    noun_treecut, verb_treecut = get_treecuts(pwset_id, estimator,
+        abslevel, db.sample_ids())
+
     print "Tree cut for tree of nouns has {} nodes".format(len(noun_treecut.cut))
     print "Tree cut for tree of verbs has {} nodes".format(len(verb_treecut.cut))
 
@@ -386,7 +412,7 @@ def main(db, pwset_id, samplesize, dryrun, verbose,
         segments_dist.update(prior_group_fdist(verb_treecut, 'v', tagtype, postagger))
 
     counter = 0
-    total   = db.pwset_size if not samplesize else samplesize
+    total   = db.pwset_size if not db.is_sample() else len(db.sample_ids())
 
     while db.hasNext():
         segments = db.nextPwd()
@@ -460,6 +486,22 @@ def main(db, pwset_id, samplesize, dryrun, verbose,
             for lemma, freq in segments_dist[tag].most_common():
                 f.write("{}\t{}\n".format(lemma, est.probability(freq)))
 
+    # if we're sampling, dump list of password ids in the sample
+    if db.is_sample():
+        with open(os.path.join(basepath, "sample-ids.txt"), 'w+') as f:
+            for id_ in db.sample_ids():
+                f.write(str(id)+'\n')
+
+    # pickle the tree cuts
+    with open(os.path.join(basepath, "noun-treecut.pickle"), 'wb') as f:
+        pickle.dump(noun_treecut, f, -1)
+
+    with open(os.path.join(basepath, "verb-treecut.pickle"), 'wb') as f:
+        pickle.dump(verb_treecut, f, -1)
+
+    with open(os.path.join(basepath, "params.pickle"), 'wb') as f:
+        pickle.dump(options(), f, -1)
+
 
 def options():
     parser = argparse.ArgumentParser()
@@ -498,6 +540,7 @@ def options():
 
 # TODO: Option for online version (calculation of everything on the fly) and from db
 if __name__ == '__main__':
+
     opts = options()
 
     exceptions = []
@@ -517,7 +560,7 @@ if __name__ == '__main__':
             db = database.PwdDb(opts.password_set, samplesize=opts.sample,
                 random=opts.random, exceptions=exceptions)
             try:
-                main(db, opts.password_set, opts.sample, opts.dryrun,
+                main(db, opts.password_set, opts.dryrun,
                     opts.verbose, opts.path, opts.tags, opts.lowres,
                     opts.abstraction, opts.estimator)
             except KeyboardInterrupt:
