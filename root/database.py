@@ -34,12 +34,13 @@ class PwdDb():
     @params:
         test       - Optional : if None get all passwords within password set.
                                 If True of False, filter by test.
-        samplesize - Optional : Fetches a limited sample. The MySQLDb docs mention:
+        samplesize - Optional : fetches a limited sample. The MySQLDb docs mention:
                                 "you MUST retrieve the entire result set and
                                 close() the cursor before additional queries can be
                                 peformed on the connection." If you don't retrieve
                                 the entire result set before calling finish(), it
                                 will take forever to close the connection.
+        random - Optional : fetch a random list of @samplesize length.
     """
 
     def __init__(self, pwset_id, samplesize=None, random=False, save_cachesize=100000, \
@@ -51,10 +52,11 @@ class PwdDb():
         self.pwset_size = self.pwset_size()
         self.test = test
         self.readbuffer = []
+        self.savebuffer  = []
         self.row = None        # holds the next row to be retrieved by nextPwd(),
         self.readpointer = -1  # always points to the last row read from readbuffer by fetchone.
-
-        self.savebuffer  = []
+        self.random_ids = []
+        self.samplesize = samplesize
 
         # different connections for reading and saving
         self._init_read_cursor(pwset_id, offset, samplesize, random, exceptions, test)
@@ -64,19 +66,27 @@ class PwdDb():
         self.conn_read = connection()
         self.readcursor = self.conn_read.cursor()
 
-        random_ids = None
+        self.random_ids = None
         if random:
             extent = self.id_extent_parsed(pwset_id) # min and max pass_id to sample from
-            random_ids = self.random_ids(extent[0], extent[1], samplesize)
+            self.random_ids = self.random_sample(extent[0], extent[1], samplesize)
             samplesize = None # already used to draw random ids
 
         print 'Fetching password segments...'
-        self.readcursor.execute(query.segments(pwset_id, samplesize, offset, random_ids, exceptions))
+        self.readcursor.execute(query.segments(pwset_id, samplesize,
+            offset, self.random_ids, exceptions))
         print 'Password segments fetched.'
 
         # fetching the first password
         self.fill_buffer()
         self.row = self.fetchone()
+
+    def is_sample(self):
+        return bool(self.samplesize)
+
+    def sample_ids(self):
+        """The ids of sampled passwords"""
+        return self.random_ids
 
     def pwset_size(self):
         # getting number of 'sets' (or segments)
@@ -107,7 +117,7 @@ class PwdDb():
                 self.readpointer += 1
                 return self.readbuffer[self.readpointer]
 
-    def random_ids(self, min, max, size):
+    def random_sample(self, min, max, size):
         return random.sample(range(min, max), size)
 
     def id_extent_parsed(self, pwset_id):
@@ -234,16 +244,29 @@ def word_freqdist(pwset_id):
 
 
 class WordFreqIterator():
-    def __init__(self, pwset_id):
+    def __init__(self, pwset_id, subset=None):
         self.conn = connection()
         self.cur  = self.conn.cursor()
         self.pwset_id = pwset_id
-        query = """SELECT dictset_id, dict_text, pos, count FROM dictionary
-            RIGHT JOIN
-                (SELECT dict_id, pos, count(*) AS count FROM set_contains
-                    WHERE pwset_id = {}
-                    GROUP BY set_contains.dict_id, pos) sub
-            ON sub.dict_id = dictionary.dict_id""".format(pwset_id)
+
+        if subset:
+            query = """SELECT dictset_id, dict_text, pos, count FROM dictionary
+                RIGHT JOIN
+                    (SELECT dict_id, pos, count(*) AS count FROM set_contains
+                        JOIN sets ON sets.set_id = set_contains.set_id
+                        WHERE set_contains.pwset_id = {}
+                        AND pass_id in ({})
+                        GROUP BY set_contains.dict_id, pos) sub
+                ON sub.dict_id = dictionary.dict_id""" \
+                .format(pwset_id, str(subset)[1:-1])
+        else:
+            query = """SELECT dictset_id, dict_text, pos, count FROM dictionary
+                RIGHT JOIN
+                    (SELECT dict_id, pos, count(*) AS count FROM set_contains
+                        WHERE pwset_id = {}
+                        GROUP BY set_contains.dict_id, pos) sub
+                ON sub.dict_id = dictionary.dict_id""".format(pwset_id)
+
         self.cur.execute(query)
 
     def __iter__(self):
