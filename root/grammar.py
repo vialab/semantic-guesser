@@ -32,6 +32,7 @@ import argparse
 import shutil
 import os
 import cPickle as pickle
+from parsing import wordminer, queries
 
 #-----------------------------------------
 # Initializing module variables
@@ -296,9 +297,7 @@ def patterns(segments, tagtype, noun_treecut, verb_treecut, lowres=False):
         # do a full join of tag_lists with tags
         tag_lists = [tag_list + [tag] for tag in tags for tag_list in tag_lists]
 
-    patterns = [stringify_pattern(tag_list) for tag_list in tag_lists]
-
-    return patterns
+    return tag_lists
 
 def sample(db, noun_treecut, verb_treecut):
     """ I wrote this function to output data for a table
@@ -404,12 +403,21 @@ def main(db, pwset_id, dryrun, verbose,
     print "Tree cut for tree of verbs has {} nodes".format(len(verb_treecut.cut))
 
     if estimator == 'laplace':
-        # initialize frequency distributions by including all possible symbols
+        # initialize frequency distributions by including all possible symbols.
         # with MLE, this isn't necessary, as unseen words and tags do not appear
         # in the grammar
         postagger = BackoffTagger()
         segments_dist.update(prior_group_fdist(noun_treecut, 'n', tagtype, postagger))
         segments_dist.update(prior_group_fdist(verb_treecut, 'v', tagtype, postagger))
+
+
+        parsingdb = wordminer.connectToDb()
+        for dictset_id, dict_name in DictionaryTag.map.items():
+            if dictset_id > 90: continue
+            dictset = queries.getDictionary(parsingdb, [dictset_id])
+            for word in dictset.keys():
+                segments_dist[dict_name][word] = 1
+
 
     counter = 0
     total   = db.pwset_size if not db.is_sample() else len(db.sample_ids())
@@ -484,7 +492,7 @@ def main(db, pwset_id, dryrun, verbose,
 
         with open(os.path.join(basepath, 'nonterminals', str(tag) + '.txt'), 'w+') as f:
             for lemma, freq in segments_dist[tag].most_common():
-                f.write("{}\t{}\n".format(lemma, est.probability(freq)))
+                f.write("{}\t{}\n".format(lemma.encode('utf-8'), est.probability(freq)))
 
     # if we're sampling, dump list of password ids in the sample
     if db.is_sample():
