@@ -30,9 +30,11 @@ from tree.default_tree import TreeCut
 import re
 import argparse
 import shutil
+import util
 import os
 import cPickle as pickle
 from parsing import wordminer, queries
+
 
 #-----------------------------------------
 # Initializing module variables
@@ -41,6 +43,56 @@ from parsing import wordminer, queries
 # nouns_tree = None
 # verbs_tree = None
 # node_index = None
+
+class Grammar(object):
+    def __init__(self):
+        self.base_structures = dict()
+        self.probabilities   = dict()
+        self.tag_dicts       = dict()
+        self.verb_treecut = None
+        self.noun_treecut = None
+
+        # booleans
+        self.lowres = None
+        self.tagtype = None
+
+    def read(self, path):
+        grammar_dir = util.abspath(path)
+
+        with open(os.path.join(grammar_dir, 'rules.txt')) as f:
+            for line in f:
+                fields = line.split()
+                tags = fields[0]
+                # map grammar rule (tags) to probability
+                self.base_structures[tags] = float(fields[1])
+
+        tagdicts_dir = os.path.join(grammar_dir, 'nonterminals')
+
+        for fname in os.listdir(tagdicts_dir):
+            if not fname.endswith('.txt'): continue
+
+            with open(os.path.join(tagdicts_dir, fname)) as f:
+                tag = fname.replace('.txt', '')
+                words = []
+                for line in f:
+                    fields = line.split('\t')
+                    try:
+                        word, prob = fields
+                        words.append(word)
+                        self.probabilities[(tag, word)] = float(prob)
+                    except:
+                        sys.stderr.write("error inserting {} in the tag dictionary {}\n"
+                                .format(fields, tag))
+                self.tag_dicts[tag] = words
+
+        with open(os.path.join(grammar_dir, 'verb-treecut.pickle'), 'rb') as f:
+            self.verb_treecut = pickle.load(f)
+        with open(os.path.join(grammar_dir, 'noun-treecut.pickle'), 'rb') as f:
+            self.noun_treecut = pickle.load(f)
+        with open(os.path.join(grammar_dir, 'params.pickle'), 'rb') as f:
+            opts = pickle.load(f)
+            self.lowres = opts.lowres
+            self.tagtype = opts.tags
 
 
 def select_treecut(pwset_id, abstraction_level):

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 '''
 Created on 2013-06-28
 
@@ -7,7 +9,7 @@ Created on 2013-06-28
 import argparse
 import guesser
 from parsing import wordminer as parser
-import grammar
+from grammar import Grammar, patterns, stringify_pattern
 import database
 from pos_tagger import BackoffTagger
 import os
@@ -15,18 +17,24 @@ import sys
 import util
 import cPickle as pickle
 
-base_structures = dict()
-tag_dicts = dict()
-probabilities = dict() # key -> (tag, word)
-noun_treecut = None
-verb_treecut = None
+# Global variables
+db = parser.connectToDb()
+dictionary = parser.getDictionary(db, parser.dict_sets)
+pos_tagger = BackoffTagger()
+
 
 def options():
     parser = argparse.ArgumentParser()
-    parser.add_argument('file', type=argparse.FileType('r'),
-        help='a list of clear text passwords.')
+    parser.add_argument('file', nargs='?', type=argparse.FileType('r'),
+        help='a list of clear text passwords.', default=sys.stdin)
     parser.add_argument('-g', '--grammar', default='grammar',
         help="grammar path.")
+    parser.add_argument('-s', '--summary', action='store_true',
+        help="output stats line with percentage guessable")
+    parser.add_argument('-b', '--print_base_struct', action='store_true',
+        help="include base_struct field in the output")
+    parser.add_argument('-m', '--print_segmentation', action='store_true',
+        help="include segmentation field in the output")
 
     return parser.parse_args()
 
@@ -112,15 +120,15 @@ def transform(seg_candidates, dictionary):
     return result
 
 
-def probability(base_struct, tags, segments):
-    p = base_structures[base_struct]
+def probability(grammar, base_struct, base_struct_str, segments):
+    p = grammar.base_structures[base_struct_str]
 
-    for i, tag in enumerate(tags):
+    for i, tag in enumerate(base_struct):
         p_t = None  # terminal probability
         # finds the terminal probability
-        for terminal in tag_dicts[tag]:
+        for terminal in grammar.tag_dicts[tag]:
             if terminal == segments[i].word:
-                p_t = probabilities[(tag, terminal)]
+                p_t = grammar.probabilities[(tag, terminal)]
                 break
 
         p *= p_t
@@ -128,20 +136,20 @@ def probability(base_struct, tags, segments):
     return p
 
 
-def is_guessable(pattern, pattern_label, segments):
+def is_guessable(grammar, base_struct, base_struct_str, segments):
     """ Check if a password is guessable under the current grammar.
     @params
-    pattern - list - the password's pattern, a list of tags, one for each
+    base_struct - list - the password's pattern, a list of tags, one for each
         of its segments
-    pattern_label - str - a string representation of the pattern
+    base_struct_str - str - a string representation of the pattern
     segments - list - a list of the segments the password consists of
     """
     answer = True
 
-    if pattern_label in base_structures:
+    if base_struct_str in grammar.base_structures:
         for i, segment in enumerate(segments):
-            tag = pattern[i]
-            if segment.word not in tag_dicts[tag]:
+            tag = base_struct[i]
+            if segment.word not in grammar.tag_dicts[tag]:
                 answer = False
                 break
     else:
@@ -150,50 +158,54 @@ def is_guessable(pattern, pattern_label, segments):
     return answer
 
 
-def load_grammar(grammar_path, base_structures, tag_dicts):
+def argmax_probability(password, grammar):
+    """Return the segmentation and the base structure that generate _password_ with
+    the highest probability. Retun None is the grammar isn'n capable of generating
+    _password_.
 
-    grammar_dir = util.abspath(grammar_path)
+    @params
+    password - str
+    grammar  - Grammar
 
-    with open(os.path.join(grammar_dir, 'rules.txt')) as f:
-        for line in f:
-            fields = line.split()
-            tags = fields[0]
-            base_structures[tags] = float(fields[1])  # maps grammar rule (tags) to probability
+    @return tuple (password, segmentation, str(base_struct), p) or None
+    segmentation -> list of Fragment
+    """
+    segmentations = segment(password, dictionary, db)
 
-    tagdicts_dir = os.path.join(grammar_dir, 'nonterminals')
+    guessable = False
 
-#     with Timer('Loading tag dictionaries'):
-    for fname in os.listdir(tagdicts_dir):
-        if not fname.endswith('.txt'): continue
+    # of all base structures that generate password, the one that generates it first.
+    max_base_struct = None  # a tuple (password, segmentation, base_struct_str, probability)
 
-        with open(os.path.join(tagdicts_dir, fname)) as f:
-            tag = fname.replace('.txt', '')
-            words = []
-            for line in f:
-                fields = line.split('\t')
-                try:
-                    word, prob = fields
-                    words.append(word)
-                    probabilities[(tag, word)] = float(prob)
-                except:
-                    sys.stderr.write("error inserting {} in the tag dictionary {}\n"
-                            .format(fields, tag))
-            tag_dicts[tag] = words
+    for s in segmentations:
 
-    global noun_treecut, verb_treecut
+        postags = pos_tagger.tag([ f.word for f in s if f.dictset_id <= 90])
+        for j in range(len(s)):
+            if s[j].dictset_id > 90:
+                s[j].pos = None
+            else:
+                s[j].pos = postags.pop(0)[1]
 
-
-    with open(os.path.join(grammar_dir, 'verb-treecut.pickle'), 'rb') as f:
-        verb_treecut = pickle.load(f)
-    with open(os.path.join(grammar_dir, 'noun-treecut.pickle'), 'rb') as f:
-        noun_treecut = pickle.load(f)
+        # a base_struct is a tag list e.g., ['nn1', 'n.love.01']
+        base_structs = patterns(s, grammar.tagtype,
+            grammar.noun_treecut, grammar.verb_treecut, grammar.lowres)
 
 
-def main(base_structures, tag_dicts, file, grammar_params):
-    db = parser.connectToDb()
-    dictionary = parser.getDictionary(db, parser.dict_sets)
-    pos_tagger = BackoffTagger()
+        for base_struct in base_structs:
+            base_struct_str = stringify_pattern(base_struct)
 
+            if is_guessable(grammar, base_struct, base_struct_str, s):
+                p = probability(grammar, base_struct, base_struct_str, s)
+                guessable = True
+
+                if max_base_struct is None \
+                    or p > max_base_struct[3]:
+                    max_base_struct = (password, s, base_struct_str, p)
+
+    return None if not guessable else max_base_struct
+
+
+def main(grammar, file, print_summary, print_basestruct, print_segmentation):
     guessable_count = 0
 
     i = 0
@@ -202,46 +214,31 @@ def main(base_structures, tag_dicts, file, grammar_params):
 
         if not password : continue
 
-        segmentations = segment(password, dictionary, db)
+        argmax = argmax_probability(password, grammar)
 
-        guessable = False
-
-        for s in segmentations:
-
-            postags = pos_tagger.tag([ f.word for f in s if f.dictset_id <= 90])
-            for j in range(len(s)):
-                if s[j].dictset_id > 90:
-                    s[j].pos = None
-                else:
-                    s[j].pos = postags.pop(0)[1]
-
-            # a pattern is a tag list e.g., ['nn1', 'n.love.01']
-            patterns = grammar.patterns(s, grammar_params.tags,
-                noun_treecut, verb_treecut, grammar_params.lowres)
-
-            for pattern in patterns:
-                pattern_label = grammar.stringify_pattern(pattern)
-                if is_guessable(pattern, pattern_label, s):
-                    guessable = True
-                    print "{}\t{}\t{}".format(password, pattern_label,
-                        probability(pattern_label, pattern, s))
-
-
-        guessable_count += int(guessable)
-#         print "{}\t{}".format(password, guessable)
+        if argmax:
+            password, seg, base_struct, p = argmax
+            print password + '\t',
+            if print_segmentation:
+                print str(seg) + '\t',
+            if print_basestruct:
+                print base_struct + '\t',
+            print p
+            # print "{}\t{}\t{}\t{}".format(*)
+            guessable_count += 1
 
         i += 1
-#        if i >= 1000: break
 
     # print # of guessable passwords
-    print "{} guessable passwords out of {} ({:.2%})" \
-        .format(guessable_count, i, float(guessable_count)/i)
+    if print_summary:
+        print "{} guessable passwords out of {} ({:.2%})" \
+            .format(guessable_count, i, float(guessable_count)/i)
+
 
 if __name__ == '__main__':
-    opt = options()
-    load_grammar(opt.grammar, base_structures, tag_dicts)
+    opts = options()
 
-    with open(os.path.join(opt.grammar, 'params.pickle'), 'rb') as f:
-        grammar_params = pickle.load(f)
+    g = Grammar()
+    g.read(opts.grammar)
 
-    main(base_structures, tag_dicts, opt.file, grammar_params)
+    main(g, opts.file, opts.summary, opts.print_base_struct, opts.print_segmentation)

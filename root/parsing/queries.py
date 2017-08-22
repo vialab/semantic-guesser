@@ -232,7 +232,7 @@ def getDictionary(sqleng, dictset_ids):
                     # but the guessability code needs dictset_id
 #                     dictionary[dict_text] = (dict_text, dict_id)
                     dictionary[dict_text.lower()] = (x, dict_id)
-    print("dictionary length:",len(dictionary))
+    # print("dictionary length:",len(dictionary))
     return dictionary
 
 
