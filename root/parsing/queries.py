@@ -121,6 +121,8 @@ def addToDynamicDictionary(dbe, dynDictionaryID, segment):
     as tmp where not exists (select dictset_id, dict_text from dictionary where
     dictset_id = {0} and dict_text = '{1}');'''.format(str(dynDictionaryID), escape(segment, toEscape))
 
+    dbe.ping(reconnect=True)
+
     with dbe.cursor() as cur:
         cur.execute(query)
 
