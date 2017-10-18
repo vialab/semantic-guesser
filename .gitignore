@@ -25,3 +25,6 @@ root/db_credentials.conf
 
 *.orig
 *.swp
+
+*.pickle
+*.sql
