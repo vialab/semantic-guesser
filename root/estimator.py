@@ -179,7 +179,7 @@ def prior_group_fdist(treecut, pos = 'n', tagtype = 'backoff',
     tagger = None, defaultfreq = 0):
     """
     Initializes the frequency distribution of lemmas, grouped per tag.
-    Attributes frequency a default freq. to each lemma.
+    Attributes a default freq. to each lemma.
     This is equivalent to assigning a uniform prior distribution over the lemmas.
 
     Splits each lemma into all its possible inflections, and assign defaultfreq

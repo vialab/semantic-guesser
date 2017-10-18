@@ -5,7 +5,7 @@ Created on 2013-06-28
 
 @author: rafa
 '''
-
+from __future__ import print_function
 import argparse
 import guesser
 from parsing import wordminer as parser
@@ -83,9 +83,9 @@ def processGaps(db, segmentation, password):
         if (len(password) > lastEndIndex):
                 segmentation = addInTheGapsHelper(db, segmentation,
                         i, password, lastEndIndex, len(password))
-    except :
-        print ("Warning: caught unknown error in addTheGaps -- resultSet=",
-                resultSet, "password", password)
+    except:
+        print("Warning: caught unknown error in addTheGaps -- resultSet=",
+                resultSet, "password", password, file=sys.stderr)
 
     return segmentation
 
@@ -160,7 +160,7 @@ def is_guessable(grammar, base_struct, base_struct_str, segments):
 
 def argmax_probability(password, grammar):
     """Return the segmentation and the base structure that generate _password_ with
-    the highest probability. Retun None is the grammar isn'n capable of generating
+    the highest probability. Retun None if the grammar isn't capable of generating
     _password_.
 
     @params
@@ -212,18 +212,18 @@ def main(grammar, file, print_summary, print_basestruct, print_segmentation):
     for l in file:
         password = l.rstrip()
 
-        if not password : continue
+        if not password: continue
 
         argmax = argmax_probability(password, grammar)
 
         if argmax:
             password, seg, base_struct, p = argmax
-            print password + '\t',
+            print(password + '\t', end='')
             if print_segmentation:
-                print str(seg) + '\t',
+                print(str(seg) + '\t', end='')
             if print_basestruct:
-                print base_struct + '\t',
-            print p
+                print(base_struct + '\t', end='')
+            print(p)
             # print "{}\t{}\t{}\t{}".format(*)
             guessable_count += 1
 
@@ -231,8 +231,8 @@ def main(grammar, file, print_summary, print_basestruct, print_segmentation):
 
     # print # of guessable passwords
     if print_summary:
-        print "{} guessable passwords out of {} ({:.2%})" \
-            .format(guessable_count, i, float(guessable_count)/i)
+        print("{} guessable passwords out of {} ({:.2%})"
+            .format(guessable_count, i, float(guessable_count) / i))
 
 
 if __name__ == '__main__':
