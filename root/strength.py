@@ -41,33 +41,33 @@ def options():
 
     return parser.parse_args()
 
-
 def read_sample(f):
     return pd.read_csv(f, sep='\t', names=['password', 'p'])
-
 
 def main():
     opts = options()
 
     from recognizer import argmax_probability
 
-    sample = read_sample(opts.sample)  # a pandas frame
+    sample = read_sample(opts.sample) # a pandas frame
     # drop duplicates
     if opts.dedupe:
         sample = sample.drop_duplicates("password")
 
     # load sample, sort it and compute cummulative probability
-    sample = sample.sort_values('p', ascending=False)
+    sample = sample.sort('p', ascending=False)
 
     # compute the estimated number of passwords output before this one in a
     # process where the grammar's language is output in highest probability order
     # see Session 3.2 in Dell'Amico and Filippone (2015)
     n = len(sample)
-    sample['strength'] = (1/sample['p']).cumsum() * 1/n
+#    print sample.head()
+
+    sample['strength'] = (1/sample['p']).cumsum() *  1/n
 
     # now sort it ascending, cause that's the only way binary search
     # will work in pandas (asc p is desc strength)
-    sample = sample.sort_values('strength', ascending=False)
+    sample = sample.sort('strength', ascending=False)
 
     grammar = Grammar()
     grammar.read(opts.grammar)
@@ -80,14 +80,14 @@ def main():
 
         argmax = argmax_probability(password, grammar)
 
-        if argmax is None:  # password isn't guessed by this grammar
+        if argmax is None: # password isn't guessed by this grammar
             continue
 
         password, segments, base_struct_str, p = argmax
 
         # find bisector (index where elements should be inserted to maintain order)
         # invert Dellamico's 3.2 instruction since our array is in ascending order
-        bisector = sample['p'].searchsorted(p, side='left')[0]  # note left
+        bisector = sample['p'].values.searchsorted(p, side='left')  # note left
 
         bisector = min(max(bisector+1, 0), n-1) # index of the lowest prob. higher than p
 
