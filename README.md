@@ -1,13 +1,13 @@
-#Semantic Guesser
+# Semantic Guesser
 
-##Todo
+## Todo
 
 1) Modify remote_claws_tagger.py to create the pickles subdirectory if it is not already created
 
 2) Modify the pos_tagger.py script to call remote_claws_tagger.py if claws tagger has not been run (the pickles folder is empty / non-existant)
 
 
-##Dependencies
+## Dependencies
 
 [Python 2.7] (https://www.python.org/downloads/)
 
@@ -25,9 +25,9 @@
 [Mechanize](https://pypi.python.org/pypi/mechanize/0.2.5)
      Install with "pip install mechanize"
 
-##Usage
+## Usage
 
-###Before you start (data dependencies)
+### Before you start (data dependencies)
 
 Before you begin using the parsing and classification scripts, a MySQL database must be set up and the required data included. Unpack `db/sql.tar.gz` and run the following lines:
 
@@ -36,7 +36,7 @@ Before you begin using the parsing and classification scripts, a MySQL database 
 
 The above commands will create the database schema and insert the lexicon.
 
-###Adding more training data
+### Adding more training data
 
 Training data in the db is organized with password sets. A password set is a collection of passwords (e.g., a password
 leak) used for training a grammar. To add a password set, you need to insert an entry into the table `password_set`. For
@@ -52,11 +52,11 @@ If you would like to have the RockYou passwords on the db, download [this](https
 
 Note that this will add the RY passwords with the password_set ID 1, so be careful if you already have data in the passwords table.
 
-###Authentication
+### Authentication
 
 Make sure you modify the file root/db_credentials.conf with your MYSQL credentials.
 
-###Parsing
+### Parsing
 wordminer.py connects to a database containing the passwords and dictionaries to perform password segmentation. The results are saved into the database.
 
 **Important Note**
@@ -114,3 +114,4 @@ Special thanks to Brent McRae, who helped fixing many bugs.
 
 [vialab]: http://vialab.science.uoit.ca
 [uoit]:   http://uoit.ca
+  
