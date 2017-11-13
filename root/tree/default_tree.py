@@ -11,6 +11,7 @@ from math import log
 from collections import deque
 
 class DefaultTreeNode (TreeNode):
+    """ A base class for tree nodes """
 
     def __init__(self, key):
         self.leftchild    = None
@@ -19,6 +20,7 @@ class DefaultTreeNode (TreeNode):
         self.key          = key
         self.value        = 0
         self._entropy     = 0
+        self.depth        = 0
 
     def __str__(self):
         return self.key
@@ -111,15 +113,15 @@ class DefaultTreeNode (TreeNode):
             while True:
                 # if key is already there, do nothing
                 if c.key == key:
-                    #c.value += 1
                     return c
                 if c.rightsibling is None:  # if reached the last child
-                    # add the key as right sibling of the last child
+                    # add newchild as right sibling of the last child
                     c.rightsibling = newchild
                     break
 
                 c = c.rightsibling  # moving to the right
 
+        newchild.depth += self.depth
         return newchild
 
     def child(self, key):
@@ -267,7 +269,7 @@ class DefaultTree (Tree):
 
             children = curr.children()
             if len(children) > 0:
-                to_visit.extendleft(curr.children())
+                to_visit.extendleft(children)
 
         return nodes
 
@@ -349,6 +351,9 @@ class TreeCut(object):
                 if c.key not in self.index:
                     self.index[c.key] = set()
                 self.index[c.key].add(c)
+
+    def __iter__(self):
+        return iter(self.cut)
 
 
     def abstract(self, n):
