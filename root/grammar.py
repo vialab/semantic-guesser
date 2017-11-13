@@ -94,6 +94,12 @@ class Grammar(object):
             self.lowres = opts.lowres
             self.tagtype = opts.tags
 
+    @classmethod
+    def from_files(cls, path):
+        g = cls()
+        g.read(path)
+        return g
+
 
 def select_treecut(pwset_id, abstraction_level):
     """ Load the noun and verb trees and calculates their respective tree
