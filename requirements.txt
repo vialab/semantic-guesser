@@ -1,0 +1,5 @@
+nltk==3.2.5
+py==1.4.34
+pytest==3.2.3
+six==1.11.0
+wordsegment==1.1.6
