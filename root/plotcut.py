@@ -83,7 +83,10 @@ def plot_many(treecuts, fig=None, ax=None, show=False):
     ax.plot(mean_depth, '-', lw=1)
     ax.fill_between(range(len(mean_depth)), min_depth, max_depth)
 
-    plt.show()
+    if show:
+        plt.show()
+
+    return fig, ax
 
 
 def plot(treecut, fig=None, ax=None, show=False):
