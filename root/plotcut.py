@@ -19,7 +19,8 @@ def options():
 
 
 def smooth(x,window_len=11,window='hanning'):
-    """smooth the data using a window with requested size.
+    """
+    Smooth the data using a window with requested size.
     see http://scipy-cookbook.readthedocs.io/items/SignalSmooth.html
     """
 
@@ -47,15 +48,15 @@ def smooth(x,window_len=11,window='hanning'):
     return y
 
 
-def depth_curve(grammar):
-    tree = grammar.noun_treecut.tree
+def depth_curve(treecut):
+    tree = treecut.tree
 
     # update depth attribute (for backwards compatibility)
     for depth, node in DepthFirstIterator(tree.root):
         node.depth = depth
 
     depth = []
-    for node in grammar.noun_treecut:
+    for node in treecut:
         nLeaves = node.leafCount()
         d = node.depth
         depth.extend([d] * max(nLeaves, 1))
@@ -63,12 +64,12 @@ def depth_curve(grammar):
     return depth
 
 
-def plot_many(grammars, fig=None, ax=None, show=False):
+def plot_many(treecuts, fig=None, ax=None, show=False):
 
     depths = []
 
-    for grammar in grammars:
-        depth = depth_curve(grammar)
+    for treecut in treecuts:
+        depth = depth_curve(treecut)
         depths.append(depth)
 
     depths = np.array(depths).transpose()
@@ -85,8 +86,8 @@ def plot_many(grammars, fig=None, ax=None, show=False):
     plt.show()
 
 
-def plot(grammar, fig=None, ax=None, show=False):
-    depth = depth_curve(grammar)
+def plot(treecut, fig=None, ax=None, show=False):
+    depth = depth_curve(treecut)
 
     smooth_depth = smooth(np.array(depth), 1000)
 
@@ -107,16 +108,16 @@ if __name__ == '__main__':
     n = len(opts.grammars)
 
     if opts.aggregate:
-        grammars = []
+        treecuts = []
         for i in range(0, n):
             g = Grammar.from_files(opts.grammars[i])
-            grammars.append(g)
+            treecuts.append(g.noun_treecut)
 
-        plot_many(grammars)
+        plot_many(treecuts)
     else:
         g0 = Grammar.from_files(opts.grammars[0])
-        fig, ax = plot(g0, show=n==1)
+        fig, ax = plot(g0.noun_treecut, show=n==1)
 
         for i in range(1, n):
             g_i = Grammar.from_files(opts.grammars[i])
-            fig, ax = plot(g_i, fig, ax, show=i==n-1)
+            fig, ax = plot(g_i.noun_treecut, fig, ax, show=i==n-1)
