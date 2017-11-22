@@ -1,5 +1,7 @@
 import re
 import logging
+import itertools
+import multiprocessing
 
 import wordsegment as ws
 
@@ -11,6 +13,8 @@ from learning.model import TreeCutModel, Grammar
 from nltk.corpus import wordnet as wn
 from functools import reduce
 from pattern.en import pluralize, lexeme
+from multiprocessing import Process, Manager
+
 
 # load global resources
 log = logging.getLogger(__name__)
@@ -222,46 +226,80 @@ def product(list_a, list_b):
                 yield [a, b]
 
 
-def train_grammar(path, outfolder, estimator='laplace', specificity=None):
-    """Train a semantic password model"""
-    postagger = BackoffTagger.from_pickle()
+def tally_chunk_tag(path, num_workers):
+    def do_work(in_queue, out_list):
+        postagger = BackoffTagger.from_pickle()
+        i = 0
+        while True:
+            try:
+                password, count = in_queue.get()
+            except:
+                return
 
-    # Chunking and Part-of-Speech tagging
+            chunks = getchunks(password)
+            try:
+                postagged_chunks = pos_tag(chunks, postagger)
+            except:
+                log.error("Error: {}".format(chunks))
+                raise
 
-    log.info("Counting, chunking and POS tagging... ")
+            out_list.append((postagged_chunks, count))
+            i += 1
+
+            if i % 100000 == 0:
+                process_id = multiprocessing.current_process()._identity[0]
+                log.info("Process {} has worked on {} passwords..."
+                    .format(process_id, i))
+
+    manager = Manager()
+
+    results = manager.list()
+    work = manager.Queue(num_workers)
+
+    # start for workers
+    pool = []
+    for i in range(num_workers):
+        p = Process(target=do_work, args=(work, results))
+        p.start()
+        pool.append(p)
 
     passwords = [] # list of list of tuples (one tuple per chunk)
     counts = []
-    i = 0
-    for password, count in tally(path).items():
-        if i % 100000 == 0:
-            log.info("Chunked and tagged {} passwords...".format(i))
-        counts.append(count)
-        chunks = getchunks(password)
-        postagged_chunks = pos_tag(chunks, postagger)
-        passwords.append(postagged_chunks)
-        i += 1
-        
 
-    def syn_generator():
+    for password, count in tally(path).items():
+        work.put((password, count))
+
+    for p in pool:
+        p.join()
+
+    return results
+
+
+def train_grammar(path, outfolder, estimator='laplace', specificity=None,
+    num_workers=2):
+    """Train a semantic password model"""
+
+    wn.ensure_loaded()
+    # Chunking and Part-of-Speech tagging
+    log.info("Counting, chunking and POS tagging... ")
+
+    passwords = tally_chunk_tag(path, num_workers)
+
+    def syn_generator(passwords):
         # debug_n_total = 0
-        for i, chunks in enumerate(passwords):
-            count = counts[i]
+        for chunks, count in passwords:
             for string, pos in chunks:
                 syn = synset(string, pos)
                 if syn:
                     yield (syn, count)
-                    # if syn.pos() == 'n':
-                    #     debug_n_total += count
-        # print(debug_n_total)
 
     # Train tree cut models
     log.info("Training tree cut models... ")
     tcm_n = TreeCutModel('n', estimator=estimator, specificity=specificity)
-    tcm_n.fit(syn_generator())
+    tcm_n.fit(syn_generator(passwords))
 
     tcm_v = TreeCutModel('v', estimator=estimator)
-    tcm_v.fit(syn_generator())
+    tcm_v.fit(syn_generator(passwords))
 
     log.info("Training grammar...")
 
@@ -272,8 +310,7 @@ def train_grammar(path, outfolder, estimator='laplace', specificity=None):
         grammar.add_vocabulary(noun_vocab(tcm_n, postagger))
         grammar.add_vocabulary(verb_vocab(tcm_v, postagger))
 
-    for i, chunks in enumerate(passwords):
-        count = counts[i]
+    for chunks, count in passwords:
         X = []  # list of list of tuples. X[0] holds one tuple for
                 # every different synset of chunks[0]
 
@@ -303,7 +340,7 @@ def train_grammar(path, outfolder, estimator='laplace', specificity=None):
                 grammar.fit_incremental([x], count)
         else:
             log.warning("Unable to feed chunks to grammar: {}".format(chunks))
-    
+
     grammar.write_to_disk(outfolder)
 
     return grammar
@@ -322,6 +359,8 @@ def options():
         verbose level (e.g., -vvv) """)
     parser.add_argument('--tags', default='pos_semantic',
         choices=['pos_semantic', 'pos', 'backoff', 'word'])
+    parser.add_argument('-w', '--num_workers', type=int, default=2,
+        help="number of cores available for parallel work")
     return parser.parse_args()
 
 
@@ -334,5 +373,9 @@ if __name__ == '__main__':
     logging.basicConfig(level=verbose_levels[verbose_level])
     log.setLevel(verbose_levels[verbose_level])
 
-    
-    train_grammar(filepath, opts.output_folder, opts.estimator, opts.abstraction)
+
+    train_grammar(filepath, 
+                  opts.output_folder,
+                  opts.estimator,
+                  opts.abstraction,
+                  opts.num_workers)
