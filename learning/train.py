@@ -37,6 +37,9 @@ def getchunks(password):
         else:
             chunks.append(chunk)
 
+    if len(chunks) == 0:
+        log.warning("Unable to chunk password: {}".format(password))
+
     return chunks
 
 
@@ -229,11 +232,16 @@ def train_grammar(path, outfolder, estimator='laplace', specificity=None):
 
     passwords = [] # list of list of tuples (one tuple per chunk)
     counts = []
-    for password, count in tally(path).most_common():
+    i = 0
+    for password, count in tally(path).items():
+        if i % 100000 == 0:
+            log.info("Chunked and tagged {} passwords...".format(i))
         counts.append(count)
         chunks = getchunks(password)
         postagged_chunks = pos_tag(chunks, postagger)
         passwords.append(postagged_chunks)
+        i += 1
+        
 
     def syn_generator():
         # debug_n_total = 0
@@ -290,10 +298,12 @@ def train_grammar(path, outfolder, estimator='laplace', specificity=None):
             count_ = count/n_variations
             for x in reduce(product, X):
                 grammar.fit_incremental(x, count_)
-        else:
+        elif len(X) == 1:
             for x in X[0]:
                 grammar.fit_incremental([x], count)
-
+        else:
+            log.warning("Unable to feed chunks to grammar: {}".format(chunks))
+    
     grammar.write_to_disk(outfolder)
 
     return grammar
