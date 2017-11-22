@@ -221,12 +221,11 @@ def product(list_a, list_b):
 
 def train_grammar(path, outfolder, estimator='laplace', specificity=None):
     """Train a semantic password model"""
-
     postagger = BackoffTagger.from_pickle()
 
     # Chunking and Part-of-Speech tagging
 
-    logging.info("Counting, chunking and POS tagging... ")
+    log.info("Counting, chunking and POS tagging... ")
 
     passwords = [] # list of list of tuples (one tuple per chunk)
     counts = []
@@ -249,14 +248,14 @@ def train_grammar(path, outfolder, estimator='laplace', specificity=None):
         # print(debug_n_total)
 
     # Train tree cut models
-    logging.info("Training tree cut models... ")
+    log.info("Training tree cut models... ")
     tcm_n = TreeCutModel('n', estimator=estimator, specificity=specificity)
     tcm_n.fit(syn_generator())
 
     tcm_v = TreeCutModel('v', estimator=estimator)
     tcm_v.fit(syn_generator())
 
-    logging.info("Training grammar...")
+    log.info("Training grammar...")
 
     grammar = Grammar(estimator=estimator)
 
@@ -319,7 +318,11 @@ def options():
 if __name__ == '__main__':
     opts = options()
     filepath = opts.passwords
+
     verbose_levels = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
     verbose_level = sum(opts.v) if opts.v else 0
-    log.basicConfig(level=verbose_levels[verbose_level])
+    logging.basicConfig(level=verbose_levels[verbose_level])
+    log.setLevel(verbose_levels[verbose_level])
+
+    
     train_grammar(filepath, opts.output_folder, opts.estimator, opts.abstraction)
