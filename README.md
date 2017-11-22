@@ -4,7 +4,6 @@ Train probabilistic context-free grammars that encode
 linguistic password patterns.
 
 
-
 ## Usage
 
 To train a grammar with a password list:
@@ -45,5 +44,5 @@ pip install -r requirements.txt
 Then download NLTK data:
 
 ```
-python -m nltk.downloader wordnet
+python -m nltk.downloader wordnet wordnet_ic
 ```
