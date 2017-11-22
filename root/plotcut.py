@@ -64,7 +64,7 @@ def depth_curve(treecut):
     return depth
 
 
-def plot_many(treecuts, fig=None, ax=None, show=False):
+def plot_many(treecuts, fig=None, ax=None, show=False, linecolor='#087dd1', fillcolor='#75b7e6'):
 
     depths = []
 
@@ -75,13 +75,16 @@ def plot_many(treecuts, fig=None, ax=None, show=False):
     depths = np.array(depths).transpose()
     max_depth  = smooth(np.amax(depths, 1), 1000)
     min_depth  = smooth(np.amin(depths, 1), 1000)
-    mean_depth = smooth(np.mean(depths, 1), 1000)
+    #mean_depth = smooth(np.mean(depths, 1), 1000)
+    
+    if not ax:
+        fig, ax = plt.subplots()
+        plt.gca().invert_yaxis()
 
-    fig, ax = plt.subplots()
-    plt.gca().invert_yaxis()
-
-    ax.plot(mean_depth, '-', lw=1)
-    ax.fill_between(range(len(mean_depth)), min_depth, max_depth)
+    #ax.plot(mean_depth, '-', lw=1)
+    ax.plot(max_depth, '-', lw=1, color=linecolor)
+    ax.plot(min_depth, '-', lw=1, color=linecolor)
+    ax.fill_between(range(len(max_depth)), min_depth, max_depth, facecolor=fillcolor)
 
     if show:
         plt.show()
