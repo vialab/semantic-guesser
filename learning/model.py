@@ -55,6 +55,27 @@ class TreeCutModel():
 
         self.treecut = TreeCut(tree, cut)
 
+
+    def fit_tree(self, tree):
+        pos  = self.pos
+        specificity = self.specificity
+        self.tree = tree
+
+        N = tree.root.value
+        if self.estimator == 'mle':
+            estimator = MleEstimator(N)
+        else:
+            k = tree.root.leaf_count
+            estimator = LaplaceEstimator(N, k, 1)
+
+        if specificity:
+            cut = wagner.findcut(tree, specificity, estimator)
+        else:
+            cut = li_abe.findcut(tree, estimator)
+
+        self.treecut = TreeCut(tree, cut)
+
+
     def predict(self, X):
         """
         For each synset, return a list of classes that represent it in the tree
@@ -194,9 +215,6 @@ class Grammar(object):
         self.verb_treecut = None
         self.noun_treecut = None
         self.estimator = estimator
-
-        # TODO: if laplace, update these with prior
-        # TODO: write grammar to disk
 
         # booleans
         self.lowres = None

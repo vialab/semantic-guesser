@@ -1,4 +1,5 @@
 import sys
+import math
 import re
 import logging
 import itertools
@@ -6,6 +7,7 @@ import multiprocessing
 import argparse
 
 import wordsegment as ws
+import numpy as np
 
 from collections import Counter
 #from learning.pos import BackoffTagger
@@ -27,7 +29,7 @@ def tally(password_file):
     """Return a Counter for passwords."""
     pwditer = (line.rstrip('\n') for line in password_file
         if not re.fullmatch('\s+', line))
-    
+
     return Counter(pwditer)
 
 
@@ -50,7 +52,7 @@ def getchunks(password):
     return chunks
 
 
-def synset(word, pos, tag_converter=None):
+def synset(word, pos, wordnet, tag_converter=None):
     """
     Given a POS-tagged word, determine its synset by converting the CLAWS tag
     to a WordNet tag and querying the associated synset from NLTK's WordNet.
@@ -74,7 +76,7 @@ def synset(word, pos, tag_converter=None):
     if wn_pos is None:
         return None
 
-    synsets = wn.synsets(word, wn_pos)
+    synsets = wordnet.synsets(word, wn_pos)
 
     return synsets[0] if len(synsets) > 0 else None
 
@@ -236,7 +238,6 @@ def tally_chunk_tag(path, num_workers):
 
         i = 0
         while True:
-
             batch = in_queue.get()
             if len(batch) == 0: # exit signal
                 return
@@ -291,46 +292,118 @@ def tally_chunk_tag(path, num_workers):
     return results
 
 
-def train_grammar(password_file, outfolder, estimator='laplace', specificity=None,
-    num_workers=2):
+def increment_synset_count(tree, synset, count=1):
+    """ Given  a  WordNetTree, increases the  count  (frequency)
+    of a  synset (does not propagate to its ancestors). This
+    method is more efficient than WordNetTree.increment_synset()
+    as it uses WordNetTree.hashtable() to avoid searching.
+
+    It's different  from increment_node() in that it  increments
+    the counts of ALL nodes  matching a key. In fact, it divides
+    the count by the number of nodes matching the key.
+    increment_node() resolves  ambiguity using the ancestor path
+    received as argument.
+    """
+    index = tree.index
+    key = synset.name()
+
+    if key in index:
+        nodes = index[key]
+        count = float(count) / len(nodes)
+        for n in nodes:
+            if n.has_children():
+                n = n.find('s.' + n.key)
+            n.increment_value(count, cumulative=False)
+
+
+def fit_tree_cut_models(passwords, estimator, specificity, num_workers):
+
+    def do_work(passwords, noun_results, verb_results):
+        from learning.tree.wordnet import IndexedWordNetTree
+        from nltk.corpus import wordnet as wn
+
+        tag_converter = TagsetConverter()
+        noun_tree = IndexedWordNetTree('n')
+        verb_tree = IndexedWordNetTree('v')
+
+        for chunks, count in passwords:
+            for string, pos in chunks:
+                syn = synset(string, pos, wn, tag_converter)
+                if syn and syn.pos() == 'n':
+                    increment_synset_count(noun_tree, syn, count)
+                elif syn and syn.pos() == 'v':
+                    increment_synset_count(verb_tree, syn, count)
+
+        noun_results.append(np.array([leaf.value for leaf in noun_tree.leaves()]))
+        verb_results.append(np.array([leaf.value for leaf in verb_tree.leaves()]))
+
+    manager = Manager()
+    noun_results = manager.list()
+    verb_results = manager.list()
+    pool = []
+
+    share = math.ceil(len(passwords)/num_workers)
+    for i in range(num_workers):
+        work = passwords[i*share:i*share+share]
+        p = Process(target=do_work, args=(work, noun_results, verb_results))
+        p.start()
+        pool.append(p)
+
+    for p in pool:
+        p.join()
+
+    noun_counts = np.sum(noun_results, 0)
+    verb_counts = np.sum(verb_results, 0)
+
+    from learning.tree.wordnet import IndexedWordNetTree
+    from learning.model import TreeCutModel
+
+    noun_tree = IndexedWordNetTree('n')
+    verb_tree = IndexedWordNetTree('v')
+
+    for i, leaf in enumerate(noun_tree.leaves()):
+        leaf.value = noun_counts[i]
+    for i, leaf in enumerate(verb_tree.leaves()):
+        leaf.value = verb_counts[i]
+
+    noun_tree.updateCounts()
+    verb_tree.updateCounts()
+
+    tcm_n = TreeCutModel('n', estimator=estimator, specificity=specificity)
+    tcm_n.fit_tree(noun_tree)
+
+    tcm_v = TreeCutModel('v', estimator=estimator)
+    tcm_v.fit_tree(verb_tree)
+
+    return tcm_n, tcm_v
+
+
+def train_grammar(password_file, outfolder,
+    estimator='laplace', specificity=None, num_workers=2):
     """Train a semantic password model"""
 
-#    wn.ensure_loaded()
     # Chunking and Part-of-Speech tagging
-    log.info("Counting, chunking and POS tagging... ")
 
+    log.info("Counting, chunking and POS tagging... ")
     passwords = tally_chunk_tag(password_file, num_workers)
 
+    # Train tree cut models
+
+    log.info("Training tree cut models... ")
+    tcm_n, tcm_v = fit_tree_cut_models(passwords, estimator,
+        specificity, num_workers)
 
     # these modules are loaded after tally_chunk_tag because they use wordnet,
     # which isn't thread-safe. wordnet needs to be loaded inside workers.
     # if it's loaded before, then processes will reuse the same unsafe instance
+
     global wn, TagsetConverter, TreeCutModel, Grammar, pluralize, lexeme
-    from nltk.corpus import wordnet as wn
     from learning.tagset_conversion import TagsetConverter
-    from learning.model import TreeCutModel, Grammar
+    from nltk.corpus import wordnet as wn
+    from learning.model import Grammar
     from pattern.en import pluralize, lexeme
 
-    tag_converter = TagsetConverter()
-
-    def syn_generator(passwords):
-        # debug_n_total = 0
-        for chunks, count in passwords:
-            for string, pos in chunks:
-                syn = synset(string, pos, tag_converter)
-                if syn:
-                    yield (syn, count)
-
-    # Train tree cut models
-    log.info("Training tree cut models... ")
-    tcm_n = TreeCutModel('n', estimator=estimator, specificity=specificity)
-    tcm_n.fit(syn_generator(passwords))
-
-    tcm_v = TreeCutModel('v', estimator=estimator)
-    tcm_v.fit(syn_generator(passwords))
-
     log.info("Training grammar...")
-
     grammar = Grammar(estimator=estimator)
 
     # feed grammar with the 'prior' vocabulary
@@ -338,12 +411,14 @@ def train_grammar(password_file, outfolder, estimator='laplace', specificity=Non
         grammar.add_vocabulary(noun_vocab(tcm_n, postagger))
         grammar.add_vocabulary(verb_vocab(tcm_v, postagger))
 
+    tag_converter = TagsetConverter()
+
     for chunks, count in passwords:
         X = []  # list of list of tuples. X[0] holds one tuple for
                 # every different synset of chunks[0]
 
         for string, pos in chunks:
-            syn = synset(string, pos, tag_converter)
+            syn = synset(string, pos, wn, tag_converter)
             synlist = [None] # in case synset is None
 
             if syn is not None:  # abstract (generalize) synset

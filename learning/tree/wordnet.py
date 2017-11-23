@@ -227,14 +227,22 @@ class IndexedWordNetTree(WordNetTree):
     def __init__(self, pos):
         super(IndexedWordNetTree, self).__init__(pos)
         self.index = self.hashtable()
-#        nodes = self.flat()
-#        self.index = dict()
-#        for n in nodes:
-#            self.index[n.key] = n
 
     def get_nodes(self, key):
         return self.index[key] if key in self.index else None
 
+    def add(self, tree, update=True):
+        """Add the counts of a tree to this one."""
+        if isinstance(tree, IndexedWordNetTree):
+            index = tree.index
+        else:
+            index = tree.hashtable()
+
+        for leaf in self.leaves():
+            leaf.value += index[leaf.key].value
+
+        if update:
+            self.updateCounts()
 
 if __name__ == '__main__':
     pass
