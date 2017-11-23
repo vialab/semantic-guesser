@@ -320,6 +320,7 @@ def fit_tree_cut_models(passwords, estimator, specificity, num_workers):
 
     def do_work(passwords, noun_results, verb_results):
         from learning.tree.wordnet import IndexedWordNetTree
+        from learning.tagset_conversion import TagsetConverter
         from nltk.corpus import wordnet as wn
 
         tag_converter = TagsetConverter()

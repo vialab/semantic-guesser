@@ -8,6 +8,7 @@ import re
 import os
 import logging
 import numpy as np
+import pickle
 
 log = logging.getLogger(__name__)
 
@@ -286,6 +287,12 @@ class Grammar(object):
                 for lemma, p in tags[tag].most_common():
                     f.write("{}\t{}\n".format(lemma.encode('utf-8'), p))
 
+        # pickle the tree cuts
+        with open(os.path.join(path, "noun-treecut.pickle"), 'wb') as f:
+            pickle.dump(self.noun_treecut, f, -1)
+
+        with open(os.path.join(path, "verb-treecut.pickle"), 'wb') as f:
+            pickle.dump(self.verb_treecut, f, -1)
 
     def _get_tag(self, string, pos, synset, tagtype):
         if tagtype == 'pos':
