@@ -7,18 +7,19 @@ import wordsegment as ws
 
 from argparse import ArgumentParser
 from collections import Counter
-from learning.pos import BackoffTagger
-from learning.tagset_conversion import TagsetConverter
-from learning.model import TreeCutModel, Grammar
-from nltk.corpus import wordnet as wn
+#from learning.pos import BackoffTagger
+#from learning.tagset_conversion import TagsetConverter
+#from learning.model import TreeCutModel, Grammar
+#from nltk.corpus import wordnet as wn
 from functools import reduce
-from pattern.en import pluralize, lexeme
+#from pattern.en import pluralize, lexeme
 from multiprocessing import Process, Manager
 
 
 # load global resources
+#wn.ensure_loaded()
 log = logging.getLogger(__name__)
-tag_converter = TagsetConverter()
+#tag_converter = TagsetConverter()
 ws.load()
 
 def tally(path):
@@ -47,7 +48,7 @@ def getchunks(password):
     return chunks
 
 
-def synset(word, pos):
+def synset(word, pos, tag_converter=None):
     """
     Given a POS-tagged word, determine its synset by converting the CLAWS tag
     to a WordNet tag and querying the associated synset from NLTK's WordNet.
@@ -228,28 +229,35 @@ def product(list_a, list_b):
 
 def tally_chunk_tag(path, num_workers):
     def do_work(in_queue, out_list):
+        from learning.pos import BackoffTagger
         postagger = BackoffTagger.from_pickle()
+        
         i = 0
         while True:
-            try:
-                password, count = in_queue.get()
-            except:
-                return
+            
+            batch = in_queue.get()
+            if len(batch) == 0: # exit signal
+                return 
+            
+            result_buffer = []
+            for password, count in batch:
 
-            chunks = getchunks(password)
-            try:
-                postagged_chunks = pos_tag(chunks, postagger)
-            except:
-                log.error("Error: {}".format(chunks))
-                raise
+                chunks = getchunks(password)
+                try:
+                    postagged_chunks = pos_tag(chunks, postagger)
+                except:
+                    log.error("Error: {}".format(chunks))
+                    raise
 
-            out_list.append((postagged_chunks, count))
-            i += 1
+                result_buffer.append((postagged_chunks, count))
+                i += 1
 
-            if i % 100000 == 0:
-                process_id = multiprocessing.current_process()._identity[0]
-                log.info("Process {} has worked on {} passwords..."
-                    .format(process_id, i))
+                if i % 100000 == 0:
+                    process_id = multiprocessing.current_process()._identity[0]
+                    log.info("Process {} has worked on {} passwords..."
+                        .format(process_id, i))
+
+            out_list.extend(result_buffer)
 
     manager = Manager()
 
@@ -263,11 +271,17 @@ def tally_chunk_tag(path, num_workers):
         p.start()
         pool.append(p)
 
-    passwords = [] # list of list of tuples (one tuple per chunk)
-    counts = []
 
-    for password, count in tally(path).items():
-        work.put((password, count))
+    passwords = tally(path).items()
+    buff = []
+    for password, count in passwords:
+        buff.append((password, count))
+        if len(buff) == 10000:
+            work.put(buff)
+            buff = []
+
+    if len(buff): work.put(buff)
+    for i in range(num_workers): work.put([]) # send exit signal
 
     for p in pool:
         p.join()
@@ -279,17 +293,26 @@ def train_grammar(path, outfolder, estimator='laplace', specificity=None,
     num_workers=2):
     """Train a semantic password model"""
 
-    wn.ensure_loaded()
+#    wn.ensure_loaded()
     # Chunking and Part-of-Speech tagging
     log.info("Counting, chunking and POS tagging... ")
 
     passwords = tally_chunk_tag(path, num_workers)
 
+    global wn, TagsetConverter, TreeCutModel, Grammar, pluralize, lexeme
+    from nltk.corpus import wordnet as wn
+    from learning.tagset_conversion import TagsetConverter
+    from learning.model import TreeCutModel, Grammar
+    from pattern.en import pluralize, lexeme
+
+
+    tag_converter = TagsetConverter()
+
     def syn_generator(passwords):
         # debug_n_total = 0
         for chunks, count in passwords:
             for string, pos in chunks:
-                syn = synset(string, pos)
+                syn = synset(string, pos, tag_converter)
                 if syn:
                     yield (syn, count)
 
@@ -315,7 +338,7 @@ def train_grammar(path, outfolder, estimator='laplace', specificity=None,
                 # every different synset of chunks[0]
 
         for string, pos in chunks:
-            syn = synset(string, pos)
+            syn = synset(string, pos, tag_converter)
             synlist = [None] # in case synset is None
 
             if syn is not None:  # abstract (generalize) synset
