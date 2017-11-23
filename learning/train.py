@@ -1,11 +1,12 @@
+import sys
 import re
 import logging
 import itertools
 import multiprocessing
+import argparse
 
 import wordsegment as ws
 
-from argparse import ArgumentParser
 from collections import Counter
 #from learning.pos import BackoffTagger
 #from learning.tagset_conversion import TagsetConverter
@@ -22,10 +23,11 @@ log = logging.getLogger(__name__)
 #tag_converter = TagsetConverter()
 ws.load()
 
-def tally(path):
+def tally(password_file):
     """Return a Counter for passwords."""
-    pwditer = (line.rstrip('\n') for line in open(path, encoding='latin-1')
+    pwditer = (line.rstrip('\n') for line in password_file
         if not re.fullmatch('\s+', line))
+    
     return Counter(pwditer)
 
 
@@ -231,14 +233,14 @@ def tally_chunk_tag(path, num_workers):
     def do_work(in_queue, out_list):
         from learning.pos import BackoffTagger
         postagger = BackoffTagger.from_pickle()
-        
+
         i = 0
         while True:
-            
+
             batch = in_queue.get()
             if len(batch) == 0: # exit signal
-                return 
-            
+                return
+
             result_buffer = []
             for password, count in batch:
 
@@ -289,7 +291,7 @@ def tally_chunk_tag(path, num_workers):
     return results
 
 
-def train_grammar(path, outfolder, estimator='laplace', specificity=None,
+def train_grammar(password_file, outfolder, estimator='laplace', specificity=None,
     num_workers=2):
     """Train a semantic password model"""
 
@@ -297,14 +299,17 @@ def train_grammar(path, outfolder, estimator='laplace', specificity=None,
     # Chunking and Part-of-Speech tagging
     log.info("Counting, chunking and POS tagging... ")
 
-    passwords = tally_chunk_tag(path, num_workers)
+    passwords = tally_chunk_tag(password_file, num_workers)
 
+
+    # these modules are loaded after tally_chunk_tag because they use wordnet,
+    # which isn't thread-safe. wordnet needs to be loaded inside workers.
+    # if it's loaded before, then processes will reuse the same unsafe instance
     global wn, TagsetConverter, TreeCutModel, Grammar, pluralize, lexeme
     from nltk.corpus import wordnet as wn
     from learning.tagset_conversion import TagsetConverter
     from learning.model import TreeCutModel, Grammar
     from pattern.en import pluralize, lexeme
-
 
     tag_converter = TagsetConverter()
 
@@ -371,8 +376,9 @@ def train_grammar(path, outfolder, estimator='laplace', specificity=None,
 
 
 def options():
-    parser = ArgumentParser()
-    parser.add_argument('passwords', help='a password list')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('passwords', nargs='?', default=sys.stdin,
+        type=argparse.FileType('r'), help='a password list')
     parser.add_argument('output_folder', help='a folder to store the grammar model')
     parser.add_argument('--estimator', default='mle', choices=['mle', 'laplace'])
     parser.add_argument('-a', '--abstraction', type=int, default=None,
@@ -389,15 +395,14 @@ def options():
 
 if __name__ == '__main__':
     opts = options()
-    filepath = opts.passwords
+    password_file = opts.passwords
 
     verbose_levels = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
     verbose_level = sum(opts.v) if opts.v else 0
     logging.basicConfig(level=verbose_levels[verbose_level])
     log.setLevel(verbose_levels[verbose_level])
 
-
-    train_grammar(filepath, 
+    train_grammar(password_file,
                   opts.output_folder,
                   opts.estimator,
                   opts.abstraction,
