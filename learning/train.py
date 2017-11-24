@@ -404,7 +404,7 @@ class MyManager(BaseManager): pass
 
 def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
 
-    def do_work(passwords, tcm_n, tcm_v, grammar):
+    def do_work(passwords, tcm_n, tcm_v, out_list):
         # a fresh instance of wordnet
         wordnet = new_wordnet_instance()
 
@@ -441,17 +441,14 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
             else:
                 log.warning("Unable to feed chunks to grammar: {}".format(chunks))
 
-        # for x, count in results:
-        #     grammar.fit_incrementa(x, count)
+        log.info("Done my job. Delivering results.")
+        out_list.extend(results)
+        log.info("Results delivered.")
 
-        grammar.fit(results)
+    manager = Manager()
+    results = manager.list()
+    grammar = Grammar(estimator=estimator)
 
-
-    MyManager.register('Grammar', Grammar)
-    manager = MyManager()
-    manager.start()
-
-    grammar = manager.Grammar(estimator=estimator)
     # feed grammar with the 'prior' vocabulary
     if estimator == 'laplace':
         postagger = BackoffTagger.from_pickle()
@@ -463,12 +460,14 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
     share = math.ceil(len(passwords)/num_workers)
     for i in range(num_workers):
         work = passwords[i*share:i*share+share]
-        p = Process(target=do_work, args=(work, tcm_n, tcm_v, grammar))
+        p = Process(target=do_work, args=(work, tcm_n, tcm_v, results))
         p.start()
         pool.append(p)
 
     for p in pool:
         p.join()
+
+    grammar.fit(results)
 
     return grammar
 
