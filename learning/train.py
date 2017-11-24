@@ -10,20 +10,35 @@ import wordsegment as ws
 import numpy as np
 
 from collections import Counter
-#from learning.pos import BackoffTagger
-#from learning.tagset_conversion import TagsetConverter
-#from learning.model import TreeCutModel, Grammar
-#from nltk.corpus import wordnet as wn
 from functools import reduce
-#from pattern.en import pluralize, lexeme
 from multiprocessing import Process, Manager
+from multiprocessing.managers import BaseManager
+from importlib import reload
 
+from nltk.corpus.reader.api import CorpusReader
+from nltk.corpus.util import LazyCorpusLoader
+from nltk.corpus.reader.wordnet import WordNetCorpusReader
 
 # load global resources
 #wn.ensure_loaded()
 log = logging.getLogger(__name__)
 #tag_converter = TagsetConverter()
 ws.load()
+
+
+def new_wordnet_instance():
+    """
+    Create a new wordnet instance. This is usefult for parallel workflows.
+    Multiple processes cannot access the same wordnet instance (as when imported
+    globally with `from wordnet.corpus import wordnet`). This is due nltk not
+    being thread-safe.
+    """
+    return LazyCorpusLoader(
+        'wordnet', WordNetCorpusReader,
+        LazyCorpusLoader('omw', CorpusReader,
+                         r'.*/wn-data-.*\.tab', encoding='utf8')
+    )
+
 
 def tally(password_file):
     """Return a Counter for passwords."""
@@ -379,6 +394,79 @@ def fit_tree_cut_models(passwords, estimator, specificity, num_workers):
     return tcm_n, tcm_v
 
 
+class MyManager(BaseManager): pass
+
+
+def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
+
+    def do_work(passwords, tcm_n, tcm_v, grammar):
+        # a fresh instance of wordnet
+        wordnet = new_wordnet_instance()
+
+        results = []
+        tag_converter = TagsetConverter()
+        for chunks, count in passwords:
+            X = []  # list of list of tuples. X[0] holds one tuple for
+                    # every different synset of chunks[0]
+
+            for string, pos in chunks:
+                syn = synset(string, pos, wordnet, tag_converter)
+                synlist = [None] # in case synset is None
+
+                if syn is not None:  # abstract (generalize) synset
+                    if syn.pos() == 'n':
+                        synlist = tcm_n.predict(syn)
+                    elif syn.pos() == 'v':
+                        synlist = tcm_v.predict(syn)
+
+                chunkset = [] # all semantic variations of this chunk
+                for syn in set(synlist):
+                    chunkset.append((string, pos, syn))
+                X.append(chunkset)
+
+            # navigate the cross-product of the chunksets
+            if len(X) > 1:
+                n_variations = reduce(lambda x,y: x * len(y), X, 1)
+                count_ = count/n_variations
+                for x in reduce(product, X):
+                    results.append((x, count_))
+            elif len(X) == 1:
+                for x in X[0]:
+                    results.append(([x], count))
+            else:
+                log.warning("Unable to feed chunks to grammar: {}".format(chunks))
+
+        for x, count in results:
+            grammar.fit_incremental(x, count)
+
+
+    MyManager.register('Grammar', Grammar)
+    manager = MyManager()
+    manager.start()
+
+    grammar = manager.Grammar(estimator=estimator)
+    # feed grammar with the 'prior' vocabulary
+    if estimator == 'laplace':
+        from learning.pos import BackoffTagger
+        postagger = BackoffTagger.from_pickle()
+        grammar.add_vocabulary(noun_vocab(tcm_n, postagger))
+        grammar.add_vocabulary(verb_vocab(tcm_v, postagger))
+
+    pool = []
+
+    share = math.ceil(len(passwords)/num_workers)
+    for i in range(num_workers):
+        work = passwords[i*share:i*share+share]
+        p = Process(target=do_work, args=(work, tcm_n, tcm_v, grammar))
+        p.start()
+        pool.append(p)
+
+    for p in pool:
+        p.join()
+
+    return grammar
+
+
 def train_grammar(password_file, outfolder,
     estimator='laplace', specificity=None, num_workers=2):
     """Train a semantic password model"""
@@ -405,45 +493,8 @@ def train_grammar(password_file, outfolder,
     from pattern.en import pluralize, lexeme
 
     log.info("Training grammar...")
-    grammar = Grammar(estimator=estimator)
 
-    # feed grammar with the 'prior' vocabulary
-    if estimator == 'laplace':
-        grammar.add_vocabulary(noun_vocab(tcm_n, postagger))
-        grammar.add_vocabulary(verb_vocab(tcm_v, postagger))
-
-    tag_converter = TagsetConverter()
-
-    for chunks, count in passwords:
-        X = []  # list of list of tuples. X[0] holds one tuple for
-                # every different synset of chunks[0]
-
-        for string, pos in chunks:
-            syn = synset(string, pos, wn, tag_converter)
-            synlist = [None] # in case synset is None
-
-            if syn is not None:  # abstract (generalize) synset
-                if syn.pos() == 'n':
-                    synlist = tcm_n.predict(syn)
-                elif syn.pos() == 'v':
-                    synlist = tcm_v.predict(syn)
-
-            chunkset = [] # all semantic variations of this chunk
-            for syn in set(synlist):
-                chunkset.append((string, pos, syn))
-            X.append(chunkset)
-
-        # navigate the cross-product of the chunksets
-        if len(X) > 1:
-            n_variations = reduce(lambda x,y: x * len(y), X, 1)
-            count_ = count/n_variations
-            for x in reduce(product, X):
-                grammar.fit_incremental(x, count_)
-        elif len(X) == 1:
-            for x in X[0]:
-                grammar.fit_incremental([x], count)
-        else:
-            log.warning("Unable to feed chunks to grammar: {}".format(chunks))
+    grammar = fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers)
 
     grammar.write_to_disk(outfolder)
 
