@@ -2,6 +2,7 @@ from learning.tree.wordnet      import IndexedWordNetTree
 from learning.tree.default_tree import TreeCut
 from learning.tree.cut          import wagner, li_abe
 from collections                import defaultdict, Counter
+from multiprocessing            import Process, Manager
 
 from misc import util
 
@@ -11,6 +12,7 @@ import os
 import logging
 import numpy as np
 import pickle
+import math
 
 log = logging.getLogger(__name__)
 
@@ -228,8 +230,49 @@ class Grammar(object):
             tag = self._get_tag(string, pos, synset, self.tagtype)
             self.tag_dicts[tag][string] = 0
 
+    def fit_parallel(self, X, num_workers=4):
+        def do_work(batch, tag_out, base_struct_out):
+            tags = []
+            base_structures = []
 
-    def fit(self, X):
+            for x, count in batch:
+                base_structure = ''
+                for string, pos, synset in x:
+                    tag = self._get_tag(string, pos, synset, self.tagtype)
+                    tags.append((tag, string, count))
+                    base_structure += '({})'.format(tag)
+
+                base_structures.append((base_structure, count))
+
+            tag_out.extend(tags)
+            base_struct_out.extend(base_structures)
+
+        manager = Manager()
+        tag_results = manager.list()
+        base_struct_results = manager.list()
+
+        share = math.ceil(len(X)/num_workers)
+        for i in range(num_workers):
+            work = X[i*share:i*share+share]
+            p = Process(target=do_work,
+                        args=(work, tag_results, base_struct_results))
+            p.start()
+            pool.append(p)
+
+        for p in pool:
+            p.join()
+
+        for tag, string, count in tag_results:
+            self.tag_dicts[tag][string] += count
+
+        for base_structure, count in base_struct_results:
+            self.base_structures[base_structure] += count
+
+    def fit(self, X, num_workers=None):
+        if num_workers:
+            self.fit_parallel(X, num_workers)
+            return
+
         for x, count in X:
             self.fit_incremental(x, count)
 

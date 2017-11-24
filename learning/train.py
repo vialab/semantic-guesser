@@ -441,9 +441,9 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
             else:
                 log.warning("Unable to feed chunks to grammar: {}".format(chunks))
 
-        log.info("Done my job. Delivering results.")
+        # log.info("Done my job. Delivering results.")
         out_list.extend(results)
-        log.info("Results delivered.")
+        # log.info("Results delivered.")
 
     manager = Manager()
     results = manager.list()
