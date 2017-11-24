@@ -1,7 +1,9 @@
 from learning.tree.wordnet      import IndexedWordNetTree
 from learning.tree.default_tree import TreeCut
 from learning.tree.cut          import wagner, li_abe
-from collections             import defaultdict, Counter
+from collections                import defaultdict, Counter
+
+from misc import util
 
 import shutil
 import re
