@@ -441,8 +441,10 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
             else:
                 log.warning("Unable to feed chunks to grammar: {}".format(chunks))
 
-        for x, count in results:
-            grammar.fit_incremental(x, count)
+        # for x, count in results:
+        #     grammar.fit_incrementa(x, count)
+
+        grammar.fit(results)
 
 
     MyManager.register('Grammar', Grammar)
