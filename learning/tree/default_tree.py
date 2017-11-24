@@ -391,6 +391,28 @@ class TreeCut(object):
         except:
             return self.index[syn.name()]
 
+
+class DepthFirstIterator(object):
+
+    def __init__(self, node):
+        self.to_visit = deque()
+        self.to_visit.append((0, node))
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if len(self.to_visit) == 0:
+            raise StopIteration
+        else:
+            depth, node = self.to_visit.popleft()
+            children = node.children()
+            for child in children:
+                self.to_visit.appendleft((depth+1, child))
+
+            return (depth, node)
+
+
 # tree = DefaultTree()
 #
 # tree.insert(['object', 'automobile', 'car'], 10)

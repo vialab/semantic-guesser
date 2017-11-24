@@ -32,11 +32,11 @@ alden2
 
 ## Installation
 
-virtualenv is preferred:
+venv is preferred:
 
 ```
 cd semantic_guesser
-virtualenv env
+python3 -m venv env
 source env/bin/activate
 pip install -r requirements.txt
 ```
