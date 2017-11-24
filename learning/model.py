@@ -228,6 +228,11 @@ class Grammar(object):
             tag = self._get_tag(string, pos, synset, self.tagtype)
             self.tag_dicts[tag][string] = 0
 
+
+    def fit(self, X):
+        for x, count in X:
+            self.fit_incremental(x, count)
+
     def fit_incremental(self, x, count):
         """
         Args:

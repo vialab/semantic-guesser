@@ -27,6 +27,8 @@ from learning.model import TreeCutModel, Grammar
 
 from pattern.en import pluralize, lexeme
 
+from misc.util import Timer
+
 # load global resources
 #wn.ensure_loaded()
 log = logging.getLogger(__name__)
@@ -476,25 +478,27 @@ def train_grammar(password_file, outfolder,
     # Chunking and Part-of-Speech tagging
 
     log.info("Counting, chunking and POS tagging... ")
-    passwords = tally_chunk_tag(password_file, num_workers)
+
+    with Timer("counting, chunking and POS tagging", log):
+        passwords = tally_chunk_tag(password_file, num_workers)
 
     # Train tree cut models
 
     log.info("Training tree cut models... ")
-    tcm_n, tcm_v = fit_tree_cut_models(passwords, estimator,
-        specificity, num_workers)
 
-    # these modules are loaded after tally_chunk_tag because they use wordnet,
-    # which isn't thread-safe. wordnet needs to be loaded inside workers.
-    # if it's loaded before, then processes will reuse the same unsafe instance
-
-
+    with Timer("training tree cut models", log):
+        tcm_n, tcm_v = fit_tree_cut_models(passwords, estimator,
+            specificity, num_workers)
 
     log.info("Training grammar...")
 
-    grammar = fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers)
+    with Timer("training grammar", log):
+        grammar = fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers)
 
+    log.info("Persisting grammar")
     grammar.write_to_disk(outfolder)
+
+    log.info("Done.")
 
     return grammar
 

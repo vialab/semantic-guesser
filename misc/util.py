@@ -3,8 +3,40 @@
 
 import os
 import sys
+import time
+import logging
 
+class Timer:
 
+    def __init__(self, title=None, logger=None):
+        self.title = title
+        self.logger = logger if logger is not None else logging.getLogger(__name__)
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *args):
+        self.end = time.time()
+        self.elapsed = self.end - self.start
+
+        if self.elapsed < 60:
+            unit = "seconds"
+            figure = self.elapsed
+        elif self.elapsed < 60*60:
+            unit = "minutes"
+            figure = self.elapsed/60
+        else:
+            unit = "hours"
+            figure = self.elapsed/60*60
+
+        message = "Time elapsed while {}: {:.1f} {}"\
+            .format(self.title, figure, unit)
+        self.logger.info(message)
+
+# if __name__ == '__main__':
+#     with Timer('test'):
+#         time.sleep(2)
 
 def abspath(path):
     """ Returns the absolute path for a file relative of the
