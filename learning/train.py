@@ -467,7 +467,7 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
     for p in pool:
         p.join()
 
-    grammar.fit(results)
+    grammar.fit(results, num_workers=num_workers)
 
     return grammar
 
