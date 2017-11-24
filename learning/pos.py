@@ -58,6 +58,16 @@ class BackoffTagger(SequentialBackoffTagger):
 
         pickle.dump(self, open(path, 'wb'))
 
+    def set_wordnet_instance(self, wordnet):
+        """
+        Set an instance of WordNetCorpusReader. If not set, then WordNetTagger
+        will use the one imported globally. It's advisable to create an instance
+        per Process when running tasks in parallel.
+        """
+        for tagger in self._taggers:
+            if isinstance(tagger, WordNetTagger):
+                tagger.set_wordnet_instance(wordnet)
+
     @classmethod
     def from_pickle(cls, path=None):
         if not path:
@@ -83,19 +93,28 @@ class WordNetTagger(SequentialBackoffTagger):
             'v': 'vv0'
         }
 
+        self.wordnet = wordnet
+
     def choose_tag(self, tokens, index, history):
         word = tokens[index]
         if word is None:
             return None
         fd = FreqDist()
 
-        for synset in wordnet.synsets(word):
+        for synset in self.wordnet.synsets(word):
             fd[synset.pos] += 1
         try:
             return self.wordnet_tag_map.get(fd.max())
         except:  # in case fd is empty
             return None
 
+    def set_wordnet_instance(self, wordnet):
+        """
+        Set an instance of WordNetCorpusReader. If not set, then this object
+        will use the one imported globally. It's advisable to create an instance
+        per Process when running tasks in parallel.
+        """
+        self.wordnet = wordnet
 
 class NamesTagger(SequentialBackoffTagger):
     """

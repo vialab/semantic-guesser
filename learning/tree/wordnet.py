@@ -98,18 +98,24 @@ class WordNetTree(DefaultTree):
                hater.n.01
     """
 
-    def __init__(self, pos):
-        """ Loads the WordNet tree for a given part-of-speech.
-           'entity.n.01' is the root for nouns; otherwise, creates an artificial
-           root named 'root' whose children are all the root nodes (the verbs ontology
-           has several roots).
+    def __init__(self, pos, wordnet=None):
+        """ Loads the WordNet tree for a given part-of-speech. 'entity.n.01' is
+           the root for nouns; otherwise, creates an artificial root named
+           'root' whose children are all the root nodes (the verbs ontology has
+           several roots).
 
+        Args:
+            pos - 'n' for nouns and 'v' for verbs
+            wordnet - optional - an instance of WordNetCorpusReader
         """
         self.pos = pos
+        self.wn = wn if wordnet is None else wordnet
+
         self.load(pos)
 
-
     def load(self, pos):
+        wn = self.wn
+
         if pos == 'n':
             roots = wn.synsets('entity')
         else:
@@ -224,8 +230,8 @@ class WordNetTree(DefaultTree):
 
 
 class IndexedWordNetTree(WordNetTree):
-    def __init__(self, pos):
-        super(IndexedWordNetTree, self).__init__(pos)
+    def __init__(self, pos, wordnet=None):
+        super(IndexedWordNetTree, self).__init__(pos, wordnet)
         self.index = self.hashtable()
 
     def get_nodes(self, key):

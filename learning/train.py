@@ -15,14 +15,22 @@ from multiprocessing import Process, Manager
 from multiprocessing.managers import BaseManager
 from importlib import reload
 
+from nltk.corpus import wordnet as wn
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.util import LazyCorpusLoader
 from nltk.corpus.reader.wordnet import WordNetCorpusReader
 
+from learning.pos import BackoffTagger
+from learning.tagset_conversion import TagsetConverter
+from learning.tree.wordnet import IndexedWordNetTree
+from learning.model import TreeCutModel, Grammar
+
+from pattern.en import pluralize, lexeme
+
 # load global resources
 #wn.ensure_loaded()
 log = logging.getLogger(__name__)
-#tag_converter = TagsetConverter()
+tag_converter = TagsetConverter()
 ws.load()
 
 
@@ -248,8 +256,8 @@ def product(list_a, list_b):
 
 def tally_chunk_tag(path, num_workers):
     def do_work(in_queue, out_list):
-        from learning.pos import BackoffTagger
         postagger = BackoffTagger.from_pickle()
+        postagger.set_wordnet_instance(new_wordnet_instance())
 
         i = 0
         while True:
@@ -334,13 +342,11 @@ def increment_synset_count(tree, synset, count=1):
 def fit_tree_cut_models(passwords, estimator, specificity, num_workers):
 
     def do_work(passwords, noun_results, verb_results):
-        from learning.tree.wordnet import IndexedWordNetTree
-        from learning.tagset_conversion import TagsetConverter
-        from nltk.corpus import wordnet as wn
+        wn = new_wordnet_instance()
 
         tag_converter = TagsetConverter()
-        noun_tree = IndexedWordNetTree('n')
-        verb_tree = IndexedWordNetTree('v')
+        noun_tree = IndexedWordNetTree('n', wordnet=wn)
+        verb_tree = IndexedWordNetTree('v', wordnet=wn)
 
         for chunks, count in passwords:
             for string, pos in chunks:
@@ -370,9 +376,6 @@ def fit_tree_cut_models(passwords, estimator, specificity, num_workers):
 
     noun_counts = np.sum(noun_results, 0)
     verb_counts = np.sum(verb_results, 0)
-
-    from learning.tree.wordnet import IndexedWordNetTree
-    from learning.model import TreeCutModel
 
     noun_tree = IndexedWordNetTree('n')
     verb_tree = IndexedWordNetTree('v')
@@ -404,7 +407,7 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
         wordnet = new_wordnet_instance()
 
         results = []
-        tag_converter = TagsetConverter()
+
         for chunks, count in passwords:
             X = []  # list of list of tuples. X[0] holds one tuple for
                     # every different synset of chunks[0]
@@ -447,7 +450,6 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
     grammar = manager.Grammar(estimator=estimator)
     # feed grammar with the 'prior' vocabulary
     if estimator == 'laplace':
-        from learning.pos import BackoffTagger
         postagger = BackoffTagger.from_pickle()
         grammar.add_vocabulary(noun_vocab(tcm_n, postagger))
         grammar.add_vocabulary(verb_vocab(tcm_v, postagger))
@@ -486,11 +488,7 @@ def train_grammar(password_file, outfolder,
     # which isn't thread-safe. wordnet needs to be loaded inside workers.
     # if it's loaded before, then processes will reuse the same unsafe instance
 
-    global wn, TagsetConverter, TreeCutModel, Grammar, pluralize, lexeme
-    from learning.tagset_conversion import TagsetConverter
-    from nltk.corpus import wordnet as wn
-    from learning.model import Grammar
-    from pattern.en import pluralize, lexeme
+
 
     log.info("Training grammar...")
 
