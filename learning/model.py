@@ -2,7 +2,7 @@ from learning.tree.wordnet      import IndexedWordNetTree
 from learning.tree.default_tree import TreeCut
 from learning.tree.cut          import wagner, li_abe
 from collections                import defaultdict, Counter
-from multiprocessing            import Process, Manager
+from multiprocessing            import Process, Manager, Pool, Queue
 
 from misc import util
 
@@ -13,6 +13,8 @@ import logging
 import numpy as np
 import pickle
 import math
+import multiprocessing
+
 
 log = logging.getLogger(__name__)
 
@@ -204,7 +206,10 @@ def _datafile(name):
     return open(os.path.join(os.path.dirname(__file__), '../data/'+name))
 
 
-class Grammar(object):
+
+
+
+class GrammarTagger(object):
 
     MaleNames   = [name.strip() for name in _datafile('mnames.txt')]
     FemaleNames = [name.strip() for name in _datafile('fnames.txt')]
@@ -212,137 +217,6 @@ class Grammar(object):
     Months      = [month.strip() for month in _datafile('months.txt')]
     Surnames    = [surname.strip() for surname in _datafile('surnames.txt')]
     Cities      = [city.strip() for city in _datafile('cities.txt')]
-
-    def __init__(self, tagtype='backoff', estimator='mle'):
-        self.base_structures = Counter()
-        self.probabilities   = dict()
-        self.tag_dicts       = defaultdict(lambda : Counter())
-        self.verb_treecut = None
-        self.noun_treecut = None
-        self.estimator = estimator
-
-        # booleans
-        self.lowres = None
-        self.tagtype = tagtype
-
-    def add_vocabulary(self, vocab):
-        for string, pos, synset in vocab:
-            tag = self._get_tag(string, pos, synset, self.tagtype)
-            self.tag_dicts[tag][string] = 0
-
-    def fit_parallel(self, X, num_workers=4):
-        def do_work(batch, tag_out, base_struct_out):
-            tags = []
-            base_structures = []
-
-            for x, count in batch:
-                base_structure = ''
-                for string, pos, synset in x:
-                    tag = self._get_tag(string, pos, synset, self.tagtype)
-                    tags.append((tag, string, count))
-                    base_structure += '({})'.format(tag)
-
-                base_structures.append((base_structure, count))
-
-            tag_out.extend(tags)
-            base_struct_out.extend(base_structures)
-
-        manager = Manager()
-        tag_results = manager.list()
-        base_struct_results = manager.list()
-
-        share = math.ceil(len(X)/num_workers)
-        for i in range(num_workers):
-            work = X[i*share:i*share+share]
-            p = Process(target=do_work,
-                        args=(work, tag_results, base_struct_results))
-            p.start()
-            pool.append(p)
-
-        for p in pool:
-            p.join()
-
-        for tag, string, count in tag_results:
-            self.tag_dicts[tag][string] += count
-
-        for base_structure, count in base_struct_results:
-            self.base_structures[base_structure] += count
-
-    def fit(self, X, num_workers=None):
-        if num_workers:
-            self.fit_parallel(X, num_workers)
-            return
-
-        for x, count in X:
-            self.fit_incremental(x, count)
-
-    def fit_incremental(self, x, count):
-        """
-        Args:
-            x - a list of tuples in the form (string, pos, str(synset))
-        """
-        log.debug(x)
-        base_structure = ''
-        for string, pos, synset in x:
-            tag = self._get_tag(string, pos, synset, self.tagtype)
-            self.tag_dicts[tag][string] += count
-            base_structure += '({})'.format(tag)
-
-        self.base_structures[base_structure] += count
-        log.debug(base_structure)
-
-
-    def base_structure_probabilities(self):
-        total = 0
-        rank = self.base_structures.most_common()
-        for struct, count in rank:
-            total += count
-
-        return [(struct, count/total) for struct, count in rank]
-
-    def tag_probabilities(self):
-        tag_dicts = self.tag_dicts
-        probabilities = defaultdict(Counter)
-        for tag in tag_dicts.keys():
-            samplesize = sum(tag_dicts[tag].values())
-            vocabsize = len(tag_dicts[tag].keys())
-
-            if self.estimator == 'laplace':
-                est = LaplaceEstimator(samplesize, vocabsize, 1)
-            else:
-                est = MleEstimator(samplesize)
-
-            for lemma, freq in tag_dicts[tag].most_common():
-                probabilities[tag][lemma] = est.probability(freq)
-
-        return probabilities
-
-    def write_to_disk(self, path):
-        # remove previous grammar
-        try:
-            shutil.rmtree(path)
-        except OSError: # in case the above folder does not exist
-            pass
-
-        # recreate the folders empty
-        os.makedirs(os.path.join(path, 'nonterminals'))
-
-        with open(os.path.join(path, 'rules.txt'), 'w+') as f:
-            for struct, p in self.base_structure_probabilities():
-                f.write('{}\t{}\n'.format(struct, p))
-
-        tags = self.tag_probabilities()
-        for tag in tags.keys():
-            with open(os.path.join(path, 'nonterminals', str(tag) + '.txt'), 'w+') as f:
-                for lemma, p in tags[tag].most_common():
-                    f.write("{}\t{}\n".format(lemma.encode('utf-8'), p))
-
-        # pickle the tree cuts
-        with open(os.path.join(path, "noun-treecut.pickle"), 'wb') as f:
-            pickle.dump(self.noun_treecut, f, -1)
-
-        with open(os.path.join(path, "verb-treecut.pickle"), 'wb') as f:
-            pickle.dump(self.verb_treecut, f, -1)
 
     def _get_tag(self, string, pos, synset, tagtype):
         if tagtype == 'pos':
@@ -435,17 +309,17 @@ class Grammar(object):
             return pos + '_' + syntag
 
     def propername_tag(self, string):
-        if string in Grammar.MaleNames:
+        if string in GrammarTagger.MaleNames:
             return 'mname'
-        elif string in Grammar.FemaleNames:
+        elif string in GrammarTagger.FemaleNames:
             return 'fname'
-        elif string in Grammar.Cities:
+        elif string in GrammarTagger.Cities:
             return 'city'
-        elif string in Grammar.Months:
+        elif string in GrammarTagger.Months:
             return 'month'
-        elif string in Grammar.Surnames:
+        elif string in GrammarTagger.Surnames:
             return 'surname'
-        elif string in Grammar.Countries:
+        elif string in GrammarTagger.Countries:
             return 'country'
         else:
             return None
@@ -463,6 +337,160 @@ class Grammar(object):
             category = 'mixed'
 
         return category + size
+
+
+class Processor(object):
+
+    def __init__(self, tagger, tagtype):
+        self.tagger = tagger
+        self.tagtype = tagtype
+
+    def __call__(self, data):
+
+        process_id = multiprocessing.current_process()._identity[0]
+
+        # log.info("Process {} received {} items.".format(process_id, len(data)))
+
+        tags = defaultdict(Counter)
+        base_structures = Counter()
+
+        for x, count in data:
+            base_structure = ''
+            for string, pos, synset in x:
+                tag = self.tagger._get_tag(string, pos, synset, self.tagtype)
+                tags[tag][string] += count                   
+                base_structure += '({})'.format(tag)
+
+            base_structures[base_structure] += count
+
+        
+        # log.info("Process {} has done its share. Time to rest.".format(process_id))
+        return (tags, base_structures)
+
+
+class Grammar(object):
+
+    def __init__(self, tagtype='backoff', estimator='mle'):
+        self.base_structures = Counter()
+        self.probabilities   = dict()
+        self.tag_dicts       = defaultdict(Counter)
+        self.verb_treecut = None
+        self.noun_treecut = None
+        self.estimator = estimator
+
+        # booleans
+        self.lowres = None
+        self.tagtype = tagtype
+
+    def add_vocabulary(self, vocab):
+        for string, pos, synset in vocab:
+            tag = self._get_tag(string, pos, synset, self.tagtype)
+            self.tag_dicts[tag][string] = 0
+
+    def fit_parallel(self, X, num_workers=4):
+        import gc  
+        gc.collect() 
+        pool = Pool(num_workers, maxtasksperchild=2)
+
+        share = min(int(2e5), math.ceil(len(X)/num_workers))
+        # share = int(1e5)
+        tagger = GrammarTagger()
+
+        num_parts = math.ceil(len(X)/share)
+        x_gen = (X[i*share:i*share+share] for i in range(num_parts))
+
+        # delegate work to all available processes
+        i  = 0
+        for result in pool.imap(Processor(tagger, self.tagtype), x_gen):
+            tag_results, base_struct_results = result
+            for base_struct, count in base_struct_results.items():
+                self.base_structures[base_struct] += count
+            for tag, terminals in tag_results.items():
+                for string, count in terminals.items():
+                    self.tag_dicts[tag][string] += count
+            i += 1
+            log.info("Processed {}/{} result batchs...".format(i, num_parts))
+
+
+        log.info("Fitting completed.")
+
+    def fit(self, X, num_workers=None):
+        if num_workers:
+            self.fit_parallel(X, num_workers)
+            return
+
+        for x, count in X:
+            self.fit_incremental(x, count)
+
+    def fit_incremental(self, x, count):
+        """
+        Args:
+            x - a list of tuples in the form (string, pos, str(synset))
+        """
+        log.debug(x)
+        base_structure = ''
+        for string, pos, synset in x:
+            tag = self._get_tag(string, pos, synset, self.tagtype)
+            self.tag_dicts[tag][string] += count
+            base_structure += '({})'.format(tag)
+
+        self.base_structures[base_structure] += count
+        log.debug(base_structure)
+
+
+    def base_structure_probabilities(self):
+        total = 0
+        rank = self.base_structures.most_common()
+        for struct, count in rank:
+            total += count
+
+        return [(struct, count/total) for struct, count in rank]
+
+    def tag_probabilities(self):
+        tag_dicts = self.tag_dicts
+        probabilities = defaultdict(Counter)
+        for tag in tag_dicts.keys():
+            samplesize = sum(tag_dicts[tag].values())
+            vocabsize = len(tag_dicts[tag].keys())
+
+            if self.estimator == 'laplace':
+                est = LaplaceEstimator(samplesize, vocabsize, 1)
+            else:
+                est = MleEstimator(samplesize)
+
+            for lemma, freq in tag_dicts[tag].most_common():
+                probabilities[tag][lemma] = est.probability(freq)
+
+        return probabilities
+
+    def write_to_disk(self, path):
+        # remove previous grammar
+        try:
+            shutil.rmtree(path)
+        except OSError: # in case the above folder does not exist
+            pass
+
+        # recreate the folders empty
+        os.makedirs(os.path.join(path, 'nonterminals'))
+
+        with open(os.path.join(path, 'rules.txt'), 'w+') as f:
+            for struct, p in self.base_structure_probabilities():
+                f.write('{}\t{}\n'.format(struct, p))
+
+        tags = self.tag_probabilities()
+        for tag in tags.keys():
+            with open(os.path.join(path, 'nonterminals', str(tag) + '.txt'), 'w+') as f:
+                for lemma, p in tags[tag].most_common():
+                    f.write("{}\t{}\n".format(lemma.encode('utf-8'), p))
+
+        # pickle the tree cuts
+        with open(os.path.join(path, "noun-treecut.pickle"), 'wb') as f:
+            pickle.dump(self.noun_treecut, f, -1)
+
+        with open(os.path.join(path, "verb-treecut.pickle"), 'wb') as f:
+            pickle.dump(self.verb_treecut, f, -1)
+
+
 
     def read(self, path):
         grammar_dir = util.abspath(path)

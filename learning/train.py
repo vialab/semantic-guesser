@@ -441,9 +441,9 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
             else:
                 log.warning("Unable to feed chunks to grammar: {}".format(chunks))
 
-        # log.info("Done my job. Delivering results.")
+        log.info("Done my job. Delivering results.")
         out_list.extend(results)
-        # log.info("Results delivered.")
+        log.info("Results delivered.")
 
     manager = Manager()
     results = manager.list()
@@ -459,10 +459,16 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
 
     share = math.ceil(len(passwords)/num_workers)
     for i in range(num_workers):
+        # progressively empty passwords to free memory
+        #work = [passwords.pop() for i in range(min(share, len(passwords)))]
         work = passwords[i*share:i*share+share]
         p = Process(target=do_work, args=(work, tcm_n, tcm_v, results))
         p.start()
         pool.append(p)
+
+    log.info("Pool has {} workers".format(len(pool)))
+
+    del passwords[:] # this atrocity is really necessary to free memory
 
     for p in pool:
         p.join()
