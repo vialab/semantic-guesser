@@ -52,9 +52,9 @@ def new_wordnet_instance():
     )
 
 
-def tally(password_file):
+def tally(password_file, lowercase=True):
     """Return a Counter for passwords."""
-    pwditer = (line.rstrip('\n') for line in password_file
+    pwditer = (line.rstrip('\n').lower() for line in password_file
         if not re.fullmatch('\s+', line))
 
     return Counter(pwditer)
