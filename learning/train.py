@@ -5,6 +5,8 @@ import logging
 import itertools
 import multiprocessing
 import argparse
+import pickle
+import os
 
 import wordsegment as ws
 import numpy as np
@@ -23,7 +25,7 @@ from nltk.corpus.reader.wordnet import WordNetCorpusReader
 from learning.pos import BackoffTagger
 from learning.tagset_conversion import TagsetConverter
 from learning.tree.wordnet import IndexedWordNetTree
-from learning.model import TreeCutModel, Grammar
+from learning.model import TreeCutModel, Grammar, GrammarTagger
 
 from pattern.en import pluralize, lexeme
 
@@ -346,12 +348,17 @@ def fit_tree_cut_models(passwords, estimator, specificity, num_workers):
     def do_work(passwords, noun_results, verb_results):
         wn = new_wordnet_instance()
 
+        grammar_tagger = GrammarTagger()
         tag_converter = TagsetConverter()
         noun_tree = IndexedWordNetTree('n', wordnet=wn)
         verb_tree = IndexedWordNetTree('v', wordnet=wn)
 
         for chunks, count in passwords:
             for string, pos in chunks:
+                # skip if string is a proper name
+                if grammar_tagger.is_propername(string):
+                    continue
+
                 syn = synset(string, pos, wn, tag_converter)
                 if syn and syn.pos() == 'n':
                     increment_synset_count(noun_tree, syn, count)
@@ -504,6 +511,8 @@ def train_grammar(password_file, outfolder,
 
     log.info("Persisting grammar")
     grammar.write_to_disk(outfolder)
+    filepath = os.path.join(outfolder, 'noun_treecut.pickle')
+    pickle.dump(tcm_n, open(filepath, 'wb'), -1)
 
     log.info("Done.")
 
