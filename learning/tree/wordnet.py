@@ -6,7 +6,7 @@ Created on 2013-03-25
 """
 
 from nltk.corpus import wordnet as wn
-from learning.tree.default_tree import DefaultTree, DefaultTreeNode
+from learning.tree.default_tree import DefaultTree, DefaultTreeNode, DepthFirstIterator
 from collections import deque
 
 class WordNetTreeNode(DefaultTreeNode):
@@ -36,10 +36,10 @@ class WordNetTreeNode(DefaultTreeNode):
         for child in self.children():
             children.append(child.wrap())
         if len(children) == 0:
-            return {'key': self.key, 'value': self.value, 'id': self.id}
+            return {'key': self.key, 'value': self.value, 'id': self.id, 'leaf_count': self.leaf_count}
         else:
             return {'key': self.key, 'value': self.value,
-                    'entropy': self._entropy, 'id': self.id, 'children': children}
+                    'entropy': self._entropy, 'id': self.id, 'children': children, 'leaf_count': self.leaf_count}
 
     def path(self):
         """ Returns the path to the root based on the parent attribute."""
@@ -78,6 +78,24 @@ class WordNetTreeNode(DefaultTreeNode):
         newnode.value = value
         return newnode
 
+    # def __getstate__(self):
+    #     # do not reference other nodes, or recursionlimit will
+    #     # easily be reached. instead, rely on ids
+    #     return {
+    #         'value': self.value,
+    #         'leaf_count': self.leaf_count,
+    #         'leftchild': self.leftchild.id,
+    #         'rightsibling': self.rightsibling.id,
+    #         'key': self.key
+    #     }
+    #
+    # def __setstate__(self, d):
+    #     self.value = d['value']
+    #     self.leaf_count = d['leaf_count']
+    #     self.leftchild = d['leftchild']
+    #     self.rightsibling = d['rightsibling']
+    #     self.key = d['key']
+
 
 class WordNetTree(DefaultTree):
     """
@@ -98,7 +116,7 @@ class WordNetTree(DefaultTree):
                hater.n.01
     """
 
-    def __init__(self, pos, wordnet=None):
+    def __init__(self, pos, wordnet=None, init=True):
         """ Loads the WordNet tree for a given part-of-speech. 'entity.n.01' is
            the root for nouns; otherwise, creates an artificial root named
            'root' whose children are all the root nodes (the verbs ontology has
@@ -107,11 +125,14 @@ class WordNetTree(DefaultTree):
         Args:
             pos - 'n' for nouns and 'v' for verbs
             wordnet - optional - an instance of WordNetCorpusReader
+            init - optional - if True, then "initialize" tree by creating the
+            structure (nodes and links) described in nltk.corpus.wordnet
         """
         self.pos = pos
         self.wn = wn if wordnet is None else wordnet
 
-        self.load(pos)
+        if init:
+            self.load(pos)
 
     def load(self, pos):
         wn = self.wn
@@ -209,7 +230,7 @@ class WordNetTree(DefaultTree):
             if len(hyponyms) > 0:
                 syn_node.insert('s.'+syn.name())
 
-            for hypo in hyponyms:
+            for hypo in reversed(hyponyms):
                 stack.append((hypo, syn_node))
 
 
@@ -226,7 +247,57 @@ class WordNetTree(DefaultTree):
                 path.append('s.' + path[-1])
             self.insert(path, freq, cumulative)
 
+    def __getstate__(self):
+        nodes = dict()
 
+        for depth, node in DepthFirstIterator(self.root):
+            nodes[node.id] = (node.key,
+                              node.value,
+                              node.leaf_count,
+                              node.leftchild.id if node.leftchild else None,
+                              node.rightsibling.id if node.rightsibling else None)
+
+        return {
+            'root': self.root.id,
+            'pos':  self.pos,
+            'nodes': nodes
+        }
+
+    def __setstate__(self, d):
+        nodes = d['nodes']
+
+        root_id = d['root']
+        root_key, root_value, root_leaf_count, root_leftchild_id, root_rightsibling_id = nodes[root_id]
+        root_node = WordNetTreeNode(root_key, value=root_value)
+        root_node.id = root_id
+        root_node.leaf_count = root_leaf_count
+
+        queue = deque()
+        queue.append((None, root_node, root_leftchild_id, root_rightsibling_id))
+
+        while len(queue) > 0:
+            parent, node, leftchild_id, rightsibling_id = queue.popleft()
+
+            if rightsibling_id is not None:
+                k, v, l, c, s = nodes[rightsibling_id]
+                rightsibling =  WordNetTreeNode(k, value=v)
+                rightsibling.id = rightsibling_id
+                rightsibling.parent = parent
+                rightsibling.leaf_count = l
+                node.rightsibling = rightsibling
+                queue.appendleft((parent, rightsibling, c, s))
+
+            if leftchild_id is not None:
+                k, v, l, c, s = nodes[leftchild_id]
+                leftchild =  WordNetTreeNode(k, value=v)
+                leftchild.id = leftchild_id
+                leftchild.leaf_count = l
+                node.leftchild = leftchild
+                leftchild.parent = node
+                queue.appendleft((node, leftchild, c, s))
+
+        self.root = root_node
+        self.pos  = d['pos']
 
 
 class IndexedWordNetTree(WordNetTree):
@@ -249,6 +320,14 @@ class IndexedWordNetTree(WordNetTree):
 
         if update:
             self.updateCounts()
+
+    def __getstate__(self):
+        return WordNetTree.__getstate__(self)
+
+    def __setstate__(self, d):
+        WordNetTree.__setstate__(self, d)
+        self.index = self.hashtable()
+
 
 if __name__ == '__main__':
     pass

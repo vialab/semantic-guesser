@@ -148,6 +148,16 @@ class DefaultTreeNode (TreeNode):
                 c = c.rightsibling
         return None
 
+    def siblings(self):
+        if self.parent is None:
+            return []
+        else:
+            siblings = []
+            for child in self.parent.children():
+                if child is not self:
+                    siblings.append(child)
+            return siblings
+
     def entropy(self):
         self._entropy = 0
         total = self.value
@@ -293,7 +303,7 @@ class DefaultTree (Tree):
 
     def path(self, key, root=None):
         if not root:
-            root = self.root
+            _build_indexesroot
 
         # trivial case, root has the key
         if root.key == key:
@@ -350,28 +360,39 @@ class TreeCut(object):
         self.cut  = cut
         self.tree = tree
 
-        self.index = {}
+        self.leaf2cut = {} # leaf -> [cut members] mapping
+        self.cut_ids = set()
 
-        # Maintain index where the key is a node key and the value
+        self._build_indexes()
+
+    def _build_indexes(self):
+        self.leaf2cut = {}
+        # Maintain index where the key is a leaf key and the value
         # is a set of nodes that dominate the key node on the cut.
         # The value array has len > 1 when a node has multiple parents.
-        for c in cut:
+        # *Only leaf nodes are mapped*.
+        for c in self.cut:
             leaves = c.leaves()
             for leaf in leaves:
-                if leaf.key not in self.index:
-                    self.index[leaf.key] = set()
-                self.index[leaf.key].add(c)
+                if leaf.key not in self.leaf2cut:
+                    self.leaf2cut[leaf.key] = set()
+                self.leaf2cut[leaf.key].add(c)
 
             if len(leaves) == 0:
-                if c.key not in self.index:
-                    self.index[c.key] = set()
-                self.index[c.key].add(c)
+                if c.key not in self.leaf2cut:
+                    self.leaf2cut[c.key] = set()
+                self.leaf2cut[c.key].add(c)
+
+        self.cut_ids = set([id(c) for c in self.cut])
+
+    def __iter__(self):
+        return iter(self.cut)
 
     def size(self):
         return len(self.cut)
 
     def abstract(self, n):
-        """Returns the nodes that represent n in the tree cut"""
+        """Returns the nodes that represent leaf node n in the tree cut"""
         key = ''
 
         if hasattr(n, 'key'): # if synset or TreeNode
@@ -379,17 +400,37 @@ class TreeCut(object):
         else: # assume it's str
             key = n
 
-        if key in self.index:
-            return self.index[key]
+        if key in self.leaf2cut:
+            return self.leaf2cut[key]
         else:
             return None
 
     def abstract_synset(self, syn):
         try:
             key = 's.' + syn.name()
-            return self.index[key]
+            return self.leaf2cut[key]
         except:
-            return self.index[syn.name()]
+            return self.leaf2cut[syn.name()]
+
+    def __contains__(self, item):
+        return id(item) in self.cut_ids
+
+
+    def __getstate__(self):
+        ids = [node.id for node in self.cut]
+        return {
+            'cut': ids,
+            'tree': self.tree
+        }
+
+    def __setstate__(self, d):
+        self.tree = d['tree']
+        cut_ids = set(d['cut']) # the ids of cut nodes
+        self.cut = []
+        for depth, node in DepthFirstIterator(self.tree.root):
+            if node.id in cut_ids:
+                self.cut.append(node)
+        self._build_indexes()
 
 
 class DepthFirstIterator(object):
@@ -401,24 +442,13 @@ class DepthFirstIterator(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         if len(self.to_visit) == 0:
             raise StopIteration
         else:
             depth, node = self.to_visit.popleft()
             children = node.children()
-            for child in children:
+            for child in reversed(children):
                 self.to_visit.appendleft((depth+1, child))
 
             return (depth, node)
-
-
-# tree = DefaultTree()
-#
-# tree.insert(['object', 'automobile', 'car'], 10)
-# tree.insert(['object', 'automobile', 'truck'], 10)
-# tree.insert(['object', 'house'], 30)
-# tree.insert(['building'], 5)
-#
-# tree.trim(10)
-# print tree.toJSON()
