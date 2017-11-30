@@ -9,6 +9,7 @@ from misc import util
 import shutil
 import re
 import os
+import sys
 import logging
 import numpy as np
 import pickle
@@ -143,6 +144,31 @@ class TreeCutModel():
             print(synset, count)
             self.tree.increment_synset(synset, count, cumulative=False)
 
+    def __getstate__(self):
+        return {
+            'pos': self.pos,
+            'treecut': self.treecut,
+            'specificity': self.specificity,
+            'estimator': self.estimator
+        }
+
+    def __setstate__(self, d):
+        self.pos = d['pos']
+        self.treecut = d['treecut']
+        self.specificity = d['specificity']
+        self.estimator = d['estimator']
+        self.tree = self.treecut.tree
+
+    def pickle(self, outfolder):
+        name = 'noun_treecut.pickle' if self.pos == 'n' else 'verb_treecut.pickle'
+        sys.setrecursionlimit(sys.getrecursionlimit()*2)
+        filepath = os.path.join(outfolder, name)
+        pickle.dump(self, open(filepath, 'wb'))
+
+    @classmethod
+    def from_pickle(cls, f):
+        return pickle.load(open(f, 'rb'))
+
 
 class Estimator(object):
     def probability(self, node):
@@ -203,7 +229,8 @@ class LaplaceEstimator(Estimator):
 
 
 def _datafile(name):
-    return open(os.path.join(os.path.dirname(__file__), '../data/'+name))
+    return open(os.path.join(os.path.dirname(__file__), '../data/'+name),
+        encoding='utf-8')
 
 
 
@@ -211,12 +238,12 @@ def _datafile(name):
 
 class GrammarTagger(object):
 
-    MaleNames   = [name.strip() for name in _datafile('mnames.txt')]
-    FemaleNames = [name.strip() for name in _datafile('fnames.txt')]
-    Countries   = [country.strip() for country in _datafile('countries.txt')]
-    Months      = [month.strip() for month in _datafile('months.txt')]
-    Surnames    = [surname.strip() for surname in _datafile('surnames.txt')]
-    Cities      = [city.strip() for city in _datafile('cities.txt')]
+    MaleNames   = set([name.strip() for name in _datafile('mnames.txt')])
+    FemaleNames = set([name.strip() for name in _datafile('fnames.txt')])
+    Countries   = set([country.strip() for country in _datafile('countries.txt')])
+    Months      = set([month.strip() for month in _datafile('months.txt')])
+    Surnames    = set([surname.strip() for surname in _datafile('surnames.txt')])
+    Cities      = set([city.strip() for city in _datafile('cities.txt')])
 
     def _get_tag(self, string, pos, synset, tagtype):
         if tagtype == 'pos':
@@ -338,6 +365,13 @@ class GrammarTagger(object):
 
         return category + size
 
+    def is_propername(self, string):
+        return string in GrammarTagger.MaleNames or \
+            string in GrammarTagger.FemaleNames or \
+            string in GrammarTagger.Cities or \
+            string in GrammarTagger.Months or \
+            string in GrammarTagger.Surnames or \
+            string in GrammarTagger.Countries
 
 class Processor(object):
 
@@ -358,12 +392,12 @@ class Processor(object):
             base_structure = ''
             for string, pos, synset in x:
                 tag = self.tagger._get_tag(string, pos, synset, self.tagtype)
-                tags[tag][string] += count                   
+                tags[tag][string] += count
                 base_structure += '({})'.format(tag)
 
             base_structures[base_structure] += count
 
-        
+
         # log.info("Process {} has done its share. Time to rest.".format(process_id))
         return (tags, base_structures)
 
@@ -388,8 +422,8 @@ class Grammar(object):
             self.tag_dicts[tag][string] = 0
 
     def fit_parallel(self, X, num_workers=4):
-        import gc  
-        gc.collect() 
+        import gc
+        gc.collect()
         pool = Pool(num_workers, maxtasksperchild=2)
 
         share = min(int(2e5), math.ceil(len(X)/num_workers))
@@ -483,13 +517,6 @@ class Grammar(object):
                 for lemma, p in tags[tag].most_common():
                     f.write("{}\t{}\n".format(lemma.encode('utf-8'), p))
 
-        # pickle the tree cuts
-        with open(os.path.join(path, "noun-treecut.pickle"), 'wb') as f:
-            pickle.dump(self.noun_treecut, f, -1)
-
-        with open(os.path.join(path, "verb-treecut.pickle"), 'wb') as f:
-            pickle.dump(self.verb_treecut, f, -1)
-
 
 
     def read(self, path):
@@ -521,14 +548,14 @@ class Grammar(object):
                                 .format(fields, tag))
                 self.tag_dicts[tag] = words
 
-        with open(os.path.join(grammar_dir, 'verb-treecut.pickle'), 'rb') as f:
-            self.verb_treecut = pickle.load(f)
-        with open(os.path.join(grammar_dir, 'noun-treecut.pickle'), 'rb') as f:
-            self.noun_treecut = pickle.load(f)
-        with open(os.path.join(grammar_dir, 'params.pickle'), 'rb') as f:
-            opts = pickle.load(f)
-            self.lowres = opts.lowres
-            self.tagtype = opts.tags
+        # with open(os.path.join(grammar_dir, 'verb-treecut.pickle'), 'rb') as f:
+        #     self.verb_treecut = pickle.load(f)
+        # with open(os.path.join(grammar_dir, 'noun-treecut.pickle'), 'rb') as f:
+        #     self.noun_treecut = pickle.load(f)
+        # with open(os.path.join(grammar_dir, 'params.pickle'), 'rb') as f:
+        #     opts = pickle.load(f)
+        #     self.lowres = opts.lowres
+        #     self.tagtype = opts.tags
 
     @classmethod
     def from_files(cls, path):
