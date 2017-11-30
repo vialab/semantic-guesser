@@ -29,8 +29,8 @@ class BackoffTagger(SequentialBackoffTagger):
         train_sents = [[t for t in sentence
             if len(t) == 2] for sentence in train_sents]
 
-        default_tagger = DefaultTagger('nn')
-        wn_tagger      = WordNetTagger(default_tagger)
+        # default_tagger = DefaultTagger('nn')
+        wn_tagger      = WordNetTagger()
         names_tagger   = NamesTagger(wn_tagger)
         coca_tagger    = COCATagger(names_tagger)
         bigram_tagger  = BigramTagger(train_sents, backoff=coca_tagger)
@@ -99,6 +99,8 @@ class WordNetTagger(SequentialBackoffTagger):
         word = tokens[index]
         if word is None:
             return None
+        if len(word) < 3:
+            return None
         fd = FreqDist()
 
         for synset in self.wordnet.synsets(word):
@@ -107,6 +109,11 @@ class WordNetTagger(SequentialBackoffTagger):
             return self.wordnet_tag_map.get(fd.max())
         except:  # in case fd is empty
             return None
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        del state['wordnet']
+        return state
 
     def set_wordnet_instance(self, wordnet):
         """
