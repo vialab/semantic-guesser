@@ -35,6 +35,7 @@ from misc.util import Timer
 #wn.ensure_loaded()
 log = logging.getLogger(__name__)
 tag_converter = TagsetConverter()
+proper_noun_tags = set(BackoffTagger.proper_noun_tags())
 ws.load()
 
 
@@ -95,7 +96,7 @@ def synset(word, pos, wordnet, tag_converter=None):
 
     """
 
-    if pos is None:
+    if pos is None or pos in proper_noun_tags:
         return None
 
     wn_pos = tag_converter.clawsToWordNet(pos)
@@ -355,10 +356,6 @@ def fit_tree_cut_models(passwords, estimator, specificity, num_workers):
 
         for chunks, count in passwords:
             for string, pos in chunks:
-                # skip if string is a proper name
-                if grammar_tagger.is_propername(string):
-                    continue
-
                 syn = synset(string, pos, wn, tag_converter)
                 if syn and syn.pos() == 'n':
                     increment_synset_count(noun_tree, syn, count)

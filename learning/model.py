@@ -233,15 +233,12 @@ def _datafile(name):
         encoding='utf-8')
 
 
-
-
-
 class GrammarTagger(object):
 
     MaleNames   = set([name.strip() for name in _datafile('mnames.txt')])
     FemaleNames = set([name.strip() for name in _datafile('fnames.txt')])
     Countries   = set([country.strip() for country in _datafile('countries.txt')])
-    Months      = set([month.strip() for month in _datafile('months.txt')])
+    # Months      = set([month.strip() for month in _datafile('months.txt')])
     Surnames    = set([surname.strip() for surname in _datafile('surnames.txt')])
     Cities      = set([city.strip() for city in _datafile('cities.txt')])
 
@@ -336,18 +333,16 @@ class GrammarTagger(object):
             return pos + '_' + syntag
 
     def propername_tag(self, string):
-        if string in GrammarTagger.MaleNames:
+        if string in GrammarTagger.Cities:
+            return 'city'
+        elif string in GrammarTagger.Countries:
+            return 'country'
+        elif string in GrammarTagger.MaleNames:
             return 'mname'
         elif string in GrammarTagger.FemaleNames:
             return 'fname'
-        elif string in GrammarTagger.Cities:
-            return 'city'
-        elif string in GrammarTagger.Months:
-            return 'month'
         elif string in GrammarTagger.Surnames:
             return 'surname'
-        elif string in GrammarTagger.Countries:
-            return 'country'
         else:
             return None
 

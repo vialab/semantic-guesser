@@ -69,6 +69,10 @@ class BackoffTagger(SequentialBackoffTagger):
                 tagger.set_wordnet_instance(wordnet)
 
     @classmethod
+    def proper_noun_tags(cls):
+        return ['np', 'np1', 'np2']
+
+    @classmethod
     def from_pickle(cls, path=None):
         if not path:
             path = cls.pickle_path
@@ -123,30 +127,48 @@ class WordNetTagger(SequentialBackoffTagger):
         """
         self.wordnet = wordnet
 
+def _datafile(name):
+    return open(os.path.join(os.path.dirname(__file__), '../data/'+name),
+        encoding='utf-8')
+
 class NamesTagger(SequentialBackoffTagger):
     """
         >>> nt = NamesTagger()
         >>> nt.tag(['Jacob'])
         [('Jacob', 'np')]
     """
+
+    MaleNames   = set([name.strip() for name in _datafile('mnames.txt')])
+    FemaleNames = set([name.strip() for name in _datafile('fnames.txt')])
+    Countries   = set([country.strip() for country in _datafile('countries.txt')])
+    # Months      = set([month.strip() for month in _datafile('months.txt')])
+    Surnames    = set([surname.strip() for surname in _datafile('surnames.txt')])
+    Cities      = set([city.strip() for city in _datafile('cities.txt')])
+
     def __init__(self, *args, **kwargs):
         SequentialBackoffTagger.__init__(self, *args, **kwargs)
-        self.name_set = []
-        for line in open(os.path.join(os.path.dirname(__file__),
-            '../data/names.txt')):
-            self.name_set.append(line.strip())
+        # self.name_set = []
+        # for line in open(os.path.join(os.path.dirname(__file__),
+        #     '../data/names.txt')):
+        #     self.name_set.append(line.strip())
 
     def choose_tag(self, tokens, index, history):
-
         word = tokens[index]
 
         if word is None:
             return None
 
-        if word.lower() in self.name_set:
+        if self.is_propername(word.lower()):
             return 'np'
         else:
             return None
+
+    def is_propername(self, string):
+        return string in NamesTagger.MaleNames or \
+               string in NamesTagger.FemaleNames or \
+               string in NamesTagger.Cities or \
+               string in NamesTagger.Surnames or \
+               string in NamesTagger.Countries
 
 
 class COCATagger(SequentialBackoffTagger):
