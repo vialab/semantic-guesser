@@ -181,7 +181,7 @@ class DefaultTreeNode (TreeNode):
             if node.is_leaf():
                 leafs.append(node)
             else:
-                queue += node.children()
+                queue += reversed(node.children())
 
         return leafs
 
