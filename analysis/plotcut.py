@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
-from learning.model import Grammar
+from learning.model import Grammar, TreeCutModel
 from learning.tree.default_tree import DepthFirstIterator
+from analysis.peaks import detect_peaks
+
 import misc.util as util
 
 import numpy   as np
 import matplotlib.pyplot as plt
 
 import math
+import os
 
 
 def options():
@@ -57,16 +60,19 @@ def depth_curve(treecut):
 
     depth = []
     for node in treecut:
-        nLeaves = node.leafCount()
+        nLeaves = node.leaf_count
         d = node.depth
         depth.extend([d] * max(nLeaves, 1))
 
     return depth
 
 
-def plot_many(treecuts, fig=None, ax=None, show=False, linecolor='#087dd1', fillcolor='#75b7e6'):
+def plot_many(treecuts, fig=None, ax=None, show=False,
+    linecolor='#087dd1', fillcolor='#75b7e6'):
 
     depths = []
+
+    leaves = treecuts[0].tree.leaves()
 
     for treecut in treecuts:
         depth = depth_curve(treecut)
@@ -86,14 +92,19 @@ def plot_many(treecuts, fig=None, ax=None, show=False, linecolor='#087dd1', fill
     ax.plot(min_depth, '-', lw=1, color=linecolor)
     ax.fill_between(range(len(max_depth)), min_depth, max_depth, facecolor=fillcolor)
 
+    peaks = detect_peaks(max_depth)
+    # for peak in peaks:
+    #     ax.text(peak, max_depth[peak], leaves[peak].key)
+
     if show:
         plt.show()
 
     return fig, ax
 
 
-def plot(treecut, fig=None, ax=None, show=False):
+def plot(treecut, fig=None, ax=None, show=False, color=None):
     depth = depth_curve(treecut)
+    leaves = treecut.tree.leaves()
 
     smooth_depth = smooth(np.array(depth), 1000)
 
@@ -101,7 +112,11 @@ def plot(treecut, fig=None, ax=None, show=False):
         fig, ax = plt.subplots()
         plt.gca().invert_yaxis()
 
-    ax.plot(smooth_depth, '-', lw=1)
+    ax.plot(smooth_depth, '-', lw=1, color=color)
+
+    peaks = detect_peaks(depth)
+    # for peak in peaks:
+    #     ax.text(peak, depth[peak], leaves[peak].parent.key)
 
     if show: plt.show()
 
@@ -116,14 +131,17 @@ if __name__ == '__main__':
     if opts.aggregate:
         treecuts = []
         for i in range(0, n):
-            g = Grammar.from_files(opts.grammars[i])
-            treecuts.append(g.noun_treecut)
+            treecut = TreeCutModel.from_pickle(
+                os.path.join(opts.grammars[i], 'noun_treecut.pickle')).treecut
+            treecuts.append(treecut)
 
         plot_many(treecuts)
     else:
-        g0 = Grammar.from_files(opts.grammars[0])
-        fig, ax = plot(g0.noun_treecut, show=n==1)
+        treecut = TreeCutModel.from_pickle(
+            os.path.join(opts.grammars[0], 'noun_treecut.pickle')).treecut
+        fig, ax = plot(treecut, show=n==1)
 
         for i in range(1, n):
-            g_i = Grammar.from_files(opts.grammars[i])
-            fig, ax = plot(g_i.noun_treecut, fig, ax, show=i==n-1)
+            treecut = TreeCutModel.from_pickle(
+                os.join(opts.grammars[0], 'noun_treecut.pickle')).treecut
+            fig, ax = plot(treecut, fig, ax, show=i==n-1)
