@@ -241,6 +241,9 @@ def verb_vocab(tcm, postagger = None):
 
         for classy in classes:
             for form, postag in forms:
+                if not postag:
+                    log.warning("{} has POS==None".format(form))
+                    continue
                 if postag[0] == 'n': # dirty hack to avoid inconsistency introduced by tagger
                     continue
                 verbs.add((form, postag, classy))
