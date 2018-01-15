@@ -119,6 +119,10 @@ class WordNetTagger(SequentialBackoffTagger):
         del state['wordnet']
         return state
 
+    def __setstate__(self, d):
+        self.wordnet_tag_map = d['wordnet_tag_map']
+        self.wordnet = wordnet
+
     def set_wordnet_instance(self, wordnet):
         """
         Set an instance of WordNetCorpusReader. If not set, then this object
