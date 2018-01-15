@@ -412,8 +412,9 @@ class Grammar(object):
         self.tagtype = tagtype
 
     def add_vocabulary(self, vocab):
+        tagger = GrammarTagger()
         for string, pos, synset in vocab:
-            tag = self._get_tag(string, pos, synset, self.tagtype)
+            tag = tagger._get_tag(string, pos, synset, self.tagtype)
             self.tag_dicts[tag][string] = 0
 
     def fit_parallel(self, X, num_workers=4):
@@ -438,7 +439,7 @@ class Grammar(object):
                 for string, count in terminals.items():
                     self.tag_dicts[tag][string] += count
             i += 1
-            log.info("Processed {}/{} result batchs...".format(i, num_parts))
+            log.info("Processed {}/{} result batches...".format(i, num_parts))
 
 
         log.info("Fitting completed.")
