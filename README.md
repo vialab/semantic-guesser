@@ -1,10 +1,10 @@
-# Semantic Guesser
+# Semantic Password Guesser
 
-Train probabilistic context-free grammars that encode
-linguistic password patterns.
+Tools for training probabilistic context-free grammars on password lists. The
+models encode syntactic and semantic linguistic patterns and can be used to
+generate guesses.
 
-
-## Usage
+## Basic Usage
 
 To train a grammar with a password list:
 
@@ -28,6 +28,35 @@ flipmode
 flipmode
 alden2
 ```
+
+## Options
+
+```
+usage: train.py [-h] [--estimator {mle,laplace}] [-a ABSTRACTION] [-v]
+                [--tags {pos_semantic,pos,backoff,word}] [-w NUM_WORKERS]
+                [passwords] output_folder
+
+positional arguments:
+  passwords             a password list
+  output_folder         a folder to store the grammar model
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --estimator {mle,laplace}
+  -a ABSTRACTION, --abstraction ABSTRACTION
+                        Detail level of the grammar. An integer > 0
+                        proportional to the desired specificity.
+  -v                    verbose level (e.g., -vvv)
+  --tags {pos_semantic,pos,backoff,word}
+  -w NUM_WORKERS, --num_workers NUM_WORKERS
+                        number of cores available for parallel work
+
+```
+
+## Abstraction level
+
+
+
 
 
 ## Installation
