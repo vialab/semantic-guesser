@@ -88,6 +88,4 @@ Then download NLTK data:
 python -m nltk.downloader wordnet wordnet_ic
 ```
 
-## References
-
 [1]: http://purl.flvc.org/fsu/fd/FSU_migr_etd-1213 "Weir, C. M. (2010). Using Probabilistic Techniques to Aid in Password Cracking Attacks."
