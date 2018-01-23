@@ -11,6 +11,7 @@
 #include <iterator>
 #include <algorithm>
 #include <string>
+#include <limits>
 #include "cpp-argparse/OptionParser.h"
 
 using namespace std;
