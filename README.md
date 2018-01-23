@@ -53,11 +53,23 @@ optional arguments:
 
 ```
 
-## Abstraction level
 
+## Generating guesses
 
+The guess generator is a C++ program, you need to compile it first.
 
+```
+cd guessing
+make
+```
 
+Then run it with a trained grammar model.
+
+```
+guessmaker -g /path/to/my/grammar
+```
+
+guessmaker implements the algorithms described in [Matt Weir's dissertation][1]: next and deadbeat. Deadbeat is the default.
 
 ## Installation
 
@@ -75,3 +87,7 @@ Then download NLTK data:
 ```
 python -m nltk.downloader wordnet wordnet_ic
 ```
+
+## References
+
+[1]: http://purl.flvc.org/fsu/fd/FSU_migr_etd-1213 "Weir, C. M. (2010). Using Probabilistic Techniques to Aid in Password Cracking Attacks."
