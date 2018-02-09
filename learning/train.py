@@ -32,7 +32,7 @@ from pattern.en import pluralize, lexeme
 from misc.util import Timer
 
 # load global resources
-#wn.ensure_loaded()
+
 log = logging.getLogger(__name__)
 tag_converter = TagsetConverter()
 proper_noun_tags = set(BackoffTagger.proper_noun_tags())
@@ -511,8 +511,10 @@ def train_grammar(password_file, outfolder,
 
     log.info("Persisting grammar")
     grammar.write_to_disk(outfolder)
-    filepath = os.path.join(outfolder, 'noun_treecut.pickle')
-    pickle.dump(tcm_n, open(filepath, 'wb'), -1)
+    noun_filepath = os.path.join(outfolder, 'noun_treecut.pickle')
+    verb_filepath = os.path.join(outfolder, 'verb_treecut.pickle')
+    pickle.dump(tcm_n, open(noun_filepath, 'wb'), -1)
+    pickle.dump(tcm_v, open(verb_filepath, 'wb'), -1)
 
     log.info("Done.")
 

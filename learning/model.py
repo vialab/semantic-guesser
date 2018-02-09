@@ -513,6 +513,11 @@ class Grammar(object):
                 for lemma, p in tags[tag].most_common():
                     f.write("{}\t{}\n".format(lemma.encode('utf-8'), p))
 
+        noun_filepath = os.path.join(path, 'noun_treecut.pickle')
+        verb_filepath = os.path.join(path, 'verb_treecut.pickle')
+
+        pickle.dump(self.noun_treecut, open(noun_filepath, 'wb'), -1)
+        pickle.dump(self.verb_treecut, open(verb_filepath, 'wb'), -1)
 
 
     def read(self, path):
@@ -544,10 +549,11 @@ class Grammar(object):
                                 .format(fields, tag))
                 self.tag_dicts[tag] = words
 
-        # with open(os.path.join(grammar_dir, 'verb-treecut.pickle'), 'rb') as f:
-        #     self.verb_treecut = pickle.load(f)
-        # with open(os.path.join(grammar_dir, 'noun-treecut.pickle'), 'rb') as f:
-        #     self.noun_treecut = pickle.load(f)
+        with open(os.path.join(grammar_dir, 'verb_treecut.pickle'), 'rb') as f:
+            self.verb_treecut = pickle.load(f)
+        with open(os.path.join(grammar_dir, 'noun-treecut.pickle'), 'rb') as f:
+            self.noun_treecut = pickle.load(f)
+
         # with open(os.path.join(grammar_dir, 'params.pickle'), 'rb') as f:
         #     opts = pickle.load(f)
         #     self.lowres = opts.lowres
