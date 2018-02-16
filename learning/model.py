@@ -551,7 +551,7 @@ class Grammar(object):
 
         with open(os.path.join(grammar_dir, 'verb_treecut.pickle'), 'rb') as f:
             self.verb_treecut = pickle.load(f)
-        with open(os.path.join(grammar_dir, 'noun-treecut.pickle'), 'rb') as f:
+        with open(os.path.join(grammar_dir, 'noun_treecut.pickle'), 'rb') as f:
             self.noun_treecut = pickle.load(f)
 
         # with open(os.path.join(grammar_dir, 'params.pickle'), 'rb') as f:
