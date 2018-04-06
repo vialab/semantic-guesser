@@ -403,9 +403,11 @@ class Grammar(object):
         self.base_structures = Counter()
         self.probabilities   = dict()
         self.tag_dicts       = defaultdict(Counter)
-        self.verb_treecut = None
-        self.noun_treecut = None
+        # self.verb_treecut = None
+        # self.noun_treecut = None
         self.estimator = estimator
+        self.tagger = GrammarTagger()
+        self.counter = 0                          # record # of observations
 
         # booleans
         self.lowres = None
@@ -416,6 +418,23 @@ class Grammar(object):
         for string, pos, synset in vocab:
             tag = tagger._get_tag(string, pos, synset, self.tagtype)
             self.tag_dicts[tag][string] = 0
+
+    def get_vocab(self):
+        vocab = set()
+        for tag_dict in self.tag_dicts.values():
+            for word in tag_dict.keys():
+                vocab.add(word)
+        return vocab
+
+    def _get_tag_prob_estimator(self,tag):
+        samplesize          = sum(self.tag_dicts[tag].values())
+        vocabsize           = len(self.tag_dicts[tag])
+        if self.estimator == 'laplace':
+            estimator = LaplaceEstimator(samplesize, vocabsize, 1)
+        else:
+            estimator = MleEstimator(samplesize)
+
+        return estimator
 
     def fit_parallel(self, X, num_workers=4):
         import gc
@@ -435,6 +454,7 @@ class Grammar(object):
             tag_results, base_struct_results = result
             for base_struct, count in base_struct_results.items():
                 self.base_structures[base_struct] += count
+                self.counter += count
             for tag, terminals in tag_results.items():
                 for string, count in terminals.items():
                     self.tag_dicts[tag][string] += count
@@ -460,12 +480,159 @@ class Grammar(object):
         log.debug(x)
         base_structure = ''
         for string, pos, synset in x:
-            tag = self._get_tag(string, pos, synset, self.tagtype)
+            tag = self.tagger._get_tag(string, pos, synset, self.tagtype)
             self.tag_dicts[tag][string] += count
             base_structure += '({})'.format(tag)
 
         self.base_structures[base_structure] += count
         log.debug(base_structure)
+
+    def sample(self, N):
+        """ Sample N observations from this probabilistic model.
+        """
+        # Prepare data structures for fast-ish sampling
+
+        base_structs      = []
+        base_struct_probs = []
+        tag2words         = dict() # tag2words['jj'] = ['hot', 'cold', ...]
+        tag2probs         = dict() # tag2probs['jj'] = np.array([.1, .005, ...])
+
+        for k, v in self.base_structures.items():
+            base_structs.append(k)
+            base_struct_probs.append(v)
+        base_struct_probs = np.array(base_struct_probs)
+        base_struct_probs = base_struct_probs/np.sum(base_struct_probs) # calculate MLE
+
+        for tag, v in self.tag_dicts.items():
+            W = []
+            P = []
+            estimator = self._get_tag_prob_estimator(tag)
+            for word, count in v.items():
+                W.append(word)
+                P.append(estimator.probability(count))
+            tag2words[tag] = W
+            tag2probs[tag] = P
+
+        # Sample
+
+        base_struct_sample_indices = np.random.choice(  # sample from base structures
+            len(base_structs), size=N,
+            replace=True, p=base_struct_probs
+        )
+
+        outcomes = []                            # final sample outcome:
+                                                 # list of tuples (string, prob)
+
+        for i in base_struct_sample_indices:     # for each base structure,
+            base_struct  = base_structs[i]       # sample a word from each of its tags
+            outcome      = ''                    # one sampling outcome
+            outcome_prob = base_struct_probs[i]
+
+            for tag in re.findall('\(([^\(\)]+)\)', base_struct):
+                pdist          = tag2probs[tag]
+                j              = np.random.choice(len(pdist), replace=True, p=pdist)
+                outcome       += tag2words[tag][j]
+                outcome_prob  *= pdist[j]
+
+            outcomes.append((outcome, base_struct, outcome_prob))
+
+        return outcomes
+
+
+    def predict(self, X):
+        """
+        A generator that returns the probabilities of strings under
+        this grammar.
+
+        Args:
+            X - a list of lists of tuples in the form (string, pos, str(synset))
+        """
+
+        tag_prob_cache = dict()         # tag_prob_cache[tag][word] = p
+
+        def prob(tag, string):
+            if tag not in tag_prob_cache:
+                tag_prob_cache[tag] = dict()
+                samplesize          = sum(self.tag_dicts[tag].values())
+                vocabsize           = len(self.tag_dicts[tag].keys())
+
+                if self.estimator == 'laplace':
+                    estimator = LaplaceEstimator(samplesize, vocabsize, 1)
+                else:
+                    estimator = MleEstimator(samplesize)
+
+                for k, count in self.tag_dicts[tag].items():
+                    tag_prob_cache[tag][k] = estimator.probability(count)
+
+            try:
+                return tag_prob_cache[tag][string]
+            except KeyError:
+                return 0
+
+        for x in X:
+            base_structure = ''
+            p = 1
+            for string, pos, synset in x:
+                tag = self.tagger._get_tag(string, pos, synset, self.tagtype)
+                base_structure += '({})'.format(tag)
+
+                p *= prob(tag, string)
+
+            p *= self.base_structures[base_structure]/self.counter
+
+            yield p
+
+
+    def predict_async(self):
+        """
+        An asynchronous generator that returns the probabilities of
+        strings under this grammar. This is useful for when the next
+        input depends on the previous output.
+
+        Example:
+            > predict = predict_async()
+            > predict.send(None)
+            > predict.send([('hot', 'jj', None), ('dogs', 'nn2', 's.dog.n.01')])
+              2.1873503560328376e-12
+
+        Args:
+            x - a list of tuples in the form (string, pos, str(synset))
+        """
+
+        tag_prob_cache = dict()         # tag_prob_cache[tag][word] = p
+
+        def prob(tag, string):
+            if tag not in tag_prob_cache:
+                tag_prob_cache[tag] = dict()
+                samplesize          = sum(self.tag_dicts[tag].values())
+                vocabsize           = len(self.tag_dicts[tag].keys())
+
+                if self.estimator == 'laplace':
+                    estimator = LaplaceEstimator(samplesize, vocabsize, 1)
+                else:
+                    estimator = MleEstimator(samplesize)
+
+                for k, count in self.tag_dicts[tag].items():
+                    tag_prob_cache[tag][k] = estimator.probability(count)
+
+            try:
+                return tag_prob_cache[tag][string]
+            except KeyError:
+                return 0
+
+        while True:
+            x = yield
+            base_structure = ''
+            p = 1
+            for string, pos, synset in x:
+                tag = self.tagger._get_tag(string, pos, synset, self.tagtype)
+                base_structure += '({})'.format(tag)
+
+                p *= prob(tag, string)
+
+            p *= self.base_structures[base_structure]/self.counter
+
+            yield p
 
 
     def base_structure_probabilities(self):
@@ -477,11 +644,12 @@ class Grammar(object):
         return [(struct, count/total) for struct, count in rank]
 
     def tag_probabilities(self):
-        tag_dicts = self.tag_dicts
+        tag_dicts     = self.tag_dicts
         probabilities = defaultdict(Counter)
+
         for tag in tag_dicts.keys():
             samplesize = sum(tag_dicts[tag].values())
-            vocabsize = len(tag_dicts[tag].keys())
+            vocabsize  = len(tag_dicts[tag].keys())
 
             if self.estimator == 'laplace':
                 est = LaplaceEstimator(samplesize, vocabsize, 1)
@@ -492,6 +660,16 @@ class Grammar(object):
                 probabilities[tag][lemma] = est.probability(freq)
 
         return probabilities
+
+    # def __getstate__(self):
+    #     d = dict(self.__dict__)
+    #     # these attributes will be saved in plain text (not pickled)
+    #     d['base_structures'] = Counter()
+    #     d['tag_dicts'] =  defaultdict(Counter)
+    #     return d
+
+    # def __setstate__(self, state):
+    #
 
     def write_to_disk(self, path):
         # remove previous grammar
@@ -513,11 +691,8 @@ class Grammar(object):
                 for lemma, p in tags[tag].most_common():
                     f.write("{}\t{}\n".format(lemma.encode('utf-8'), p))
 
-        noun_filepath = os.path.join(path, 'noun_treecut.pickle')
-        verb_filepath = os.path.join(path, 'verb_treecut.pickle')
-
-        pickle.dump(self.noun_treecut, open(noun_filepath, 'wb'), -1)
-        pickle.dump(self.verb_treecut, open(verb_filepath, 'wb'), -1)
+        self_filepath = os.path.join(path, 'grammar.pickle')
+        pickle.dump(self, open(self_filepath, 'wb'), -1)
 
 
     def read(self, path):
@@ -537,30 +712,20 @@ class Grammar(object):
 
             with open(os.path.join(tagdicts_dir, fname)) as f:
                 tag = fname.replace('.txt', '')
-                words = []
                 for line in f:
                     fields = line.split('\t')
                     try:
                         word, prob = fields
-                        words.append(word)
-                        self.probabilities[(tag, word)] = float(prob)
+                        self.tag_dicts[tag][word] = float(prob)
                     except:
                         sys.stderr.write("error inserting {} in the tag dictionary {}\n"
                                 .format(fields, tag))
-                self.tag_dicts[tag] = words
 
-        with open(os.path.join(grammar_dir, 'verb_treecut.pickle'), 'rb') as f:
-            self.verb_treecut = pickle.load(f)
-        with open(os.path.join(grammar_dir, 'noun_treecut.pickle'), 'rb') as f:
-            self.noun_treecut = pickle.load(f)
 
-        # with open(os.path.join(grammar_dir, 'params.pickle'), 'rb') as f:
-        #     opts = pickle.load(f)
-        #     self.lowres = opts.lowres
-        #     self.tagtype = opts.tags
 
     @classmethod
     def from_files(cls, path):
-        g = cls()
-        g.read(path)
+        gpath = os.path.join(path, 'grammar.pickle')
+        g = pickle.load(open(gpath, "rb"))
+        # g.read(path)
         return g

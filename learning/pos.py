@@ -11,6 +11,39 @@ from nltk.tag.sequential import DefaultTagger, \
                                 SequentialBackoffTagger
 from nltk.probability import FreqDist
 
+class ExhaustiveTagger():
+    """
+    Returns a comprehensive list of tags for a word. Does not tag
+    numbers.
+    """
+    def __init__(self):
+        self.taggers = [
+            WordNetTagger(),
+            NamesTagger(),
+            COCATagger()
+        ]
+
+    def tag(self, tokens):
+        taglists = []
+        for index, token in enumerate(tokens):
+            taglists.append(self.tag_one(tokens, index, taglists))
+        return taglists
+
+    def tag_one(self, tokens, index, history):
+        token = tokens[index]
+        if token.isdigit(): return [(token,None)]
+
+        tags = set()
+
+        for tagger in self.taggers:
+            tags.update(tagger.get_tags(token))
+
+        return [(token, tag) for tag in tags] if len(tags) else [(token, None)]
+
+    def get_tags(self, token):
+        return self.tag_one([token], 0, [])
+
+
 class BackoffTagger(SequentialBackoffTagger):
 
     pickle_path = os.path.join(os.path.dirname(__file__),
@@ -99,6 +132,17 @@ class WordNetTagger(SequentialBackoffTagger):
 
         self.wordnet = wordnet
 
+    def get_tags(self, token):
+        synsets = self.wordnet.synsets(token)
+        tagset  = set()
+        taglist = []
+        for syn in synsets:
+            pos = self.wordnet_tag_map[syn.pos()]
+            if pos not in tagset:
+                tagset.add(pos)
+                taglist.append(pos)
+        return taglist
+
     def choose_tag(self, tokens, index, history):
         word = tokens[index]
         if word is None:
@@ -167,6 +211,10 @@ class NamesTagger(SequentialBackoffTagger):
         else:
             return None
 
+    def get_tags(self, token):
+        if self.is_propername(token): return ['np']
+        else: return []
+
     def is_propername(self, string):
         return string in NamesTagger.MaleNames or \
                string in NamesTagger.FemaleNames or \
@@ -205,3 +253,13 @@ class COCATagger(SequentialBackoffTagger):
             return posfreq[0]
         else:
             return None
+
+    def get_tags(self, token):
+        # return the 3 most frequent POS tags if len(token) > 1
+        # if it's a letter, then return only the most frequent
+        if token in self.tag_map:
+            return [tag for tag, freq in self.tag_map[token][:3]]
+        # elif len(token) == 1 and token in self.tag_map:
+        #     return self.tag_map[token][0][0]
+        else:
+            return []

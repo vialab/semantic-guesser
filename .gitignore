@@ -28,3 +28,4 @@ root/db_credentials.conf
 
 *.pickle
 *.sql
+env

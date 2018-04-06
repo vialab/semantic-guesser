@@ -112,7 +112,7 @@ def synset(word, pos, wordnet, tag_converter=None):
 def pos_tag(chunks, tagger):
     """ Assign POS tags to alphabetic chunks, except when they are short (less
     than 3 chars) AND have no adjacent chunks of the same type (e.g. "1ab!!").
-    Such a chunks are likely to be short strings in a random password.
+    Such chunks are likely to be short strings in a random password.
 
     Example:
         >>> pos_tag(['i', 'love', 'you', '2'])
@@ -167,7 +167,7 @@ def lemmas(synset):
     return lemmas
 
 
-def noun_vocab(tcm, postagger=None):
+def noun_vocab(tcm, postagger=None, min_length=0):
     """
     Return all nouns found in wordnet in both singular and plurar forms,
     along with POS tag and synset (as given by a TreeCutModel instance).
@@ -182,6 +182,8 @@ def noun_vocab(tcm, postagger=None):
     nouns = set()
 
     for lemma in wn.all_lemma_names(pos = 'n'):
+        if len(lemma) < min_length:
+            continue
         if '_' in lemma:
             continue
 
@@ -194,7 +196,7 @@ def noun_vocab(tcm, postagger=None):
     return nouns
 
 
-def verb_vocab(tcm, postagger = None):
+def verb_vocab(tcm, postagger = None, min_length=0):
     """
     Return all verbs found in wordnet in various inflected forms.
     """
@@ -221,6 +223,8 @@ def verb_vocab(tcm, postagger = None):
     verbs = set()
 
     for lemma in wn.all_lemma_names(pos = 'v'):
+        if len(lemma) < min_length:
+            continue
         if '_' in lemma:
             continue
 
@@ -459,8 +463,8 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
     # feed grammar with the 'prior' vocabulary
     if estimator == 'laplace':
         postagger = BackoffTagger.from_pickle()
-        grammar.add_vocabulary(noun_vocab(tcm_n, postagger))
-        grammar.add_vocabulary(verb_vocab(tcm_v, postagger))
+        grammar.add_vocabulary(noun_vocab(tcm_n, postagger, min_length=3))
+        grammar.add_vocabulary(verb_vocab(tcm_v, postagger, min_length=2))
 
     pool = []
 
