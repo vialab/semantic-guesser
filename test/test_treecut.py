@@ -1,5 +1,9 @@
-from context import _li_abe, li_abe, WordNetTreeNode, DefaultTree,\
-    MleEstimator, LaplaceEstimator
+# %cd test
+from context import _li_abe, \
+    li_abe, WordNetTreeNode, WordNetTree, DefaultTree,\
+    MleEstimator, LaplaceEstimator, DepthFirstIterator
+
+import pickle
 
 def test_description_length():
     # --------------------------------------------------------
@@ -111,4 +115,37 @@ def test_laplace_estimator():
         print('---------')
 
 
-# test_laplace_estimator()
+# def test_tree_pickling():
+#     ANIMAL = WordNetTreeNode('ANIMAL')
+#     BIRD = WordNetTreeNode('BIRD')
+#     INSECT = WordNetTreeNode('INSECT')
+#     bug = WordNetTreeNode('bug', value=0)
+#     bee = WordNetTreeNode('bee', value=2)
+#     insect = WordNetTreeNode('insect', value=0)
+#     swallow = WordNetTreeNode('swallow', value=0)
+#     crow = WordNetTreeNode('crow', value=2)
+#     eagle = WordNetTreeNode('eagle', value=2)
+#     bird = WordNetTreeNode('bird', value=4)
+#
+#     ANIMAL.add_child(BIRD)
+#     ANIMAL.add_child(INSECT)
+#     for child in [bug, bee, insect]: INSECT.add_child(child)
+#     for child in [swallow, crow, eagle, bird]: BIRD.add_child(child)
+#
+#     ANIMAL.updateCounts()
+#
+#     tree = WordNetTree('n', init=False)
+#     tree.root = ANIMAL
+#
+#     pickle.dump(tree, open('test_tree_pickling.pickle','wb'), protocol=1)
+#     tree2 = pickle.load(open('test_tree_pickling.pickle','rb'))
+#     print(tree2.root.wrap())
+#
+#     tree.root.children()
+#     tree2.root.children()
+#
+#     for depth, node in DepthFirstIterator(tree.root):
+#         print(depth, node)
+#
+#     for depth, node in DepthFirstIterator(tree2.root):
+#         print(depth, node)

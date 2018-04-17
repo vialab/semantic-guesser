@@ -80,7 +80,7 @@ def getchunks(password):
     return chunks
 
 
-def synset(word, pos, wordnet, tag_converter=None):
+def synset(word, pos, wordnet, tag_converter=None, min_length_n=3, min_length_v=2):
     """
     Given a POS-tagged word, determine its synset by converting the CLAWS tag
     to a WordNet tag and querying the associated synset from NLTK's WordNet.
@@ -102,6 +102,10 @@ def synset(word, pos, wordnet, tag_converter=None):
     wn_pos = tag_converter.clawsToWordNet(pos)
 
     if wn_pos is None:
+        return None
+
+    min_length = min_length_n if wn_pos == 'n' else min_length_v
+    if len(word) < min_length:
         return None
 
     synsets = wordnet.synsets(word, wn_pos)
@@ -187,11 +191,19 @@ def noun_vocab(tcm, postagger=None, min_length=0):
         if '_' in lemma:
             continue
 
-        plural = pluralize(lemma)
+        plural = None
+        if lemma[-1] != 's':
+            plural = pluralize(lemma)
+            # use the the plural only if it still enable us to
+            # get to the synsets (some words shouldn't be pluralized)
+            if len(wn.synsets(plural)) == 0:
+                plural = None
+
         for syn in wn.synsets(lemma, 'n'):
             for classy in tcm.predict(syn):
                 nouns.add((lemma, singular_n_pos, classy))
-                nouns.add((plural, plural_n_pos, classy))
+                if plural is not None:
+                    nouns.add((plural, plural_n_pos, classy))
 
     return nouns
 

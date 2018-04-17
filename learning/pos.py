@@ -7,6 +7,7 @@ from nltk.corpus import wordnet
 
 from nltk.tag.sequential import DefaultTagger, \
                                 BigramTagger,  \
+                                UnigramTagger,  \
                                 TrigramTagger, \
                                 SequentialBackoffTagger
 from nltk.probability import FreqDist
@@ -16,11 +17,23 @@ class ExhaustiveTagger():
     Returns a comprehensive list of tags for a word. Does not tag
     numbers.
     """
+    pickle_path = os.path.join(os.path.dirname(__file__),
+        '../data/exhaustive_tagger.pickle')
+
     def __init__(self):
+        tagged_brown_path = os.path.join(os.path.dirname(__file__),
+            '../data/brown_clawstags.pickle')
+        train_sents = pickle.load(open(tagged_brown_path, 'rb'))
+
+        # make sure all tuples are in the required format: (TAG, word)
+        train_sents = [[t for t in sentence
+            if len(t) == 2] for sentence in train_sents]
+
         self.taggers = [
             WordNetTagger(),
             NamesTagger(),
-            COCATagger()
+            COCATagger(),
+            MyUnigramTagger(train_sents)
         ]
 
     def tag(self, tokens):
@@ -42,6 +55,19 @@ class ExhaustiveTagger():
 
     def get_tags(self, token):
         return self.tag_one([token], 0, [])
+
+    def pickle(self, path=None):
+        if not path:
+            path = ExhaustiveTagger.pickle_path
+
+        pickle.dump(self, open(path, 'wb'))
+
+    @classmethod
+    def from_pickle(cls, path=None):
+        if not path:
+            path = cls.pickle_path
+
+        return pickle.load(open(path, 'rb'))
 
 
 class BackoffTagger(SequentialBackoffTagger):
@@ -111,6 +137,15 @@ class BackoffTagger(SequentialBackoffTagger):
             path = cls.pickle_path
 
         return pickle.load(open(path, 'rb'))
+
+
+class MyUnigramTagger(UnigramTagger):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def get_tags(self, token):
+        return [self.choose_tag([token], 0, [])]
+
 
 class WordNetTagger(SequentialBackoffTagger):
     '''

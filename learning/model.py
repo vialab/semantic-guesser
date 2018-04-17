@@ -489,6 +489,9 @@ class Grammar(object):
 
     def sample(self, N):
         """ Sample N observations from this probabilistic model.
+
+        Return:
+            list of tuples (password, base_struct, probability)
         """
         # Prepare data structures for fast-ish sampling
 
@@ -689,7 +692,7 @@ class Grammar(object):
         for tag in tags.keys():
             with open(os.path.join(path, 'nonterminals', str(tag) + '.txt'), 'w+') as f:
                 for lemma, p in tags[tag].most_common():
-                    f.write("{}\t{}\n".format(lemma.encode('utf-8'), p))
+                    f.write("{}\t{}\n".format(lemma, p))
 
         self_filepath = os.path.join(path, 'grammar.pickle')
         pickle.dump(self, open(self_filepath, 'wb'), -1)
