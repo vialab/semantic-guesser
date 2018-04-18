@@ -425,7 +425,7 @@ def fit_tree_cut_models(passwords, estimator, specificity, num_workers):
 class MyManager(BaseManager): pass
 
 
-def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
+def fit_grammar(passwords, tagtype, estimator, tcm_n, tcm_v, num_workers):
 
     def do_work(passwords, tcm_n, tcm_v, out_list):
         # a fresh instance of wordnet
@@ -470,7 +470,7 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
 
     manager = Manager()
     results = manager.list()
-    grammar = Grammar(estimator=estimator)
+    grammar = Grammar(estimator=estimator, tagtype=tagtype)
 
     # feed grammar with the 'prior' vocabulary
     if estimator == 'laplace':
@@ -501,7 +501,7 @@ def fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers):
     return grammar
 
 
-def train_grammar(password_file, outfolder,
+def train_grammar(password_file, outfolder, tagtype='backoff',
     estimator='laplace', specificity=None, num_workers=2):
     """Train a semantic password model"""
 
@@ -523,7 +523,7 @@ def train_grammar(password_file, outfolder,
     log.info("Training grammar...")
 
     with Timer("training grammar", log):
-        grammar = fit_grammar(passwords, estimator, tcm_n, tcm_v, num_workers)
+        grammar = fit_grammar(passwords, tagtype, estimator, tcm_n, tcm_v, num_workers)
 
     log.info("Persisting grammar")
     grammar.write_to_disk(outfolder)
@@ -549,7 +549,7 @@ def options():
         the desired specificity.')
     parser.add_argument('-v', action = 'append_const', const = 1, help="""
         verbose level (e.g., -vvv) """)
-    parser.add_argument('--tags', default='pos_semantic',
+    parser.add_argument('--tagtype', default='pos_semantic',
         choices=['pos_semantic', 'pos', 'backoff', 'word'])
     parser.add_argument('-w', '--num_workers', type=int, default=2,
         help="number of cores available for parallel work")
@@ -567,6 +567,7 @@ if __name__ == '__main__':
 
     train_grammar(password_file,
                   opts.output_folder,
+                  opts.tagtype,
                   opts.estimator,
                   opts.abstraction,
                   opts.num_workers)
