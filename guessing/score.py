@@ -348,7 +348,7 @@ if __name__ == '__main__':
     grammar_dir    = Path(opts.grammar_dir)
     passwords_file = Path(opts.passwords)
 
-    tagger   = ExhaustiveTagger.from_pickle()
+    postagger   = ExhaustiveTagger.from_pickle()
     tc_nouns = pickle.load(open(grammar_dir / 'noun_treecut.pickle', 'rb'))
     tc_verbs = pickle.load(open(grammar_dir / 'verb_treecut.pickle', 'rb'))
     grammar  = model.Grammar.from_files(opts.grammar_dir)
