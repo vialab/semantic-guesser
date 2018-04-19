@@ -171,7 +171,7 @@ def lemmas(synset):
     return lemmas
 
 
-def noun_vocab(tcm, postagger=None, min_length=0):
+def noun_vocab(tcm=None, postagger=None, min_length=0):
     """
     Return all nouns found in wordnet in both singular and plurar forms,
     along with POS tag and synset (as given by a TreeCutModel instance).
@@ -200,7 +200,8 @@ def noun_vocab(tcm, postagger=None, min_length=0):
                 plural = None
 
         for syn in wn.synsets(lemma, 'n'):
-            for classy in tcm.predict(syn):
+            classes = tcm.predict(syn) if tcm is not None else [syn.name()]
+            for classy in classes:
                 nouns.add((lemma, singular_n_pos, classy))
                 if plural is not None:
                     nouns.add((plural, plural_n_pos, classy))
@@ -208,7 +209,7 @@ def noun_vocab(tcm, postagger=None, min_length=0):
     return nouns
 
 
-def verb_vocab(tcm, postagger = None, min_length=0):
+def verb_vocab(tcm = None, postagger = None, min_length=0):
     """
     Return all verbs found in wordnet in various inflected forms.
     """
@@ -253,14 +254,17 @@ def verb_vocab(tcm, postagger = None, min_length=0):
             # guaranteed to return a verb tag
             forms = [(form, getpostag(form)) for form in forms]
 
-        classes = [classy for syn in wn.synsets(lemma, 'v') for classy in tcm.predict(syn)]
+        if tcm is not None:
+            classes = [classy for syn in wn.synsets(lemma, 'v') for classy in tcm.predict(syn)]
+        else:
+            classes = [syn.name() for syn in wn.synsets(lemma, 'v')]
 
         for classy in classes:
             for form, postag in forms:
                 if not postag:
                     log.warning("{} has POS==None".format(form))
                     continue
-                if postag[0] == 'n': # dirty hack to avoid inconsistency introduced by tagger
+                if postag[0] == 'n': # dirty hack to avoid inconsistency introduced by postagger
                     continue
                 verbs.add((form, postag, classy))
                 if "'" in form:  # remove ' (couldn't -> couldnt)
@@ -464,12 +468,9 @@ def fit_grammar(passwords, tagtype, estimator, tcm_n, tcm_v, num_workers):
             else:
                 log.warning("Unable to feed chunks to grammar: {}".format(chunks))
 
-        log.info("Done my job. Delivering results.")
         out_list.extend(results)
         log.info("Results delivered.")
 
-    manager = Manager()
-    results = manager.list()
     grammar = Grammar(estimator=estimator, tagtype=tagtype)
 
     # feed grammar with the 'prior' vocabulary
@@ -478,25 +479,36 @@ def fit_grammar(passwords, tagtype, estimator, tcm_n, tcm_v, num_workers):
         grammar.add_vocabulary(noun_vocab(tcm_n, postagger, min_length=3))
         grammar.add_vocabulary(verb_vocab(tcm_v, postagger, min_length=2))
 
-    pool = []
+    if tagtype != 'pos':
+        manager = Manager()
+        results = manager.list()
+        pool    = []
 
-    share = math.ceil(len(passwords)/num_workers)
-    for i in range(num_workers):
-        # progressively empty passwords to free memory
-        #work = [passwords.pop() for i in range(min(share, len(passwords)))]
-        work = passwords[i*share:i*share+share]
-        p = Process(target=do_work, args=(work, tcm_n, tcm_v, results))
-        p.start()
-        pool.append(p)
+        share = math.ceil(len(passwords)/num_workers)
+        for i in range(num_workers):
+            # progressively empty passwords to free memory
+            #work = [passwords.pop() for i in range(min(share, len(passwords)))]
+            work = passwords[i*share:i*share+share]
+            p = Process(target=do_work, args=(work, tcm_n, tcm_v, results))
+            p.start()
+            pool.append(p)
 
-    log.info("Pool has {} workers".format(len(pool)))
+        log.info("Pool has {} workers".format(len(pool)))
 
-    del passwords[:] # this atrocity is really necessary to free memory
+        del passwords[:] # this atrocity is really necessary to free memory
 
-    for p in pool:
-        p.join()
+        for p in pool:
+            p.join()
 
-    grammar.fit(results, num_workers=num_workers)
+        grammar.fit(results, num_workers=num_workers)
+    else:
+        # add null synset to every segment before passing to grammar
+        for i in range(len(passwords)):
+            x, count = passwords[i]
+            x = [(word, pos, None) for word, pos in x]
+            passwords[i] = (x, count)
+
+        grammar.fit(passwords, num_workers=num_workers)
 
     return grammar
 
@@ -517,8 +529,12 @@ def train_grammar(password_file, outfolder, tagtype='backoff',
     log.info("Training tree cut models... ")
 
     with Timer("training tree cut models", log):
-        tcm_n, tcm_v = fit_tree_cut_models(passwords, estimator,
-            specificity, num_workers)
+        if tagtype == 'pos':
+            tcm_n, tcm_v = fit_tree_cut_models(passwords, estimator,
+                specificity, num_workers)
+        else:
+            tcm_n = None
+            tcm_v = None
 
     log.info("Training grammar...")
 
