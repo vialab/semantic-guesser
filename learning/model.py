@@ -523,8 +523,8 @@ class Grammar(object):
             replace=True, p=base_struct_probs
         )
 
-        outcomes = []                            # final sample outcome:
-                                                 # list of tuples (string, prob)
+        # outcomes = []                            # final sample outcome:
+        #                                          # list of tuples (string, prob)
 
         for i in base_struct_sample_indices:     # for each base structure,
             base_struct  = base_structs[i]       # sample a word from each of its tags
@@ -537,9 +537,7 @@ class Grammar(object):
                 outcome       += tag2words[tag][j]
                 outcome_prob  *= pdist[j]
 
-            outcomes.append((outcome, base_struct, outcome_prob))
-
-        return outcomes
+            yield (outcome, base_struct, outcome_prob)
 
 
     def predict(self, X):
