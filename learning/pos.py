@@ -293,7 +293,7 @@ class COCATagger(SequentialBackoffTagger):
         # return the 3 most frequent POS tags if len(token) > 1
         # if it's a letter, then return only the most frequent
         if token in self.tag_map:
-            return [tag for tag, freq in self.tag_map[token][:3]]
+            return [tag for tag, freq in self.tag_map[token][:4]]
         # elif len(token) == 1 and token in self.tag_map:
         #     return self.tag_map[token][0][0]
         else:
