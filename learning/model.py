@@ -259,12 +259,12 @@ class GrammarTagger(object):
         If chunk is a word, the tag consists of its POS tag. For numbers and
         character sequences, a tag of the form categoryN is  retrieved where N
         is  the length  of the segment.  Words with unknown pos  are tagged as
-        'unkwn'.
+        'unk'.
         Examples:
             love    -> vb
             123     -> number3
             audh    -> char4
-            kripton -> unkwn
+            kripton -> unk
             !!!     -> special3
         Returns:
             str -- tag
@@ -312,7 +312,7 @@ class GrammarTagger(object):
         suitable.
         For other  words, returns  tags of  the  form  pos_synset, where pos is  a
         part-of-speech tag and  synset is the corresponding  WordNet synset.  If no
-        synset exists,  the symbol 'unkwn' is used. Aside from these classes, there
+        synset exists,  the symbol 'unk' is used. Aside from these classes, there
         is also numberN, charN, and specialN, for numbers, character sequences  and
         sequences of  special characters,  respectively, where N denotes the length
         of the segment.
@@ -329,7 +329,7 @@ class GrammarTagger(object):
         if not pos:
             return self.tag_nonword(string)
         else:
-            syntag = synset if synset else 'unkwn'
+            syntag = synset if synset else 'unk'
             return pos + '_' + syntag
 
     def propername_tag(self, string):

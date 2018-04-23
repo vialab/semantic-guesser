@@ -8,4 +8,4 @@ from learning.tree.cut import _li_abe, li_abe
 from learning.tree.wordnet import WordNetTreeNode, WordNetTree
 from learning.tree.default_tree import DefaultTree, DepthFirstIterator
 from learning.model import MleEstimator, LaplaceEstimator, Grammar
-from guessing import scorer
+from guessing import score

@@ -214,7 +214,7 @@ def verb_vocab(tcm = None, postagger = None, min_length=0):
     Return all verbs found in wordnet in various inflected forms.
     """
     if not postagger:
-        postagger = BackoffTagger()
+        postagger = BackoffTagger.from_pickle()
 
     getpostag = lambda word : postagger.tag([word])[0][1]
 
@@ -253,6 +253,10 @@ def verb_vocab(tcm = None, postagger = None, min_length=0):
             # this step can introduce errors, as getpostag isn't
             # guaranteed to return a verb tag
             forms = [(form, getpostag(form)) for form in forms]
+
+        # ignore forms that do not map back to lemma by wordnet's
+        # lemmatizer, as they are likely erroneous
+        forms = list(filter(lambda form: lemma in wn._morphy(form[0], 'v'), forms))
 
         if tcm is not None:
             classes = [classy for syn in wn.synsets(lemma, 'v') for classy in tcm.predict(syn)]
@@ -529,7 +533,7 @@ def train_grammar(password_file, outfolder, tagtype='backoff',
     log.info("Training tree cut models... ")
 
     with Timer("training tree cut models", log):
-        if tagtype == 'pos':
+        if tagtype != 'pos':
             tcm_n, tcm_v = fit_tree_cut_models(passwords, estimator,
                 specificity, num_workers)
         else:
@@ -565,7 +569,7 @@ def options():
         the desired specificity.')
     parser.add_argument('-v', action = 'append_const', const = 1, help="""
         verbose level (e.g., -vvv) """)
-    parser.add_argument('--tagtype', default='pos_semantic',
+    parser.add_argument('--tagtype', default='backoff',
         choices=['pos_semantic', 'pos', 'backoff', 'word'])
     parser.add_argument('-w', '--num_workers', type=int, default=2,
         help="number of cores available for parallel work")
