@@ -39,7 +39,8 @@ def options():
         help='a large and diverse list of passwords and their probabilities')
     parser.add_argument('--grammar', help="grammar path for computing "
     "password probabilities.")
-    parser.add_argument('passwords', type=argparse.FileType('r'),
+    parser.add_argument('passwords', nargs='?', type=argparse.FileType('r'),
+        default=sys.stdin,
         help='a list of passwords whose strength one wants to know. '
         'Strength is defined as the number of guesses needed to crack the '
         'password with the grammar used to estimate the sample\'s probabilities. '
