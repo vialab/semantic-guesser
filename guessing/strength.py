@@ -11,6 +11,7 @@ Estimate strength as described in Dell'Amico and Filippone (2015)*.
 
 import argparse
 import pickle
+import sys
 
 import pandas as pd
 
@@ -36,11 +37,15 @@ def options():
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
     parser.add_argument('sample', type=argparse.FileType('r'),
         help='a large and diverse list of passwords and their probabilities')
-    parser.add_argument('grammar', help="grammar path")
+    parser.add_argument('--grammar', help="grammar path for computing "
+    "password probabilities.")
     parser.add_argument('passwords', type=argparse.FileType('r'),
         help='a list of passwords whose strength one wants to know. '
         'Strength is defined as the number of guesses needed to crack the '
-        'password with the grammar used to estimate the sample\'s probabilities')
+        'password with the grammar used to estimate the sample\'s probabilities. '
+        'File is a space-delimited file with fields password, base structure, '
+        'and probability. If --grammar is set, then file is a list of '
+        'passwords.')
     parser.add_argument('-d','--dedupe', action="store_true",
         help="drop duplicates in the sample. Default is False.")
 
@@ -50,15 +55,24 @@ def options():
 def read_sample(f):
     return pd.read_csv(f, sep='\t', names=['password', 'p'])
 
+def password_score_iterator(password_file, grammar_path):
+    if grammar_path is None:
+        for line in password_file:
+            if line == '': break
+            password, base_struct, p = line.rstrip().rsplit(maxsplit=2)
+            yield (password, base_struct, float(p))
+    else:
+        grammar_dir = Path(grammar_path)
+
+        tc_nouns = pickle.load(open(grammar_dir / 'noun_treecut.pickle', 'rb'))
+        tc_verbs = pickle.load(open(grammar_dir / 'verb_treecut.pickle', 'rb'))
+        grammar  = model.Grammar.from_files(grammar_path)
+
+        return score((line.lower().rstrip() for line in password_file),
+            grammar, tc_nouns, tc_verbs)
 
 def main():
     opts = options()
-
-    grammar_dir = Path(opts.grammar)
-
-    tc_nouns = pickle.load(open(grammar_dir / 'noun_treecut.pickle', 'rb'))
-    tc_verbs = pickle.load(open(grammar_dir / 'verb_treecut.pickle', 'rb'))
-    grammar  = model.Grammar.from_files(opts.grammar)
 
     sample = read_sample(opts.sample)  # a pandas frame
     # drop duplicates
@@ -81,9 +95,7 @@ def main():
     # restore index
     sample = sample.reset_index().drop("index", axis=1)
 
-    passwords = (line.lower().rstrip() for line in opts.passwords)
-
-    for password, struct, p in score(passwords, grammar, tc_nouns, tc_verbs):
+    for password, struct, p in password_score_iterator(opts.passwords, opts.grammar):
         if p == 0:  # password isn't guessed by this grammar
             continue
 
@@ -95,7 +107,7 @@ def main():
 
         strength = sample['strength'][bisector]
 
-        print("{}\t{:.2f}".format(password, strength))
+        sys.stdout.write("{}\t{:.2f}\n".format(password, strength))
 
 
 if __name__ == '__main__':
