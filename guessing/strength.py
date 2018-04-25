@@ -62,7 +62,11 @@ def password_score_iterator(password_file, grammar_path):
     if grammar_path is None:
         for line in password_file:
             if line == '': break
-            password, base_struct, p = line.rstrip().rsplit(maxsplit=2)
+            try:
+                password, base_struct, p = line.rstrip().rsplit(maxsplit=2)
+            except:
+                sys.stderr.write("Malformed line:\n{}\n".format(line))
+                continue
             yield (password, base_struct, float(p))
     else:
         grammar_dir = Path(grammar_path)

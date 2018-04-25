@@ -92,7 +92,9 @@ class MemoTagger():
 
     @functools.lru_cache(maxsize=None)
     def get_synsets(self, string, pos):
-        if pos is None: return {None}
+        if self.grammar.tagtype == 'pos' or pos is None:
+            return {None}
+            
         wnpos = self.tagconv.clawsToWordNet(pos)
         if wnpos not in ('n', 'v') or \
             (wnpos == 'v' and len(string) < 2) or \
@@ -226,6 +228,47 @@ class GrammarGraph():
         return self._next_node_id - 1
 
 
+#%% -----------------------------------------------------------------
+
+
+class PrefixTreeNode():
+    def __init__(self, word, p=0, tag=None, parent=None):
+        self.word = word
+        self.p = p
+        self.parent = parent
+        self.children = []
+        self.depth = 0
+        self.sequence_p = p
+        self.base_struct = '('+tag+')' if tag is not None else ''
+        self.tag = tag
+
+    def append_child(self, node):
+        self.children.append(node)
+        node.parent = self
+        node.depth = self.depth + 1
+        node.sequence_p = node.p*self.sequence_p
+        node.base_struct = self.base_struct + node.base_struct
+
+    def dfs(self):
+        stack = deque([self])
+        while len(stack) > 0:
+            node = stack.pop()
+            for child in node.children:
+                stack.append(child)
+            yield node
+
+    def prefix_path(self):
+        p = self
+        while p is not None:
+            yield p
+            p = p.parent
+
+    def leaves(self):
+        for node in self.dfs():
+            if len(node.children) == 0:
+                yield node
+
+
 def score(passwords, grammar, tc_nouns,
     tc_verbs, postagger=None, vocab=None):
 
@@ -290,47 +333,8 @@ def score(passwords, grammar, tc_nouns,
                 max_p = p
                 max_base_struct = node.base_struct
 
+        # yield leaves
         yield (password, max_base_struct, max_p)
-
-#%% -----------------------------------------------------------------
-
-
-class PrefixTreeNode():
-    def __init__(self, word, p=0, tag=None, parent=None):
-        self.word = word
-        self.p = p
-        self.parent = parent
-        self.children = []
-        self.depth = 0
-        self.sequence_p = p
-        self.base_struct = '('+tag+')' if tag is not None else ''
-        self.tag = tag
-
-    def append_child(self, node):
-        self.children.append(node)
-        node.parent = self
-        node.depth = self.depth + 1
-        node.sequence_p = node.p*self.sequence_p
-        node.base_struct = self.base_struct + node.base_struct
-
-    def dfs(self):
-        stack = deque([self])
-        while len(stack) > 0:
-            node = stack.pop()
-            for child in node.children:
-                stack.append(child)
-            yield node
-
-    def prefix_path(self):
-        p = self
-        while p is not None:
-            yield p
-            p = p.parent
-
-    def leaves(self):
-        for node in self.dfs():
-            if len(node.children) == 0:
-                yield node
 
 #%%------------------------------------------------------------------
 
@@ -348,10 +352,11 @@ if __name__ == '__main__':
     grammar_dir    = Path(opts.grammar_dir)
     passwords_file = Path(opts.passwords)
 
-    postagger   = ExhaustiveTagger.from_pickle()
-    tc_nouns = pickle.load(open(grammar_dir / 'noun_treecut.pickle', 'rb'))
-    tc_verbs = pickle.load(open(grammar_dir / 'verb_treecut.pickle', 'rb'))
-    grammar  = model.Grammar.from_files(opts.grammar_dir)
+    postagger = ExhaustiveTagger.from_pickle()
+    # postagger = ExhaustiveTagger()
+    tc_nouns  = pickle.load(open(grammar_dir / 'noun_treecut.pickle', 'rb'))
+    tc_verbs  = pickle.load(open(grammar_dir / 'verb_treecut.pickle', 'rb'))
+    grammar   = model.Grammar.from_files(opts.grammar_dir)
 
     passwords = (line.lower().rstrip() for line in open(passwords_file, 'r'))
 
@@ -362,9 +367,40 @@ if __name__ == '__main__':
 # tagger = ExhaustiveTagger().from_pickle()
 # # tagger.pickle(ExhaustiveTagger.pickle_path)
 #
-# # tc_nouns = pickle.load(open('/Users/rafa/Data/grammar/yahoo-voices-laplace/noun_treecut.pickle', 'rb'))
-# # tc_verbs = pickle.load(open('/Users/rafa/Data/grammar/yahoo-voices-laplace/verb_treecut.pickle', 'rb'))
-# # grammar   = model.Grammar.from_files('/Users/rafa/Data/grammar/yahoo-voices-laplace')
+# tc_nouns = pickle.load(open('/Users/rafa/Data/grammar/yahoo-voices-laplace/noun_treecut.pickle', 'rb'))
+# tc_verbs = pickle.load(open('/Users/rafa/Data/grammar/yahoo-voices-laplace/verb_treecut.pickle', 'rb'))
+# grammar   = model.Grammar.from_files('/Users/rafa/Data/grammar/yahoo-voices-laplace')
+# postagger = ExhaustiveTagger()
+#
+# nodes = list(score(['upsidedown'], grammar, tc_nouns, tc_verbs, postagger=postagger))
+#
+# for node in nodes[0]:
+#     print(node.base_struct, node.sequence_p)
+#
+#
+# vocab = grammar.get_vocab()
+# memotagger = MemoTagger(postagger, tc_nouns, tc_verbs, grammar)
+# base_struct_dist = dict(grammar.base_structure_probabilities())
+# checker = BaseStructChecker(grammar)
+#
+# postagger.get_tags('down')
+# memotagger.get_synsets('fell', 'vvi')
+
+# import learning
+# from importlib import reload
+#
+# reload(learning)
+#
+# vocab = learning.train.verb_vocab(tc_verbs, min_length=2)
+#
+# vocab = list(vocab)
+#
+# # [v for v in vocab if v[0] == 'grinded']
+#
+# keys = [leaf.key for leaf in list(tc_verbs.treecut.leaf2cut['s.attach.v.01'])[0].leaves()]
+# print(sorted(keys))
+
+
 # # postagger = ExhaustiveTagger.from_pickle()
 # # # postagger2 = BackoffTagger.from_pickle()
 # # # graph = GrammarGraph(grammar)
