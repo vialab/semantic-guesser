@@ -94,13 +94,14 @@ class MemoTagger():
     def get_synsets(self, string, pos):
         if self.grammar.tagtype == 'pos' or pos is None:
             return {None}
-            
+
         wnpos = self.tagconv.clawsToWordNet(pos)
         if wnpos not in ('n', 'v') or \
             (wnpos == 'v' and len(string) < 2) or \
             (wnpos == 'n' and len(string) < 3): return {None}
 
         tc_model = self.tc_nouns if wnpos == 'n' else self.tc_verbs
+
         syns = [None]
         for syn in wn.synsets(string, wnpos):
             syns.extend(tc_model.predict(syn))
@@ -118,15 +119,16 @@ class MemoTagger():
         if tag not in tag_prob_cache:
             tag_prob_cache[tag] = dict()
             samplesize          = sum(grammar.tag_dicts[tag].values())
-            vocabsize           = len(grammar.tag_dicts[tag].keys())
+            vocabsize           = len(grammar.tag_dicts[tag])
 
             if grammar.estimator == 'laplace':
                 estimator = model.LaplaceEstimator(samplesize, vocabsize, 1)
             else:
                 estimator = model.MleEstimator(samplesize)
 
-            for k, count in grammar.tag_dicts[tag].items():
-                tag_prob_cache[tag][k] = estimator.probability(count)
+            entries = map(lambda x, e=estimator: (x[0], e.probability(x[1])), grammar.tag_dicts[tag].items())
+
+            tag_prob_cache[tag].update(entries)
 
         try:
             return tag_prob_cache[tag][string]
@@ -145,6 +147,9 @@ class MemoTagger():
                     p = self.prob(segment_tag, word)
                     tagset.add((segment_tag, p))
         return tagset
+
+
+
 
 
 #%% -----------------------------------------------------------------
@@ -281,31 +286,37 @@ def score(passwords, grammar, tc_nouns,
     base_struct_dist = dict(grammar.base_structure_probabilities())
     checker = BaseStructChecker(grammar)
 
-    # an optional filter for word splits:
-    def isgood(seg):
-       good = True
-       if seg[0] not in vocab: good = False
-       # check if it a number sequence was split
-       if seg[0][-1].isdigit() and seg[1] and seg[1][0].isdigit(): good = False
-
-       return good
-
     # Build a prefix tree of the segmentations, but do not include
     # in this tree sequences that don't occur in the grammar.
 
     for password in passwords:
+        if password.isdigit():
+            base_struct = 'number'+str(len(password))
+            try:
+                yield (password, base_struct, base_struct_dist[base_struct])
+                continue
+            except:
+                pass
+
+
         segs = deque()
         root = PrefixTreeNode('', tag=None, p=1)
         segs.append((root, password))
 
-        leaves = []
+        # leaves = []
+
+        max_p = 0
+        max_base_struct = None
 
         while len(segs) > 0:
             head, tail = segs.popleft() # head is a node, tail is a string
 
-            for newsplit in filter(isgood, segmenter.divide(tail)):
-                # path = reversed(list(head.prefix_path())[:-1]) # root doesn't count
-                # path = [node.tag for node in path]
+            for newsplit in segmenter.divide(tail):
+                if newsplit[0] not in vocab: continue
+
+                # check if a number sequence was split
+                if newsplit[0][-1].isdigit() and \
+                    newsplit[1] and newsplit[1][0].isdigit(): continue
 
                 for tag, p in memotagger.get_tags(newsplit[0]):
                     # if this tag never occurs after the head tag in the grammar
@@ -319,22 +330,27 @@ def score(passwords, grammar, tc_nouns,
                     head.append_child(newhead)
 
                     if newsplit[1] == '': # success!
-                        leaves.append(newhead)
+                        if newhead.base_struct in base_struct_dist:
+                            p = newhead.sequence_p * base_struct_dist[newhead.base_struct]
+                            if p > max_p:
+                                max_p = p
+                                max_base_struct = newhead.base_struct
+                        # leaves.append(newhead)
                     else:
-                        segs.append((newhead, newsplit[1]))
+                        if newhead.sequence_p > max_p:
+                            segs.append((newhead, newsplit[1]))
 
-        max_p = 0
-        max_base_struct = None
-        for node in leaves:
-            if node.base_struct not in base_struct_dist:
-                continue
-            p = node.sequence_p * base_struct_dist[node.base_struct]
-            if p > max_p:
-                max_p = p
-                max_base_struct = node.base_struct
-
-        # yield leaves
         yield (password, max_base_struct, max_p)
+        # leaves = filter(lambda leaf, dist=base_struct_dist: leaf.base_struct in dist, leaves)
+        # leaves = map(lambda leaf, dist=base_struct_dist: (leaf.base_struct, leaf.sequence_p * dist[leaf.base_struct]), leaves)
+        # try:
+        #     max_base_struct, max_p = max(leaves, key=lambda x: x[1])
+        #     yield (password, max_base_struct, max_p)
+        # except ValueError:
+        #     yield (password, None, 0)
+
+
+
 
 #%%------------------------------------------------------------------
 
