@@ -56,7 +56,7 @@ def options():
 
 
 def read_sample(f):
-    return pd.read_csv(f, sep='\t', names=['password', 'p'])
+    return pd.read_csv(f, sep='\t', names=['password', 'p'], quoting=3)
 
 def password_score_iterator(password_file, grammar_path):
     if grammar_path is None:
