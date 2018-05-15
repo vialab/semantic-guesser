@@ -276,6 +276,11 @@ class PrefixTreeNode():
 
 def score(passwords, grammar, tc_nouns,
     tc_verbs, postagger=None, vocab=None):
+    """
+    For each password finds the most probable rule that outputs
+    it, if any. The test is done with a lowercased version of the
+    password.
+    """
 
     if postagger is None:
         postagger = ExhaustiveTagger.from_pickle()
@@ -306,19 +311,20 @@ def score(passwords, grammar, tc_nouns,
         # leaves = []
 
         max_p = 0
-        max_base_struct = None
+        max_base_struct  = None
+        max_segmentation = None
 
         while len(segs) > 0:
             head, tail = segs.popleft() # head is a node, tail is a string
 
             for newsplit in segmenter.divide(tail):
-                if newsplit[0] not in vocab: continue
+                if newsplit[0].lower() not in vocab: continue
 
                 # check if a number sequence was split
                 if newsplit[0][-1].isdigit() and \
                     newsplit[1] and newsplit[1][0].isdigit(): continue
 
-                for tag, p in memotagger.get_tags(newsplit[0]):
+                for tag, p in memotagger.get_tags(newsplit[0].lower()):
                     # if this tag never occurs after the head tag in the grammar
                     # then ignore this split
                     bs = head.base_struct + '(' + tag + ')'
@@ -334,13 +340,15 @@ def score(passwords, grammar, tc_nouns,
                             p = newhead.sequence_p * base_struct_dist[newhead.base_struct]
                             if p > max_p:
                                 max_p = p
-                                max_base_struct = newhead.base_struct
+                                max_base_struct  = newhead.base_struct
+                                max_segmentation = [node.word for node in newhead.prefix_path()]
+                                max_segmentation.reverse()
                         # leaves.append(newhead)
                     else:
                         if newhead.sequence_p > max_p:
                             segs.append((newhead, newsplit[1]))
 
-        yield (password, max_base_struct, max_p)
+        yield (password, max_base_struct, max_segmentation, max_p)
         # leaves = filter(lambda leaf, dist=base_struct_dist: leaf.base_struct in dist, leaves)
         # leaves = map(lambda leaf, dist=base_struct_dist: (leaf.base_struct, leaf.sequence_p * dist[leaf.base_struct]), leaves)
         # try:
@@ -349,16 +357,32 @@ def score(passwords, grammar, tc_nouns,
         # except ValueError:
         #     yield (password, None, 0)
 
-
-
-
 #%%------------------------------------------------------------------
 
 
 def options():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=('Find if passwords '
+        'can be produced (guessed) by the grammar. By default, accepts only '
+        'exact matches (lowercase passwords). Optionally, it can accept uppercase, '
+        'camel case, and capitalized strings. These '
+        'options can be used when case modification strategies are '
+        'used in guess generation. '
+        'This code assumes the grammar has only lowercase terminals.'))
     parser.add_argument('grammar_dir')
-    parser.add_argument('passwords')
+    parser.add_argument('passwords',
+        nargs='?',
+        type=argparse.FileType('r'),
+        default=sys.stdin)
+    parser.add_argument('--uppercase',
+        action='store_true',
+        help='produce a match even when a password is uppercase')
+    parser.add_argument('--camelcase',
+        action='store_true',
+        help=('produce a match if camel casing the segments produces '
+              'the password'))
+    parser.add_argument('--capitalized',
+        action='store_true',
+        help='produce a match even when a password is capitalized')
 
     return parser.parse_args()
 
@@ -366,19 +390,28 @@ def options():
 if __name__ == '__main__':
     opts           = options()
     grammar_dir    = Path(opts.grammar_dir)
-    passwords_file = Path(opts.passwords)
+    passwords_file = opts.passwords
+
+    accept_upper   = opts.uppercase
+    accept_camel   = opts.camelcase
+    accept_capital = opts.capitalized
+
 
     postagger = ExhaustiveTagger.from_pickle()
-    # postagger = ExhaustiveTagger()
     tc_nouns  = pickle.load(open(grammar_dir / 'noun_treecut.pickle', 'rb'))
     tc_verbs  = pickle.load(open(grammar_dir / 'verb_treecut.pickle', 'rb'))
     grammar   = model.Grammar.from_files(opts.grammar_dir)
 
-    passwords = (line.lower().rstrip() for line in open(passwords_file, 'r'))
+    passwords = (line.rstrip() for line in passwords_file)
 
-    for password, struct, prob in score(passwords, grammar, tc_nouns,
-        tc_verbs, postagger, grammar.get_vocab()):
-        print(password, struct, prob)
+    for password, struct, split, prob in score(passwords, grammar,
+        tc_nouns, tc_verbs, postagger, grammar.get_vocab()):
+        if password.islower() or \
+           accept_upper and password.isupper() or \
+           accept_camel and ''.join(map(str.capitalize, split)) == password or \
+           accept_capital and password[0].isupper() and password[1:].islower():
+
+           print(password, struct, prob)
 
 # tagger = ExhaustiveTagger().from_pickle()
 # # tagger.pickle(ExhaustiveTagger.pickle_path)
