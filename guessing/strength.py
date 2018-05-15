@@ -35,13 +35,17 @@ def options():
     # usage = "recognizer.py -p -g mygrammar sample.txt | strength.py mygrammar passwords.txt"
 
     parser = argparse.ArgumentParser(description=desc, epilog=epilog)
-    parser.add_argument('sample', type=argparse.FileType('r'),
+    parser.add_argument('sample',
+        type=argparse.FileType('r'),
         help='a large and diverse list of passwords and their probabilities')
-    parser.add_argument('--grammar', help="grammar path for computing "
-    "password probabilities.")
-    parser.add_argument('--zeroes', action="store_true",
-        help="if present, output passwords that have 0 p under the grammar")
-    parser.add_argument('passwords', nargs='?', type=argparse.FileType('r'),
+    parser.add_argument('--grammar',
+        help='grammar path for computing password probabilities.')
+    parser.add_argument('--zeroes',
+        action='store_true',
+        help='if present, output passwords that have 0 p under the grammar')
+    parser.add_argument('passwords',
+        nargs='?',
+        type=argparse.FileType('r'),
         default=sys.stdin,
         help='a list of passwords whose strength one wants to know. '
         'Strength is defined as the number of guesses needed to crack the '
@@ -49,8 +53,15 @@ def options():
         'File is a space-delimited file with fields password, base structure, '
         'and probability. If --grammar is set, then file is a list of '
         'passwords.')
-    parser.add_argument('-d','--dedupe', action="store_true",
-        help="drop duplicates in the sample. Default is False.")
+    parser.add_argument('-d','--dedupe',
+        action="store_true",
+        help='drop duplicates in the sample. Default is False.')
+    parser.add_argument('-m', '--multiplier',
+        type=int,
+        default=1,
+        help='a multiplier for the guess number estimate. Useful '
+        'for when each guess is modified by a number of mangling '
+        'rules.')
 
     return parser.parse_args()
 
@@ -80,6 +91,8 @@ def password_score_iterator(password_file, grammar_path):
 
 def main():
     opts = options()
+
+    multiplier = opts.multiplier
 
     sample = read_sample(opts.sample)  # a pandas frame
     # drop duplicates
@@ -114,7 +127,7 @@ def main():
 
         bisector = min(max(bisector+1, 0), n-1) # index of the lowest prob. higher than p
 
-        strength = sample['strength'][bisector]
+        strength = sample['strength'][bisector] * multiplier
 
         sys.stdout.write("{}\t{:.2f}\n".format(password, strength))
 
