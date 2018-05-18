@@ -406,12 +406,20 @@ if __name__ == '__main__':
 
     for password, struct, split, prob in score(passwords, grammar,
         tc_nouns, tc_verbs, postagger, grammar.get_vocab()):
+
+        if prob == 0:
+            print(password, struct, prob)
+            continue
+
         if password.islower() or \
            accept_upper and password.isupper() or \
            accept_camel and ''.join(map(str.capitalize, split)) == password or \
            accept_capital and password[0].isupper() and password[1:].islower():
 
            print(password, struct, prob)
+        else:
+           print(password, None, 0)
+
 
 # tagger = ExhaustiveTagger().from_pickle()
 # # tagger.pickle(ExhaustiveTagger.pickle_path)
