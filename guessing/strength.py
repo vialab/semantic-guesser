@@ -13,6 +13,7 @@ import argparse
 import pickle
 import sys
 
+import numpy  as np 
 import pandas as pd
 
 from learning       import model
@@ -65,9 +66,21 @@ def options():
 
     return parser.parse_args()
 
+def p_converter(x):
+    try:
+        return float(x)
+    except:
+        return None
+
 
 def read_sample(f):
-    return pd.read_csv(f, sep='\t', names=['password', 'p'], quoting=3)
+    return pd.read_csv(f, 
+            sep='\t', 
+            dtype={'password': object, 'p': np.float64}, 
+            converters={'p': p_converter}, 
+            names=['password', 'p'], 
+            quoting=3)
+
 
 def password_score_iterator(password_file, grammar_path):
     if grammar_path is None:
