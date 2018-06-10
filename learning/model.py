@@ -293,6 +293,10 @@ class GrammarTagger(object):
         Returns:
             list of str -- tags
         """
+        
+        # hack to avoid synsets with / in the name, which can't be filenames
+        if synset and '/' in synset: synset = None
+
         # dictionary-based semantic tags (name, country, etc.) take precedence
         # over wordnet
         if pos in ['np', 'np1', 'np2']:
@@ -326,6 +330,9 @@ class GrammarTagger(object):
         Returns:
             list of str -- tags
         """
+        # hack to avoid synsets with / in the name, which can't be filenames
+        if synset and '/' in synset: synset = None
+        
         if not pos:
             return self.tag_nonword(string)
         else:
