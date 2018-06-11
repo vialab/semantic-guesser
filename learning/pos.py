@@ -298,3 +298,26 @@ class COCATagger(SequentialBackoffTagger):
         #     return self.tag_map[token][0][0]
         else:
             return []
+
+
+class SpacyTagger():
+    def __init__(self):
+        self.nlp = spacy.load('en_core_web_sm', disable=["parser", "ner"])
+        coca_path = os.path.join(os.path.dirname(__file__),'../data/coca_500k.csv')
+        with open(coca_path) as f:
+            self.coca = dict()
+            for line in f:
+                freq, word, pos, _ = line.rstrip().split('\t')
+                freq = int(freq)
+                if word in coca and coca[word] > freq: continue
+                coca[word] = freq
+
+    def tag(self, tokens):
+        doc = self.nlp(' '.join(tokens))
+        tags = []
+        for token in doc:
+            if token in coca and coca[token] > 1000:
+                tags.append([token.text, token.tag_ ])
+            else:
+                tags.append([token.text, None])
+        return tags

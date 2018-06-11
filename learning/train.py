@@ -22,7 +22,7 @@ from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.util import LazyCorpusLoader
 from nltk.corpus.reader.wordnet import WordNetCorpusReader
 
-from learning.pos import BackoffTagger
+from learning.pos import BackoffTagger, SpacyTagger, COCATagger
 from learning.tagset_conversion import TagsetConverter
 from learning.tree.wordnet import IndexedWordNetTree
 from learning.model import TreeCutModel, Grammar, GrammarTagger
@@ -63,7 +63,7 @@ def tally(password_file, lowercase=True):
 
 def getchunks(password):
     # split into character/digit/symbols chunks
-    temp = re.findall('(\W+|[a-zA-Z]+|[0-9]+)', password)
+    temp = re.findall('([\W_]+|[a-zA-Z]+|[0-9]+)', password)
 
     # split character chunks into word chunks
     chunks = []
@@ -113,10 +113,21 @@ def synset(word, pos, wordnet, tag_converter=None, min_length_n=3, min_length_v=
     return synsets[0] if len(synsets) > 0 else None
 
 
-def pos_tag(chunks, tagger):
-    """ Assign POS tags to alphabetic chunks, except when they are short (less
-    than 3 chars) AND have no adjacent chunks of the same type (e.g. "1ab!!").
-    Such chunks are likely to be short strings in a random password.
+class POSBlacklist():
+    def __init__(self):
+        self.coca = COCATagger()
+
+    def is_bad(self, word):
+        return ((len(word)==1 and word not in 'ai') or
+            (word not in self.coca.tag_map) or
+            (word in self.coca.tag_map and
+                self.coca.tag_map[word][0][1] < 1000))
+
+
+def pos_tag(tokens, tagger, blacklist):
+    """ Assign POS tags to alphabetic tokens, except when they are short (less
+    than 3 chars) AND have no adjacent tokens of the same type (e.g. "1ab!!").
+    Such tokens are likely to be short strings in a random password.
 
     Example:
         >>> pos_tag(['i', 'love', 'you', '2'])
@@ -126,41 +137,42 @@ def pos_tag(chunks, tagger):
         [('123', None), ('ab', None), ('!!', None)]
 
     """
-    if len(chunks) == 1:
-        chunk = chunks[0]
-        if chunk.isalpha():
-            return tagger.tag(chunks)
+    if len(tokens) == 1:
+        token = tokens[0]
+        if token.isalpha():
+            return tagger.tag(tokens)
         else:
-            return [(chunk, None)]
+            return [(token, None)]
 
-    # try to tag only consecutive sequences of alphabetic chunks
+    # try to tag only consecutive sequences of alphabetic non-blacklisted tokens
     # (which are likely to be non-random)
-    # assign None to isolated alpha chunks and all other types of chunks
+    # assign None to isolated alpha tokens and all other types of tokens
 
     tags = []
-    alpha_mask = [c[0].isalpha() for c in chunks]
+    alpha_mask = [c[0].isalpha() for c in tokens]
 
-    sequence = []  # sequence cache
+    buffer = []  # records adjacent tokens of the same type
     for i, isalpha in enumerate(alpha_mask):
-        if not isalpha:
+        # if we find a token that isn't alpha, then tag whatever is
+        # accumulated in the buffer
+        if not isalpha or \
+         blacklist and blacklist.is_bad(tokens[i]):
+            if len(buffer) > 0:
+                tags.extend(tagger.tag(buffer))
+                buffer = []
 
-            if len(sequence) > 0:
-                tags.extend(tagger.tag(sequence))
-                sequence = []
-
-            tags.append((chunks[i], None))
-
-        # if this alpha chunk has an adjacent alpha chunk, it should be tagged
+            tags.append((tokens[i], None))
+        # if this alpha token has an adjacent alpha token, it should be tagged
         elif len(alpha_mask) > i+1 and alpha_mask[i+1] or \
              i > 0 and alpha_mask[i-1]:
-            sequence.append(chunks[i])
-        elif len(chunks[i]) > 2:
-            sequence.append(chunks[i])
+            buffer.append(tokens[i])
+        elif len(tokens[i]) > 2:
+            buffer.append(tokens[i])
         else:  # it's alpha but short and isolated, then None
-            tags.append((chunks[i], None))
+            tags.append((tokens[i], None))
 
-    if len(sequence) > 0:
-        tags.extend(tagger.tag(sequence))
+    if len(buffer) > 0:
+        tags.extend(tagger.tag(buffer))
 
     return tags
 
@@ -289,7 +301,9 @@ def product(list_a, list_b):
 def tally_chunk_tag(path, num_workers):
     def do_work(in_queue, out_list):
         postagger = BackoffTagger.from_pickle()
+        blacklist = POSBlacklist()
         postagger.set_wordnet_instance(new_wordnet_instance())
+        # postagger = SpacyTagger()
 
         i = 0
         while True:
@@ -302,7 +316,7 @@ def tally_chunk_tag(path, num_workers):
 
                 chunks = getchunks(password)
                 try:
-                    postagged_chunks = pos_tag(chunks, postagger)
+                    postagged_chunks = pos_tag(chunks, postagger, blacklist)
                 except:
                     log.error("Error: {}".format(chunks))
                     raise
