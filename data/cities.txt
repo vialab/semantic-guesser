@@ -849,7 +849,6 @@ svishtov
 svilengrad
 stara zagora
 dupnitsa
-sofia
 smolyan
 sliven
 silistra
@@ -1655,9 +1654,7 @@ machado
 macatuba
 macae
 luziania
-lucas
 louveira
-lorena
 londrina
 loanda
 livramento do brumado
@@ -2217,7 +2214,6 @@ boisbriand
 boucherville
 bradford west gwillimbury
 brampton
-brandon
 brant
 brantford
 brockville
@@ -6036,7 +6032,6 @@ raisio
 raahe
 pirkkala
 nurmijarvi
-nokia
 mikkeli
 mantsala
 lohja
@@ -6909,7 +6904,6 @@ newcastle under lyme
 newbury
 newburn
 newark on trent
-nelson
 neath
 nailsea
 musselburgh
@@ -7174,7 +7168,6 @@ chester
 cheshunt
 chesham
 cheltenham
-chelsea
 chelmsford
 cheadle hulme
 chatham
@@ -8243,7 +8236,6 @@ modiin
 old city
 west jerusalem
 modiin ilit
-ariel
 douglas
 punch
 keelakarai
@@ -10815,7 +10807,6 @@ porto empedocle
 piazza armerina
 paterno
 partinico
-paola
 palmi
 palma di montechiaro
 palermo
@@ -14240,7 +14231,6 @@ las cumbres
 la concepcion
 la chorrera
 la cabima
-david
 colon
 chitre
 chilibre
@@ -15358,7 +15348,6 @@ barceloneta
 bayamon
 caguas
 candelaria
-carolina
 catano
 cayey
 fajardo
@@ -16881,7 +16870,6 @@ partizanske
 nove zamky
 nove mesto nad vahom
 nitra
-martin
 malacky
 lucenec
 liptovsky mikulas
@@ -17609,7 +17597,6 @@ bergama
 belen
 belek
 bayindir
-batman
 baskil
 banaz
 balikesir
@@ -19139,7 +19126,6 @@ tullahoma
 abilene
 alamo
 aldine
-alice
 allen
 alvin
 angleton
@@ -19157,7 +19143,6 @@ brenham
 brownsville
 brownwood
 brushy creek
-bryan
 burleson
 canyon lake
 carrollton
@@ -19232,7 +19217,6 @@ mansfield
 marshall
 mcallen
 mckinney
-mercedes
 mesquite
 midlothian
 mineral wells
@@ -19285,7 +19269,6 @@ texarkana
 texas city
 the colony
 the woodlands
-tyler
 universal city
 university park
 uvalde
@@ -20609,7 +20592,6 @@ lynwood
 madera
 manhattan beach
 manteca
-marina
 martinez
 maywood
 mead valley
@@ -21607,7 +21589,6 @@ harrismith
 grahamstown
 graaff-reinet
 giyani
-george
 ga-rankuwa
 frankfort
 fort beaufort
