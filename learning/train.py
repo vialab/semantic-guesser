@@ -120,7 +120,7 @@ class POSBlacklist():
     def is_bad(self, word):
         return ((len(word)==1 and word not in 'ai') or
             (word not in self.coca.tag_map) or
-            (word in self.coca.tag_map and
+            (len(word) < 4 and word in self.coca.tag_map and
                 self.coca.tag_map[word][0][1] < 1000))
 
 

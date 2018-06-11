@@ -283,9 +283,13 @@ class COCATagger(SequentialBackoffTagger):
     def choose_tag(self, tokens, index, history):
         word = tokens[index]
         if word in self.tag_map:
-            posfreq = self.tag_map[word][0]
+            pos, freq = self.tag_map[word][0]
             #return self.tag_converter.claws7ToBrown(posfreq[0])
-            return posfreq[0]
+            
+            if pos == 'np1' and len(word) < 4: # a notably noisy class
+                pos = None
+
+            return pos
         else:
             return None
 
