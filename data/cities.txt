@@ -240,7 +240,6 @@ presidencia roque saenz pena
 pocito
 plottier
 pergamino
-perez
 parana
 palpala
 olavarria
@@ -251,7 +250,6 @@ monteros
 mendoza
 marcos juarez
 machagai
-lincoln
 libertador general san martin
 las brenas
 la rioja
@@ -360,7 +358,6 @@ boulder
 gosnells
 geraldton
 gawler
-darwin
 bunbury
 alice springs
 albany
@@ -913,7 +910,6 @@ sakete
 porto-novo
 parakou
 ouidah
-nikki
 natitingou
 malanville
 lokossa
@@ -994,7 +990,6 @@ sao joao dos inhamuns
 tamandare
 tabira
 surubim
-sousa
 soure
 solanea
 sobral
@@ -1080,7 +1075,6 @@ nova cruz
 nazare da mata
 natal
 murici
-moreno
 morada nova
 monteiro
 monte alegre
@@ -1294,7 +1288,6 @@ tres coroas
 tres coracoes
 tremembe
 tramandai
-torres
 toledo
 tobias barreto
 timoteo
@@ -1635,7 +1628,6 @@ martinopolis
 maringa
 marilia
 marica
-mariana
 marialva
 marechal candido rondon
 marau
@@ -1914,7 +1906,6 @@ caxambu
 catanduva
 catalao
 cataguases
-castro
 castelo
 cassilandia
 casimiro de abreu
@@ -1948,7 +1939,6 @@ campos novos
 campos gerais
 campos do jordao
 campos belos
-campos
 campo mourao
 campo largo
 campo grande
@@ -2124,7 +2114,6 @@ pinhais
 rio preto da eva
 simoes filho
 cambebba
-disney
 trindade
 freguesia do ribeirao da ilha
 nassau
@@ -2712,7 +2701,6 @@ chimbarongo
 chillan
 chiguayante
 cauquenes
-castro
 cartagena
 canete
 calama
@@ -3605,7 +3593,6 @@ planeta rica
 pivijay
 pitalito
 piedecuesta
-pereira
 patia
 pasto
 pamplona
@@ -3653,7 +3640,6 @@ jamundi
 itagui
 ipiales
 ibague
-honda
 guacari
 granada
 giron
@@ -3784,7 +3770,6 @@ san vicente de moravia
 yaguajay
 vinales
 vertientes
-venezuela
 varadero
 union de reyes
 trinidad
@@ -3847,7 +3832,6 @@ guaimaro
 gibara
 fomento
 florida
-esmeralda
 encrucijada
 cumanayagua
 cueto
@@ -3857,7 +3841,6 @@ contramaestre
 consolacion del sur
 condado
 colon
-colombia
 cifuentes
 cienfuegos
 ciego de avila
@@ -6285,7 +6268,6 @@ neuilly-plaisance
 narbonne
 nantes
 nanterre
-nancy
 muret
 mulhouse
 moulins
@@ -6347,7 +6329,6 @@ macon
 luneville
 lunel
 louviers
-lourdes
 lormont
 lorient
 lons-le-saunier
@@ -6953,7 +6934,6 @@ liverpool
 littlehampton
 litherland
 lisburn
-lincoln
 lichfield
 leyland
 lewes
@@ -7033,7 +7013,6 @@ hartlepool
 harrogate
 harpenden
 harlow
-hamilton
 halifax
 halesowen
 hailsham
@@ -7256,7 +7235,6 @@ batley
 bathgate
 basingstoke
 basildon
-barry
 barrow in furness
 barrhead
 barnstaple
@@ -9108,7 +9086,6 @@ mubarakpur
 motihari
 morwa
 morsi
-morena
 morbi
 morar
 moram
@@ -9152,7 +9129,6 @@ matabhanga
 masaurhi buzurg
 marmagao
 markapur
-mariani
 mariahu
 marhaura
 margherita
@@ -11502,7 +11478,6 @@ tsukawaki
 tsubata
 tsubame
 tsu-shi
-toyota
 toyoshina
 toyooka
 toyonaka
@@ -11766,8 +11741,6 @@ kisarazu
 kisai
 kiryu
 kikuchi
-kawasaki
-kawasaki
 kawanishi
 kawaguchi
 kawagoe
@@ -11978,7 +11951,6 @@ shiogama
 shinjo
 sendai-shi
 sawara
-sakura
 sagae
 ryugasaki
 otsuchi
@@ -13351,7 +13323,6 @@ la barca
 juventino rosas
 jocotepec
 jiquilpan de juarez
-jimenez
 jerez de garcia salinas
 jaral del progreso
 jamay
@@ -14171,14 +14142,12 @@ paraparaumu
 palmerston north
 north shore
 new plymouth
-nelson
 napier
 manukau city
 mangere
 lower hutt
 invercargill
 hastings
-hamilton
 dunedin
 christchurch
 auckland
@@ -14224,7 +14193,6 @@ santiago de veraguas
 san miguelito
 puerto armuelles
 pedregal
-panama
 pacora
 nuevo arraijan
 las cumbres
@@ -14364,7 +14332,6 @@ tuguegarao city
 trento
 toledo
 ternate
-teresa
 telabastagan
 taytay
 tayabas
@@ -14455,7 +14422,6 @@ roxas
 romblon
 rizal
 recodo
-ramos
 ramon
 quiapo
 quezon city
@@ -14514,14 +14480,11 @@ murcia
 munoz
 morong
 morong
-rodriguez
 monkayo
 molave
 minglanilla
 midsayap
 meycauayan
-mexico
-mercedes
 mendez-nunez
 mauban
 masinloc
@@ -14574,7 +14537,6 @@ lucena
 lucban
 lubao
 los banos
-lopez
 loma de gato
 lingayen
 limay
@@ -14612,7 +14574,6 @@ iligan city
 ilagan
 hinigaran
 himamaylan
-hermosa
 hagunoy
 guyong
 gumaca
@@ -14742,7 +14703,6 @@ angono
 angeles city
 angat
 amadeo
-alicia
 aliaga
 alaminos
 alabel
@@ -16826,7 +16786,6 @@ angelholm
 alingsas
 akersberga
 majorna
-singapore
 jamestown
 trbovlje
 velenje
@@ -18348,8 +18307,6 @@ boca raton
 bonita springs
 boynton beach
 bradenton
-brandon
-brent
 brownsville
 buenaventura lakes
 cape coral
@@ -18413,7 +18370,6 @@ ives estates
 jacksonville
 jacksonville beach
 jasmine estates
-jupiter
 kendale lakes
 kendall
 key west
@@ -18502,13 +18458,11 @@ san carlos park
 sandalfoot cove
 sanford
 sarasota
-sebastian
 seminole
 south bradenton
 south miami heights
 southchase
 spring hill
-stuart
 sun city center
 sunny isles beach
 sunrise
@@ -18545,7 +18499,6 @@ winter garden
 winter haven
 winter park
 winter springs
-wright
 acworth
 albany
 alpharetta
@@ -18582,7 +18535,6 @@ lithia springs
 mableton
 macon
 marietta
-martinez
 mcdonough
 milledgeville
 newnan
@@ -18643,7 +18595,6 @@ greenwood
 indianapolis
 jasper
 jeffersonville
-lawrence
 new albany
 new castle
 plainfield
@@ -18659,7 +18610,6 @@ great bend
 hutchinson
 junction city
 kansas city
-lawrence
 leavenworth
 leawood
 lenexa
@@ -18685,7 +18635,6 @@ florence
 fort thomas
 frankfort
 georgetown
-henderson
 highview
 hopkinsville
 independence
@@ -18740,7 +18689,6 @@ terrytown
 adelphi
 annapolis
 arbutus
-arnold
 aspen hill
 baltimore
 ballenger creek
@@ -18882,7 +18830,6 @@ webster groves
 wentzville
 wildwood
 biloxi
-brandon
 clarksdale
 clinton
 columbus
@@ -18930,7 +18877,6 @@ goldsboro
 greensboro
 greenville
 havelock
-henderson
 hickory
 high point
 holly springs
@@ -18945,7 +18891,6 @@ laurinburg
 lenoir
 lexington
 lumberton
-matthews
 mint hill
 monroe
 mooresville
@@ -18963,7 +18908,6 @@ thomasville
 wake forest
 west raleigh
 wilmington
-wilson
 winston-salem
 atlantic city
 bridgeton
@@ -19054,7 +18998,6 @@ philadelphia
 springfield
 west chester
 aiken
-anderson
 charleston
 columbia
 conway
@@ -19081,7 +19024,6 @@ spartanburg
 saint andrews
 summerville
 sumter
-taylors
 wade hampton
 bartlett
 brentwood
@@ -19126,8 +19068,6 @@ tullahoma
 abilene
 alamo
 aldine
-allen
-alvin
 angleton
 arlington
 atascocita
@@ -19169,7 +19109,6 @@ deer park
 denison
 denton
 dickinson
-donna
 duncanville
 edinburg
 ennis
@@ -19262,496 +19201,6 @@ stafford
 stephenville
 sugar land
 sulphur springs
-taylor
-temple
-terrell
-texarkana
-texas city
-the colony
-the woodlands
-universal city
-university park
-uvalde
-victoria
-watauga
-waxahachie
-weatherford
-weslaco
-white settlement
-wichita falls
-wylie
-alexandria
-annandale
-arlington
-ashburn
-baileys crossroads
-blacksburg
-bon air
-bristol
-buckhall
-burke
-cave spring
-centreville
-chantilly
-charlottesville
-cherry hill
-chesapeake
-chester
-christiansburg
-colonial heights
-culpeper
-dale city
-danville
-east hampton
-fairfax
-franconia
-fredericksburg
-great falls
-hampton
-harrisonburg
-herndon
-highland springs
-hopewell
-hybla valley
-idylwood
-jefferson
-lake ridge
-laurel
-leesburg
-lincolnia
-linton hall
-lorton
-lynchburg
-manassas
-mclean
-mechanicsville
-merrifield
-montclair
-newport news
-norfolk
-oakton
-petersburg
-portsmouth
-portsmouth heights
-radford
-reston
-richmond
-roanoke
-rose hill
-salem
-short pump
-south riding
-south suffolk
-springfield
-staunton
-sterling
-sudley
-suffolk
-tuckahoe
-tysons corner
-vienna
-virginia beach
-waynesboro
-west lynchburg
-west springfield
-winchester
-wolf trap
-woodlawn
-beckley
-charleston
-clarksburg
-fairmont
-huntington
-martinsburg
-morgantown
-parkersburg
-sherwood
-franklin
-chillicothe
-bay city
-alabaster
-albertville
-anniston
-athens
-auburn
-glendale heights
-north andover
-revere
-danbury
-darien
-inkster
-cleveland heights
-east hartford
-east haven
-east norwalk
-fairfield
-farmington
-glastonbury
-guilford
-hamden
-hartford
-killingly center
-ledyard center
-madison
-manchester
-mansfield city
-meriden
-middletown
-milford
-montville center
-naugatuck
-new britain
-new haven
-new london
-newington
-north haven
-north stamford
-norwalk
-norwich
-plainfield
-plainville
-seymour
-shelton
-south windsor
-southbury
-stamford
-storrs
-stratford
-torrington
-trumbull
-wallingford
-waterbury
-west hartford
-west haven
-west torrington
-westport
-wethersfield
-willimantic
-windham
-wolcott
-ankeny
-bettendorf
-burlington
-cedar falls
-cedar rapids
-clinton
-clinton stock yards
-clive
-coralville
-council bluffs
-davenport
-des moines
-dubuque
-fort dodge
-iowa city
-johnston
-marion
-marshalltown
-mason city
-muscatine
-newton
-ottumwa
-sioux city
-urbandale
-waterloo
-west des moines
-addison
-algonquin
-alsip
-arlington heights
-aurora
-bartlett
-batavia
-bellwood
-belvidere
-bensenville
-berwyn
-bloomingdale
-bloomington
-blue island
-bolingbrook
-bourbonnais
-bradley
-bridgeview
-brookfield
-buffalo grove
-burbank
-calumet city
-carol stream
-carpentersville
-champaign
-chicago
-chicago heights
-cicero
-country club hills
-crest hill
-crystal lake
-danville
-darien
-dekalb
-deerfield
-des plaines
-dixon
-dolton
-downers grove
-east moline
-east peoria
-elgin
-elk grove village
-elmhurst
-elmwood park
-evanston
-evergreen park
-frankfort
-franklin park
-freeport
-galesburg
-geneva
-glen ellyn
-glenview
-goodings grove
-grayslake
-gurnee
-hanover park
-harvey
-highland park
-hinsdale
-hoffman estates
-homer glen
-homewood
-huntley
-joliet
-kankakee
-la grange
-lake forest
-lake zurich
-lake in the hills
-lansing
-lemont
-libertyville
-lisle
-lockport
-lombard
-loves park
-machesney park
-macomb
-matteson
-maywood
-mchenry
-melrose park
-mokena
-moline
-montgomery
-morton
-morton grove
-mount prospect
-mundelein
-naperville
-new lenox
-niles
-normal
-north aurora
-north chicago
-north peoria
-northbrook
-oak forest
-oak lawn
-oak park
-orland park
-oswego
-ottawa
-palatine
-palos hills
-park forest
-park ridge
-pekin
-peoria
-plainfield
-prospect heights
-rock island
-rockford
-rolling meadows
-romeoville
-roselle
-round lake
-round lake beach
-saint charles
-schaumburg
-shorewood
-skokie
-south elgin
-south holland
-sterling
-streamwood
-sycamore
-tinley park
-urbana
-vernon hills
-villa park
-washington
-waukegan
-west chicago
-westchester
-westmont
-wheaton
-wheeling
-wilmette
-woodridge
-woodstock
-yorkville
-anderson
-crawfordsville
-crown point
-east chicago
-elkhart
-fort wayne
-frankfort
-goshen
-granger
-griffith
-hammond
-highland
-hobart
-huntington
-kokomo
-laporte
-lafayette
-lebanon
-logansport
-marion
-merrillville
-michigan city
-mishawaka
-muncie
-munster
-noblesville
-portage
-schererville
-south bend
-valparaiso
-west lafayette
-westfield
-abington
-acton
-agawam
-amesbury
-amherst center
-arlington
-ashland
-attleboro
-auburn
-barnstable
-belmont
-beverly
-beverly cove
-billerica
-boston
-braintree
-brockton
-brookline
-burlington
-cambridge
-canton
-chelmsford
-chelsea
-chicopee
-concord
-danvers
-dedham
-dracut
-east longmeadow
-easthampton
-easton
-everett
-fairhaven
-fall river
-fitchburg
-framingham
-framingham center
-franklin
-gardner
-gloucester
-grafton
-greenfield
-hanover
-haverhill
-holden
-holyoke
-jamaica plain
-lawrence
-leominster
-lexington
-longmeadow
-lowell
-ludlow
-malden
-mansfield
-marblehead
-marlborough
-medford
-melrose
-methuen
-milford
-milton
-natick
-needham
-new bedford
-newburyport
-newton
-north chicopee
-northampton
-norton
-norwood
-palmer
-peabody
-pittsfield
-quincy
-randolph
-reading
-rockland
-salem
-saugus
-shrewsbury
-somerset
-somerville
-south boston
-south hadley
-south peabody
-southbridge
-springfield
-stoneham
-stoughton
-sudbury
-swansea
-taunton
-tewksbury
-wakefield
-waltham
-watertown
-wellesley
-west springfield
-westfield
-westford
-weymouth
-wilmington
-winchester
-winthrop
-woburn
-worcester
-yarmouth
-auburn
-augusta
-bangor
-biddeford
-brunswick
-lewiston
-portland
-south portland
-south portland gardens
-waterville
-west scarborough
-westbrook
-adrian
 allen park
 allendale
 ann arbor
@@ -19817,7 +19266,6 @@ walker
 warren
 waterford
 waverly
-wayne
 westland
 wyandotte
 wyoming
@@ -19905,7 +19353,6 @@ grand island
 hastings
 kearney
 la vista
-lincoln
 norfolk
 omaha
 papillion
@@ -19939,14 +19386,12 @@ dumont
 east brunswick
 east orange
 edison
-elizabeth
 elmwood park
 englewood
 ewing
 fair lawn
 fords
 fort lee
-garfield
 hackensack
 hawthorne
 hillside
@@ -20129,7 +19574,6 @@ scarsdale
 schenectady
 seaford
 selden
-shirley
 smithtown
 spring valley
 staten island
@@ -20311,7 +19755,6 @@ de pere
 eau claire
 fitchburg
 fond du lac
-franklin
 germantown
 green bay
 greenfield
@@ -20374,7 +19817,6 @@ florence
 flowing wells
 fortuna foothills
 fountain hills
-gilbert
 glendale
 goodyear
 green valley
@@ -20461,7 +19903,6 @@ castro valley
 cathedral city
 ceres
 cerritos
-chico
 chino
 chino hills
 chowchilla
@@ -20535,7 +19976,6 @@ hanford
 hawthorne
 hayward
 hemet
-hercules
 hermosa beach
 hesperia
 highland
@@ -20576,8 +20016,6 @@ lawndale
 lemon grove
 lemoore
 lennox
-lincoln
-linda
 live oak
 livermore
 loma linda
@@ -20592,7 +20030,6 @@ lynwood
 madera
 manhattan beach
 manteca
-martinez
 maywood
 mead valley
 menifee
@@ -20728,7 +20165,6 @@ selma
 shafter
 sherman oaks
 simi valley
-soledad
 south el monte
 south gate
 south lake tahoe
@@ -20747,7 +20183,6 @@ temecula
 temple city
 thousand oaks
 torrance
-tracy
 truckee
 tulare
 turlock
@@ -20843,7 +20278,6 @@ boulder city
 carson city
 enterprise
 fernley
-henderson
 las vegas
 mesquite
 north las vegas
@@ -20911,7 +20345,6 @@ billings
 bozeman
 butte
 great falls
-helena
 kalispell
 missoula
 bismarck
@@ -21158,7 +20591,6 @@ santa lucia
 san jose de mayo
 san carlos
 salto
-rocha
 rivera
 progreso
 paysandu

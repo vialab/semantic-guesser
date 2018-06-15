@@ -286,7 +286,9 @@ class COCATagger(SequentialBackoffTagger):
             pos, freq = self.tag_map[word][0]
             #return self.tag_converter.claws7ToBrown(posfreq[0])
             
-            if pos == 'np1' and len(word) < 4: # a notably noisy class
+            if (pos == 'np1' or pos == 'nn1') and len(word) < 3: # notably noisy classes
+                pos = None
+            elif (pos == 'np1' or pos == 'nn1') and len(word) == 3 and freq < 10000:
                 pos = None
 
             return pos

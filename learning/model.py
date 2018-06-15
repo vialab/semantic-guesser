@@ -340,16 +340,16 @@ class GrammarTagger(object):
             return pos + '_' + syntag
 
     def propername_tag(self, string):
-        if string in GrammarTagger.Cities:
-            return 'city'
-        elif string in GrammarTagger.Countries:
-            return 'country'
-        elif string in GrammarTagger.MaleNames:
+        if string in GrammarTagger.MaleNames:
             return 'mname'
         elif string in GrammarTagger.FemaleNames:
             return 'fname'
+        elif string in GrammarTagger.Cities:
+            return 'city'
         elif string in GrammarTagger.Surnames:
             return 'surname'
+        elif string in GrammarTagger.Countries:
+            return 'country'
         else:
             return None
 
