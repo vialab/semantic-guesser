@@ -291,10 +291,19 @@ def score(passwords, grammar, tc_nouns,
     base_struct_dist = dict(grammar.base_structure_probabilities())
     checker = BaseStructChecker(grammar)
 
+    # optimize for ordered lists with repeated passwords
+    last_password = ""
+    last_yield    = None
+
     # Build a prefix tree of the segmentations, but do not include
     # in this tree sequences that don't occur in the grammar.
 
     for password in passwords:
+
+        if password == last_password:
+            yield last_yield
+            continue
+
         if password.isdigit():
             base_struct = 'number'+str(len(password))
             try:
@@ -348,14 +357,11 @@ def score(passwords, grammar, tc_nouns,
                         if newhead.sequence_p > max_p:
                             segs.append((newhead, newsplit[1]))
 
-        yield (password, max_base_struct, max_segmentation, max_p)
-        # leaves = filter(lambda leaf, dist=base_struct_dist: leaf.base_struct in dist, leaves)
-        # leaves = map(lambda leaf, dist=base_struct_dist: (leaf.base_struct, leaf.sequence_p * dist[leaf.base_struct]), leaves)
-        # try:
-        #     max_base_struct, max_p = max(leaves, key=lambda x: x[1])
-        #     yield (password, max_base_struct, max_p)
-        # except ValueError:
-        #     yield (password, None, 0)
+        last_password = password
+        last_yield    = (password, max_base_struct, max_segmentation, max_p)
+        
+        yield last_yield
+
 
 #%%------------------------------------------------------------------
 
