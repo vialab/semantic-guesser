@@ -383,6 +383,7 @@ def options():
     parser.add_argument('--capitalized',
         action='store_true',
         help='produce a match even when a password is capitalized')
+    parser.add_argument('--print_split', action='store_true')
 
     return parser.parse_args()
 
@@ -416,7 +417,10 @@ if __name__ == '__main__':
            accept_camel and ''.join(map(str.capitalize, split)) == password or \
            accept_capital and password[0].isupper() and password[1:].islower():
 
-           print(password, struct, prob)
+            if opts.print_split:
+                print(password, struct, " ".join(split), prob)
+            else:
+                print(password, struct, prob)
         else:
            print(password, None, 0)
 
