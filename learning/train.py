@@ -487,7 +487,7 @@ def fit_grammar(passwords, tagtype, estimator, tcm_n, tcm_v, num_workers):
                 log.warning("Unable to feed chunks to grammar: {}".format(chunks))
 
         out_list.extend(results)
-        log.info("Results delivered.")
+        # log.info("Results delivered.")
 
     grammar = Grammar(estimator=estimator, tagtype=tagtype)
 

@@ -24,7 +24,7 @@ To train a grammar with a password list:
 
 ```
 cd semantic_guesser  
-python -m learning.train password_list.txt ~/grammars/test_grammar
+python -m learning.train password_list.txt ~/grammars/test_grammar -vv
 ```
 
 A password list has one password per line:
@@ -119,7 +119,9 @@ If you will be using `guessmaker --mangle` to generate guesses, unless you pass 
 We can calculate the strength of a password given a grammar using Filippone and Dell'Amico's [Monte Carlo strength evaluation](http://www.dcs.gla.ac.uk/~maurizio/Publications/ccs15.pdf). The strength is an estimate for how many passwords would need to be output (using the guess generation procedure above) before the password is guessed. We need a large sample (see how to generate samples above) from the grammar. The largest the sample the more accurate the estimates.
 
 ```
-python -m guessing.strength my_password_sample.txt passwords.txt
+python -m guessing.sample 1000 path_to_grammar/ > sample.txt
+python -m guessing.score path_to_grammar/ passwords.txt > scored_passwords.txt
+python -m guessing.strength sample.txt scored_passwords.txt
 ```
 
 

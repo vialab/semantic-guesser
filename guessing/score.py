@@ -359,7 +359,7 @@ def score(passwords, grammar, tc_nouns,
 
         last_password = password
         last_yield    = (password, max_base_struct, max_segmentation, max_p)
-        
+
         yield last_yield
 
 
@@ -429,51 +429,3 @@ if __name__ == '__main__':
                 print(password, struct, prob)
         else:
            print(password, None, 0)
-
-
-# tagger = ExhaustiveTagger().from_pickle()
-# # tagger.pickle(ExhaustiveTagger.pickle_path)
-#
-# tc_nouns = pickle.load(open('/Users/rafa/Data/grammar/yahoo-voices-laplace/noun_treecut.pickle', 'rb'))
-# tc_verbs = pickle.load(open('/Users/rafa/Data/grammar/yahoo-voices-laplace/verb_treecut.pickle', 'rb'))
-# grammar   = model.Grammar.from_files('/Users/rafa/Data/grammar/yahoo-voices-laplace')
-# postagger = ExhaustiveTagger()
-#
-# nodes = list(score(['upsidedown'], grammar, tc_nouns, tc_verbs, postagger=postagger))
-#
-# for node in nodes[0]:
-#     print(node.base_struct, node.sequence_p)
-#
-#
-# vocab = grammar.get_vocab()
-# memotagger = MemoTagger(postagger, tc_nouns, tc_verbs, grammar)
-# base_struct_dist = dict(grammar.base_structure_probabilities())
-# checker = BaseStructChecker(grammar)
-#
-# postagger.get_tags('down')
-# memotagger.get_synsets('fell', 'vvi')
-
-# import learning
-# from importlib import reload
-#
-# reload(learning)
-#
-# vocab = learning.train.verb_vocab(tc_verbs, min_length=2)
-#
-# vocab = list(vocab)
-#
-# # [v for v in vocab if v[0] == 'grinded']
-#
-# keys = [leaf.key for leaf in list(tc_verbs.treecut.leaf2cut['s.attach.v.01'])[0].leaves()]
-# print(sorted(keys))
-
-
-# # postagger = ExhaustiveTagger.from_pickle()
-# # # postagger2 = BackoffTagger.from_pickle()
-# # # graph = GrammarGraph(grammar)
-# # # table = GrammarTable(grammar)
-# # # checker = BaseStructChecker(grammar)
-# memotagger = MemoTagger(tagger, tc_nouns, tc_verbs, grammar)
-#
-# memotagger.get_pos('rubricking')
-# memotagger.get_synsets('pick', 'vvi')
