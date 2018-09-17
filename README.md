@@ -4,6 +4,20 @@ Tools for training probabilistic context-free grammars on password lists. The
 models encode syntactic and semantic linguistic patterns and can be used to
 generate guesses.
 
+[Read the paper](http://vialab.dc-uoit.net/wordpress/wp-content/papercite-data/pdf/ver2014a.pdf)
+
+Cite:
+
+```
+@inproceedings{Veras2014,
+  title={On Semantic Patterns of Passwords and their Security Impact.},
+  author={Veras, Rafael and Collins, Christopher and Thorpe, Julie},
+  booktitle={NDSS},
+  year={2014}
+}
+```
+
+
 ## Basic Usage
 
 To train a grammar with a password list:
