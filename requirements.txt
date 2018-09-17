@@ -1,0 +1,11 @@
+cycler==0.10.0
+matplotlib==2.1.0
+nltk==3.2.5
+numpy==1.13.3
+py==1.4.34
+pyparsing==2.2.0
+pytest==3.2.3
+python-dateutil==2.6.1
+pytz==2017.3
+six==1.11.0
+wordsegment==1.1.6
