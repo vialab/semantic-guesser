@@ -66,7 +66,7 @@ optional arguments:
                         Detail level of the grammar. An integer > 0
                         proportional to the desired specificity.
   -v                    verbose level (e.g., -vvv)
-  --tags {pos_semantic,pos,backoff,word}
+  --tagtype {pos_semantic,pos,backoff,word}
   -w NUM_WORKERS, --num_workers NUM_WORKERS
                         number of cores available for parallel work
 
