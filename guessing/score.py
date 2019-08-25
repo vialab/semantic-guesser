@@ -85,13 +85,13 @@ class MemoTagger():
         self.tagconv   = TagsetConverter()
         self.tag_prob_cache = dict()
 
-    @functools.lru_cache(maxsize=None)
+    @functools.lru_cache(maxsize=10000)
     def get_pos(self, string):
         tags = self.postagger.get_tags(string)
         tags.append((string, None))
         return tags
 
-    @functools.lru_cache(maxsize=None)
+    @functools.lru_cache(maxsize=10000)
     def get_synsets(self, string, pos):
         if self.grammar.tagtype == 'pos' or pos is None:
             return {None}
@@ -109,7 +109,7 @@ class MemoTagger():
 
         return set(syns)
 
-    @functools.lru_cache(maxsize=None)
+    @functools.lru_cache(maxsize=10000)
     def get_segment_tag(self, string, pos, synset):
         return self.grammar.tagger._get_tag(string, pos, synset, self.grammar.tagtype)
 
@@ -136,7 +136,7 @@ class MemoTagger():
         except KeyError:
             return 0
 
-    @functools.lru_cache(maxsize=None)
+    @functools.lru_cache(maxsize=10000)
     def get_tags(self, word):
         tagset = set()
         for _, pos in self.get_pos(word):
