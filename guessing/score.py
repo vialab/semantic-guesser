@@ -13,6 +13,7 @@ import time
 import functools
 import itertools
 import argparse
+import configparser
 
 from wordsegment import Segmenter
 from collections import deque
@@ -366,6 +367,24 @@ def score(passwords, grammar, tc_nouns,
 #%%------------------------------------------------------------------
 
 
+def save_progress(session_name, n_processed):
+    progress_file = configparser.ConfigParser()
+    progress_file['LOG'] = {
+        'n_processed': n_processed
+    }
+    session_file = session_name + '.tmp'
+    with open(session_file, 'w') as f:
+        progress_file.write(f)
+
+def load_progress(session_name):
+    session_file = session_name + '.tmp'
+    config = configparser.ConfigParser()
+    config.read(session_file)
+    
+    return config['LOG'] if 'LOG' in config else None
+
+
+
 def options():
     parser = argparse.ArgumentParser(description=('Find if passwords '
         'can be produced (guessed) by the grammar. By default, accepts only '
@@ -390,6 +409,7 @@ def options():
         action='store_true',
         help='produce a match even when a password is capitalized')
     parser.add_argument('--print_split', action='store_true')
+    parser.add_argument('--session_name')
 
     return parser.parse_args()
 
@@ -403,16 +423,30 @@ if __name__ == '__main__':
     accept_camel   = opts.camelcase
     accept_capital = opts.capitalized
 
+    session_name = opts.session_name
 
     postagger = ExhaustiveTagger.from_pickle()
     tc_nouns  = pickle.load(open(grammar_dir / 'noun_treecut.pickle', 'rb'))
     tc_verbs  = pickle.load(open(grammar_dir / 'verb_treecut.pickle', 'rb'))
     grammar   = model.Grammar.from_files(opts.grammar_dir)
 
-    passwords = (line.rstrip() for line in passwords_file)
+    skip = 0
+    if session_name:
+        progress = load_progress(session_name)
+        if progress:
+            skip = int(progress['n_processed'])
+
+    passwords = (line.rstrip() for i, line in enumerate(passwords_file) if i >= skip)
+
+    n_processed = 0
 
     for password, struct, split, prob in score(passwords, grammar,
         tc_nouns, tc_verbs, postagger, grammar.get_vocab()):
+        
+        n_processed += 1
+
+        if session_name and n_processed % 10000 == 0:
+            save_progress(session_name, n_processed)
 
         if prob == 0:
             print(password, struct, prob)
@@ -427,5 +461,6 @@ if __name__ == '__main__':
                 print(password, struct, " ".join(split), prob)
             else:
                 print(password, struct, prob)
+
         else:
            print(password, None, 0)
