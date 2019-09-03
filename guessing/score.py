@@ -367,10 +367,11 @@ def score(passwords, grammar, tc_nouns,
 #%%------------------------------------------------------------------
 
 
-def save_progress(session_name, n_processed):
+def save_progress(session_name, n_processed, completed=False):
     progress_file = configparser.ConfigParser()
     progress_file['LOG'] = {
-        'n_processed': n_processed
+        'n_processed': n_processed,
+        'completed': completed
     }
     session_file = session_name + '.tmp'
     with open(session_file, 'w') as f:
@@ -438,29 +439,38 @@ if __name__ == '__main__':
 
     passwords = (line.rstrip() for i, line in enumerate(passwords_file) if i >= skip)
 
-    n_processed = 0
+    n_processed = skip
+    completed   = False
 
-    for password, struct, split, prob in score(passwords, grammar,
-        tc_nouns, tc_verbs, postagger, grammar.get_vocab()):
-        
-        n_processed += 1
+    try:
+        for password, struct, split, prob in score(passwords, grammar,
+            tc_nouns, tc_verbs, postagger, grammar.get_vocab()):
 
-        if session_name and n_processed % 10000 == 0:
-            save_progress(session_name, n_processed)
-
-        if prob == 0:
-            print(password, struct, prob)
-            continue
-
-        if password.islower() or \
-           accept_upper and password.isupper() or \
-           accept_camel and ''.join(map(str.capitalize, split)) == password or \
-           accept_capital and password[0].isupper() and password[1:].islower():
-
-            if opts.print_split:
-                print(password, struct, " ".join(split), prob)
-            else:
+            if prob == 0:
                 print(password, struct, prob)
+                continue
 
-        else:
-           print(password, None, 0)
+            if password.islower() or \
+            accept_upper and password.isupper() or \
+            accept_camel and ''.join(map(str.capitalize, split)) == password or \
+            accept_capital and password[0].isupper() and password[1:].islower():
+
+                if opts.print_split:
+                    print(password, struct, " ".join(split), prob)
+                else:
+                    print(password, struct, prob)
+
+            else:
+                print(password, None, 0)
+
+            n_processed += 1
+
+            if session_name and n_processed % 10000 == 0:
+                save_progress(session_name, n_processed)
+        
+        completed = True
+    except:
+        pass
+    finally:
+        if session_name:
+            save_progress(session_name, n_processed, completed)
