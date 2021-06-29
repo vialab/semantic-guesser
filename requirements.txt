@@ -3,7 +3,7 @@ cycler==0.10.0
 isort==4.3.21
 lazy-object-proxy==1.4.1
 mccabe==0.6.1
-nltk==3.4.4
+nltk==3.4.5
 numpy==1.17.0
 pandas==0.25.0
 pylint==2.3.1
